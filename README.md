@@ -139,6 +139,29 @@ Replace `granary.example.com:8081` with your server. Create an API token in the 
     <server><id>granary-releases</id><username>jane</username><password>gry_…</password></server>
     <server><id>granary-snapshots</id><username>jane</username><password>gry_…</password></server>
   </servers>
+  <!-- Maven only resolves snapshots from repositories that enable them; Central (which the mirror replaces) does not. -->
+  <profiles>
+    <profile>
+      <id>granary</id>
+      <repositories>
+        <repository>
+          <id>granary</id>
+          <url>http://granary.example.com:8081/repository/maven-public/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>granary</id>
+          <url>http://granary.example.com:8081/repository/maven-public/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+  <activeProfiles><activeProfile>granary</activeProfile></activeProfiles>
 </settings>
 ```
 

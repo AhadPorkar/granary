@@ -1,0 +1,118 @@
+# Granary default configuration. Every value can be overridden with an environment variable
+# (e.g. GRANARY_DATA_DIR, SERVER_PORT, SPRING_DATASOURCE_URL) or a command-line flag.
+
+server:
+  port: 8081
+  # Trust X-Forwarded-* headers from a reverse proxy so generated URLs (npm tarballs, NuGet index) are right.
+  forward-headers-strategy: framework
+  tomcat:
+    # Package uploads can be large; never buffer or reject them on size.
+    max-swallow-size: -1
+    max-http-form-post-size: -1
+    threads:
+      max: ${GRANARY_HTTP_THREADS:200}
+    max-connections: ${GRANARY_HTTP_MAX_CONNECTIONS:20000}
+    accept-count: 500
+    connection-timeout: 60s
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+  shutdown: graceful
+  error:
+    include-message: always
+    whitelabel:
+      enabled: false
+
+spring:
+  application:
+    name: granary
+  main:
+    banner-mode: log
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  mvc:
+    formcontent:
+      filter:
+        # never let Spring consume a PUT body as form fields; package managers upload raw bytes
+        enabled: false
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+      file-size-threshold: 1MB
+  datasource:
+    # Zero-configuration default: an embedded H2 database under the data directory.
+    # Activate the "postgres" profile (or set SPRING_DATASOURCE_URL) for production.
+    url: jdbc:h2:file:${granary.data-dir}/db/granary;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;AUTO_SERVER=TRUE
+    username: granary
+    password: granary
+    hikari:
+      maximum-pool-size: ${GRANARY_DB_POOL_SIZE:20}
+      pool-name: granary
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+  threads:
+    virtual:
+      enabled: true
+
+granary:
+  data-dir: ${GRANARY_DATA_DIR:./data}
+  security:
+    admin-password: ${GRANARY_ADMIN_PASSWORD:admin123}
+    jwt-secret: ${GRANARY_JWT_SECRET:}
+    session-token-ttl: 12h
+    anonymous-read-default: ${GRANARY_ANONYMOUS_READ:true}
+  proxy:
+    connect-timeout: 10s
+    read-timeout: 60s
+    metadata-max-age: 30m
+    negative-cache-ttl: 10m
+    failure-threshold: 3
+    circuit-open-min: 30s
+    circuit-open-max: 10m
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Granary
+    version: '@project.version@'
+
+logging:
+  level:
+    root: INFO
+    dev.granary: INFO
+    org.hibernate.SQL: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/granary}
+    username: ${SPRING_DATASOURCE_USERNAME:granary}
+    password: ${SPRING_DATASOURCE_PASSWORD:granary}

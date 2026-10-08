@@ -1,0 +1,19 @@
+# build output
+target/
+dist/
+node_modules/
+node/
+*.log
+
+# runtime data of a local server
+/data/
+granary-server/data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store

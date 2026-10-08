@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:granary-${random.uuid};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ''
+  threads:
+    virtual:
+      enabled: false
+
+granary:
+  data-dir: ${java.io.tmpdir}/granary-test-${random.uuid}
+  security:
+    admin-password: admin123
+  proxy:
+    connect-timeout: 2s
+    read-timeout: 5s
+    circuit-open-min: 1s
+    circuit-open-max: 2s
+
+logging:
+  level:
+    dev.granary: INFO
+    org.springframework.web: WARN

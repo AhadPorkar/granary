@@ -200,7 +200,7 @@ For Visual Studio, add the same `index.json` URL under *Tools → Options → Nu
 |-----------|-------------------|
 | Artifact cached, upstream down | Served from cache immediately; nothing waits for the network. |
 | Index document cached, older than *metadata max age*, upstream down | Served stale, with a warning in the logs; refreshed on the next successful contact. |
-| Artifact not cached, upstream down | `503 Service Unavailable` with a JSON body naming the repository and the upstream failure. |
+| Artifact not cached, upstream down or offline mode on | `503 Service Unavailable` with a JSON body naming the repository and the reason, so clients retry later instead of remembering a `404`. |
 | Upstream failed `failureThreshold` times | Circuit breaker opens: requests go straight to cache; a single probe retries with exponential back-off (30 s → 10 min). |
 | Upstream answered `404` | Remembered for *negative cache TTL* so a thousand builds do not hammer a dead URL. |
 | *Offline mode* switched on (UI, API or `system.offlineMode`) | No upstream calls at all, globally or per repository. |

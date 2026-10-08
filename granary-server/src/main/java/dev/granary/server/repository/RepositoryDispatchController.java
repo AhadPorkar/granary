@@ -5,6 +5,9 @@ import dev.granary.core.format.FormatHandler;
 import dev.granary.core.format.FormatRegistry;
 import dev.granary.core.format.RepositoryRequest;
 import dev.granary.core.model.Repository;
+import dev.granary.core.proxy.ProxyService;
+import dev.granary.core.proxy.UpstreamHealth;
+import dev.granary.core.repository.GroupResolver;
 import dev.granary.core.repository.RepositoryService;
 import dev.granary.core.security.GranaryPrincipal;
 import dev.granary.core.settings.SettingsService;
@@ -15,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -36,11 +40,18 @@ public class RepositoryDispatchController {
     private final RepositoryService repositories;
     private final FormatRegistry formats;
     private final SettingsService settings;
+    private final ProxyService proxy;
+    private final UpstreamHealth health;
+    private final GroupResolver groups;
 
-    public RepositoryDispatchController(RepositoryService repositories, FormatRegistry formats, SettingsService settings) {
+    public RepositoryDispatchController(RepositoryService repositories, FormatRegistry formats, SettingsService settings,
+                                        ProxyService proxy, UpstreamHealth health, GroupResolver groups) {
         this.repositories = repositories;
         this.formats = formats;
         this.settings = settings;
+        this.proxy = proxy;
+        this.health = health;
+        this.groups = groups;
     }
 
     @RequestMapping({"/repository/{name}", "/repository/{name}/", "/repository/{name}/**"})
@@ -80,7 +91,35 @@ public class RepositoryDispatchController {
         if (!repo.isOnline() && access != AccessLevel.NONE) {
             return json(HttpStatus.SERVICE_UNAVAILABLE, "repository.offline", "Repository '" + name + "' is offline");
         }
-        return handler.handle(request);
+        ResponseEntity<?> result = handler.handle(request);
+        if (result.getStatusCode() == HttpStatus.NOT_FOUND && access == AccessLevel.READ) {
+            return unavailableUpstream(repo, path).orElse(result);
+        }
+        return result;
+    }
+
+    /**
+     * A miss on content that could only have come from an upstream we cannot reach right now is a temporary
+     * condition, not "does not exist": answer 503 so clients retry later instead of remembering a 404.
+     */
+    private Optional<ResponseEntity<?>> unavailableUpstream(Repository repo, String path) {
+        List<Repository> candidates = repo.isGroup() ? groups.leafMembers(repo) : List.of(repo);
+        for (Repository candidate : candidates) {
+            if (!candidate.isProxy()) {
+                continue;
+            }
+            if (proxy.isOffline(candidate)) {
+                return Optional.of(json(HttpStatus.SERVICE_UNAVAILABLE, "upstream.offline",
+                        "'" + path + "' is not cached and repository '" + candidate.getName() + "' is in offline mode"));
+            }
+            UpstreamHealth.Status status = health.status(candidate);
+            if (!status.reachable() || status.consecutiveFailures() > 0) {
+                return Optional.of(json(HttpStatus.SERVICE_UNAVAILABLE, "upstream.unavailable",
+                        "'" + path + "' is not cached and the upstream of '" + candidate.getName()
+                                + "' is unreachable" + (status.lastError() == null ? "" : ": " + status.lastError())));
+            }
+        }
+        return Optional.empty();
     }
 
     /** The decoded path after {@code /repository/<name>}, never starting with a slash. */

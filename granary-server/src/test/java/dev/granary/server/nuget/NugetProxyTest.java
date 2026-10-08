@@ -199,8 +199,9 @@ class NugetProxyTest extends IntegrationTest {
         fetch("v3/query", "q", "acme")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalHits").value(0));
-        // and what was never cached is simply not found
-        fetch("v3/flatcontainer/never.seen/index.json").andExpect(status().isNotFound());
+        // and what was never cached is reported as a temporary upstream failure, not as missing
+        fetch("v3/flatcontainer/never.seen/index.json").andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("upstream.unavailable"));
         upstream.verify(getRequestedFor(urlEqualTo("/v3-flatcontainer/" + ID + "/index.json")));
     }
 
@@ -233,7 +234,7 @@ class NugetProxyTest extends IntegrationTest {
     }
 
     @Test
-    void anUnreachableUpstreamWithNothingCachedIs404NotAnError() throws Exception {
+    void anUnreachableUpstreamWithNothingCachedIs503AndTheServiceIndexStillWorks() throws Exception {
         Repository r = new Repository();
         r.setName("nuget-dead");
         r.setFormat("nuget");
@@ -241,7 +242,8 @@ class NugetProxyTest extends IntegrationTest {
         r.setRemoteUrl("http://127.0.0.1:1/v3/index.json");
         repositories.create(r);
         mvc.perform(MockMvcRequestBuilders.get("/repository/nuget-dead/v3/flatcontainer/" + ID + "/index.json"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("upstream.unavailable"));
         mvc.perform(MockMvcRequestBuilders.get("/repository/nuget-dead/index.json"))
                 .andExpect(status().isOk());
     }

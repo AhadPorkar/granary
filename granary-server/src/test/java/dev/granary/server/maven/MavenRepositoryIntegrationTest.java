@@ -248,7 +248,10 @@ class MavenRepositoryIntegrationTest extends IntegrationTest {
 
         upstream.stop();
         mvc.perform(get("/repository/central/" + JAR)).andExpect(status().isOk()).andExpect(content().string("remote-jar"));
-        mvc.perform(get("/repository/central/com/acme/demo/1.0/demo-1.0-sources.jar")).andExpect(status().isNotFound());
+        // what was never cached is a temporary failure, not a 404 Maven would remember
+        mvc.perform(get("/repository/central/com/acme/demo/1.0/demo-1.0-sources.jar"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("upstream.unavailable"));
         assertThat(health.status(central).lastError()).isNotNull();
 
         mvc.perform(get("/api/v1/repositories/central").header("Authorization", adminBearer()))

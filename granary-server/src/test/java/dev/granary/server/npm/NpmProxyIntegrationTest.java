@@ -127,8 +127,9 @@ class NpmProxyIntegrationTest extends IntegrationTest {
                 .andReturn().getResponse().getContentAsByteArray()).isEqualTo(tgz);
         upstream.verify(0, WireMock.getRequestedFor(WireMock.urlPathEqualTo("/lodash/-/lodash-4.17.21.tgz")));
 
-        // something never cached is a 404, not a 500
-        mvc.perform(get(url + "/unknown")).andExpect(status().isNotFound()).andExpect(jsonPath("$.error").exists());
+        // something never cached while upstream is broken is a temporary 503, not a 404 npm would remember
+        mvc.perform(get(url + "/unknown")).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("upstream.unavailable"));
     }
 
     @Test
@@ -144,7 +145,8 @@ class NpmProxyIntegrationTest extends IntegrationTest {
 
         mvc.perform(get(URL + "/lodash")).andExpect(status().isOk());
         mvc.perform(get(URL + "/lodash/-/lodash-4.17.21.tgz")).andExpect(status().isOk());
-        mvc.perform(get(URL + "/express")).andExpect(status().isNotFound());
+        mvc.perform(get(URL + "/express")).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("upstream.offline"));
         upstream.verify(0, WireMock.getRequestedFor(WireMock.urlPathEqualTo("/express")));
 
         repositories.setOffline(REPO, false);

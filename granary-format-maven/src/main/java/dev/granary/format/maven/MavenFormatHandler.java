@@ -185,7 +185,11 @@ public class MavenFormatHandler implements FormatHandler {
         md.getVersions().addAll(versions);
         md.setLatest(versions.get(versions.size() - 1));
         versions.stream().filter(v -> !MavenPath.isSnapshot(v)).reduce((a, b) -> b).ifPresent(md::setRelease);
-        md.setLastUpdated(MavenMetadata.now());
+        // derived from the stored components, so the document (and its checksums) are stable between requests
+        found.stream().map(dev.granary.core.model.Component::getUpdatedAt).filter(java.util.Objects::nonNull)
+                .max(java.util.Comparator.naturalOrder())
+                .ifPresentOrElse(t -> md.setLastUpdated(MavenMetadata.LAST_UPDATED.format(t)),
+                        () -> md.setLastUpdated(MavenMetadata.now()));
         return Optional.of(md);
     }
 

@@ -17,6 +17,12 @@ public class GranaryProperties {
     /** Root directory for blobs, the embedded database and generated secrets. */
     private Path dataDir = Path.of("data");
 
+    /**
+     * External base URL (scheme, host, port, optional context path) used in generated links when the
+     * server sits behind a reverse proxy. The runtime setting {@code system.baseUrl} overrides it.
+     */
+    private String baseUrl;
+
     private final Storage storage = new Storage();
     private final Security security = new Security();
     private final Proxy proxy = new Proxy();
@@ -27,6 +33,14 @@ public class GranaryProperties {
 
     public void setDataDir(Path dataDir) {
         this.dataDir = dataDir;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public Storage getStorage() {

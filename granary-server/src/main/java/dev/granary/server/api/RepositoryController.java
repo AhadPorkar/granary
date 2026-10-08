@@ -9,6 +9,7 @@ import dev.granary.core.model.Component;
 import dev.granary.core.model.Repository;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.repository.RepositoryService;
+import dev.granary.core.repository.StandardRepositories;
 import dev.granary.core.security.GranaryPrincipal;
 import dev.granary.core.settings.SettingsService;
 import dev.granary.core.storage.StorageService;
@@ -46,9 +47,12 @@ public class RepositoryController {
     private final ComponentDao components;
     private final AssetDao assets;
     private final StorageService storage;
+    private final StandardRepositories standard;
 
     public RepositoryController(RepositoryService repositories, FormatRegistry formats, ProxyService proxy,
-                                SettingsService settings, ComponentDao components, AssetDao assets, StorageService storage) {
+                                SettingsService settings, ComponentDao components, AssetDao assets, StorageService storage,
+                                StandardRepositories standard) {
+        this.standard = standard;
         this.repositories = repositories;
         this.formats = formats;
         this.proxy = proxy;
@@ -89,6 +93,14 @@ public class RepositoryController {
     @ResponseStatus(HttpStatus.CREATED)
     public Dtos.RepositoryView create(@Valid @RequestBody Dtos.RepositoryRequest request, HttpServletRequest http) {
         return view(repositories.create(request.toEntity()), http);
+    }
+
+    /** Creates the conventional proxy/hosted/group trio for every installed format; safe to repeat. */
+    @PostMapping("/repositories/standard")
+    @PreAuthorize(MANAGE)
+    public Map<String, Object> createStandard() {
+        List<String> created = standard.createMissing();
+        return Map.of("created", created, "templates", standard.templates().stream().map(t -> t.name()).toList());
     }
 
     @PutMapping("/repositories/{name}")

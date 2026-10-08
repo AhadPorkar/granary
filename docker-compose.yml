@@ -1,0 +1,62 @@
+# Granary with PostgreSQL. Start with:  docker compose up -d
+# The web UI is then at http://localhost:8081 (admin / the password below).
+#
+# For a single-node evaluation without PostgreSQL you can also run the jar directly:
+#   java -jar granary-server/target/granary.jar     (embedded H2 database under ./data)
+
+services:
+  granary:
+    image: ${GRANARY_IMAGE:-ghcr.io/ahadporkar/granary:latest}
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9-eclipse-temurin-25}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:25-jre-alpine}
+    restart: unless-stopped
+    ports:
+      - "${GRANARY_PORT:-8081}:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/granary
+      SPRING_DATASOURCE_USERNAME: granary
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-granary}
+      GRANARY_ADMIN_PASSWORD: ${GRANARY_ADMIN_PASSWORD:-admin123}
+      GRANARY_ANONYMOUS_READ: ${GRANARY_ANONYMOUS_READ:-true}
+      # Set this to the URL developers use, e.g. https://granary.example.com, when behind a reverse proxy.
+      GRANARY_BASE_URL: ${GRANARY_BASE_URL:-}
+      # Optional outbound proxy for upstream registries (host:port). Leave empty for a direct connection.
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75 -XX:+UseZGC
+        ${GRANARY_JAVA_OPTS:-}
+    volumes:
+      # Blobs, the H2 fallback database (unused with PostgreSQL), the JWT secret and logs.
+      - granary-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: granary
+      POSTGRES_USER: granary
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-granary}
+    volumes:
+      - granary-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U granary -d granary"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  granary-data:
+  granary-db:

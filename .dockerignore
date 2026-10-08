@@ -1,0 +1,12 @@
+.git
+.github
+**/target
+**/node_modules
+**/dist
+**/node
+data
+docs
+*.md
+!granary-ui/*.md
+.editorconfig
+.gitignore

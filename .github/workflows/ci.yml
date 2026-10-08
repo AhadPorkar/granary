@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "25"
+  NODE_VERSION: "22"
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: granary-ui/package-lock.json
+
+      - name: Build web UI
+        working-directory: granary-ui
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+
+      - name: Build and test server
+        run: mvn -B -ntp -Dui.skip=true verify
+
+      - name: Publish test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/target/surefire-reports/*.xml
+            **/target/failsafe-reports/*.xml
+            **/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+      - name: Keep the packaged server
+        uses: actions/upload-artifact@v4
+        with:
+          name: granary-jar
+          path: granary-server/target/granary.jar
+
+  smoke:
+    name: Docker Compose smoke test
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for readiness
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8081/actuator/health/readiness >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          docker compose logs granary
+          exit 1
+
+      - name: Exercise the API and a Maven round trip
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -fsS -X POST http://localhost:8081/api/v1/auth/login \
+            -H 'Content-Type: application/json' -d '{"username":"admin","password":"admin123"}' \
+            | sed -E 's/.*"token":"([^"]+)".*/\1/')
+          curl -fsS -X POST http://localhost:8081/api/v1/repositories -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' -d '{"name":"maven-releases","format":"maven2","type":"HOSTED"}'
+          echo hello > demo.jar
+          curl -fsS -u admin:admin123 -T demo.jar \
+            http://localhost:8081/repository/maven-releases/com/acme/demo/1.0/demo-1.0.jar
+          curl -fsS http://localhost:8081/repository/maven-releases/com/acme/demo/1.0/demo-1.0.jar | grep -q hello
+          curl -fsS http://localhost:8081/repository/maven-releases/com/acme/demo/maven-metadata.xml | grep -q '<version>1.0</version>'
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
+
+  image:
+    name: Publish container image
+    runs-on: ubuntu-latest
+    needs: [build, smoke]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

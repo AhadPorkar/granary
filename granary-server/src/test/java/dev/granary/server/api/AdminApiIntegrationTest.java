@@ -156,4 +156,18 @@ class AdminApiIntegrationTest extends IntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("request.malformed"));
         mvc.perform(get("/api/v1/nope").header("Authorization", adminBearer())).andExpect(status().isNotFound());
     }
+
+    @Test
+    void standardRepositoriesAreCreatedOnceAndOnlyForInstalledFormats() throws Exception {
+        mvc.perform(post("/api/v1/repositories/standard").header("Authorization", adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.created").isArray())
+                .andExpect(jsonPath("$.created[?(@ == 'maven-public')]").exists());
+        mvc.perform(get("/api/v1/repositories/maven-public").header("Authorization", adminBearer()))
+                .andExpect(jsonPath("$.type").value("GROUP"))
+                .andExpect(jsonPath("$.members.length()").value(3));
+        // repeating is a no-op
+        mvc.perform(post("/api/v1/repositories/standard").header("Authorization", adminBearer()))
+                .andExpect(jsonPath("$.created.length()").value(0));
+    }
 }

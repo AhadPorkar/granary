@@ -60,7 +60,9 @@ public class SettingsService {
 
     /** External base URL (scheme, host, port, optional context path) when the server sits behind a reverse proxy. */
     public Optional<String> baseUrl() {
-        return get(BASE_URL).filter(v -> !v.isBlank()).map(v -> v.endsWith("/") ? v.substring(0, v.length() - 1) : v);
+        return get(BASE_URL).filter(v -> !v.isBlank())
+                .or(() -> Optional.ofNullable(properties.getBaseUrl()).filter(v -> !v.isBlank()))
+                .map(v -> v.endsWith("/") ? v.substring(0, v.length() - 1) : v);
     }
 
     public void setBaseUrl(String baseUrl) {

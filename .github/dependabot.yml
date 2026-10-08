@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      spring:
+        patterns: ["org.springframework*"]
+      test:
+        patterns: ["org.junit*", "org.assertj*", "org.wiremock*", "org.testcontainers*"]
+  - package-ecosystem: npm
+    directory: /granary-ui
+    schedule:
+      interval: weekly
+    groups:
+      vue:
+        patterns: ["vue*", "@vue*", "vite*", "@vitejs*", "pinia", "vue-router", "vue-i18n"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly

@@ -68,6 +68,8 @@ spring:
 
 granary:
   data-dir: ${GRANARY_DATA_DIR:./data}
+  # External URL developers use (behind a reverse proxy); can also be set at runtime in the UI.
+  base-url: ${GRANARY_BASE_URL:}
   security:
     admin-password: ${GRANARY_ADMIN_PASSWORD:admin123}
     jwt-secret: ${GRANARY_JWT_SECRET:}

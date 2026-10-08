@@ -46,8 +46,7 @@ LABEL org.opencontainers.image.title="Granary" \
       org.opencontainers.image.licenses="BUSL-1.1"
 
 RUN addgroup -S granary && adduser -S -G granary -h /opt/granary granary \
-    && mkdir -p /data && chown granary:granary /data \
-    && apk add --no-cache curl
+    && mkdir -p /data && chown granary:granary /data
 
 WORKDIR /opt/granary
 COPY --from=build --chown=granary:granary /granary.jar granary.jar
@@ -59,6 +58,6 @@ VOLUME ["/data"]
 EXPOSE 8081
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8081/actuator/health/readiness || exit 1
+    CMD wget -q -O /dev/null http://localhost:8081/actuator/health/readiness || exit 1
 
 ENTRYPOINT ["java", "-jar", "/opt/granary/granary.jar"]

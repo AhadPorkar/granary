@@ -289,6 +289,9 @@ mvn -B -Dui.skip=true verify   # server only
   authentication in every credential shape, the admin API and the SPA fallback.
 * `granary-ui`: Vitest unit tests for the stores, API client, locales and views.
 * CI additionally starts the Docker Compose stack and performs a Maven round trip against it.
+* `scripts/verify-clients.sh http://localhost:8081` drives a running server with the real
+  `mvn`, `npm` and `dotnet` clients (publish, resolve through groups and proxies, then
+  everything again in offline mode with empty local caches).
 
 ## Development
 

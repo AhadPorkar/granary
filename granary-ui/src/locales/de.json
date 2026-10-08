@@ -1,0 +1,596 @@
+{
+  "app": {
+    "name": "Granary",
+    "tagline": "Artefakt-Repository-Manager",
+    "skipToContent": "Zum Hauptinhalt springen",
+    "loading": "Wird geladen…",
+    "version": "Version {version}",
+    "openMenu": "Navigation öffnen",
+    "closeMenu": "Navigation schließen",
+    "language": "Sprache",
+    "mainNavigation": "Hauptnavigation",
+    "userMenu": "Benutzermenü",
+    "signedInAs": "Angemeldet als"
+  },
+  "nav": {
+    "dashboard": "Übersicht",
+    "repositories": "Repositories",
+    "search": "Suche",
+    "users": "Benutzer",
+    "roles": "Rollen",
+    "account": "Mein Konto",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "administration": "Verwaltung",
+    "browse": "Durchsuchen"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "create": "Anlegen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "actions": "Aktionen",
+    "name": "Name",
+    "description": "Beschreibung",
+    "type": "Typ",
+    "format": "Format",
+    "status": "Status",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "copyToClipboard": "In die Zwischenablage kopieren",
+    "search": "Suchen",
+    "refresh": "Aktualisieren",
+    "loading": "Wird geladen…",
+    "none": "Keine",
+    "optional": "optional",
+    "required": "erforderlich",
+    "enabled": "Aktiv",
+    "disabled": "Deaktiviert",
+    "online": "Online",
+    "offline": "Offline",
+    "yes": "Ja",
+    "no": "Nein",
+    "never": "Nie",
+    "unknown": "Unbekannt",
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pageOf": "Seite {page} von {pages}",
+    "totalCount": "{count} insgesamt",
+    "noResults": "Keine Ergebnisse",
+    "retry": "Erneut versuchen",
+    "saving": "Wird gespeichert…",
+    "remove": "Entfernen",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "add": "Hinzufügen",
+    "select": "Auswählen…",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "all": "Alle",
+    "details": "Details",
+    "expand": "Ausklappen",
+    "collapse": "Einklappen",
+    "notAvailable": "k. A.",
+    "clear": "Leeren"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signInTo": "Bei {name} anmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "signingIn": "Anmeldung läuft…",
+    "signedOut": "Sie wurden abgemeldet.",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "welcomeBack": "Willkommen zurück, {name}."
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "subtitle": "Überblick über diese Granary-Instanz",
+    "repositories": "Repositories",
+    "components": "Komponenten",
+    "assets": "Assets",
+    "assetCount": "{count} Assets",
+    "storage": "Speicher",
+    "blobStores": "Blob-Speicher",
+    "blobStoreUsed": "{used} belegt",
+    "blobStoreAvailable": "{available} frei",
+    "blobStoreBlobs": "{count} Blobs",
+    "upstreams": "Upstream-Status",
+    "upstreamsEmpty": "Noch keine Proxy-Repositories.",
+    "reachable": "Erreichbar",
+    "unreachable": "Nicht erreichbar",
+    "lastError": "Letzter Fehler",
+    "lastSuccess": "Letzter Erfolg",
+    "lastFailure": "Letzter Fehlschlag",
+    "retryAt": "Nächster Versuch",
+    "failures": "{count} Fehlschläge in Folge",
+    "offlineMode": "Globaler Offline-Modus",
+    "offlineModeHint": "Wenn aktiviert, kontaktiert kein Proxy-Repository seinen Upstream; es werden nur zwischengespeicherte Inhalte ausgeliefert.",
+    "offlineActive": "Der Offline-Modus ist aktiv: Proxies liefern nur zwischengespeicherte Inhalte.",
+    "defaultPasswordTitle": "Das Admin-Konto verwendet noch das Standardpasswort",
+    "defaultPasswordText": "Wer die Standardzugangsdaten kennt, kann diesen Server übernehmen. Ändern Sie das Passwort jetzt.",
+    "defaultPasswordAction": "Passwort ändern",
+    "system": "System",
+    "version": "Version",
+    "jvm": "Java-Laufzeitumgebung",
+    "memory": "Arbeitsspeicher",
+    "memoryDetail": "{used} von {max}",
+    "processors": "Prozessoren",
+    "limited": "Sie sehen die Repositories, die Sie lesen dürfen. Administratoren sehen hier zusätzlich den Systemzustand."
+  },
+  "repositories": {
+    "title": "Repositories",
+    "subtitle": "Gehostete, Proxy- und Gruppen-Repositories für alle unterstützten Formate",
+    "new": "Neues Repository",
+    "create": "Repository anlegen",
+    "edit": "Repository bearbeiten",
+    "editName": "{name} bearbeiten",
+    "empty": "Noch keine Repositories.",
+    "emptyHint": "Legen Sie ein gehostetes Repository an, um Artefakte zu veröffentlichen, oder einen Proxy, um eine öffentliche Registry zwischenzuspeichern.",
+    "columns": {
+      "name": "Name",
+      "format": "Format",
+      "type": "Typ",
+      "online": "Online",
+      "upstream": "Upstream",
+      "size": "Größe",
+      "assets": "Assets",
+      "url": "URL"
+    },
+    "types": {
+      "HOSTED": "Gehostet",
+      "PROXY": "Proxy",
+      "GROUP": "Gruppe"
+    },
+    "typeHints": {
+      "HOSTED": "Artefakte werden von Clients hochgeladen und hier gespeichert.",
+      "PROXY": "Artefakte werden bei Bedarf aus einer entfernten Registry geholt und zwischengespeichert.",
+      "GROUP": "Fasst mehrere Repositories desselben Formats unter einer URL zusammen."
+    },
+    "versionPolicies": {
+      "RELEASE": "Nur Releases",
+      "SNAPSHOT": "Nur Snapshots",
+      "MIXED": "Releases und Snapshots"
+    },
+    "fields": {
+      "name": "Name",
+      "format": "Format",
+      "type": "Typ",
+      "online": "Online",
+      "blobStore": "Blob-Speicher",
+      "description": "Beschreibung",
+      "allowRedeploy": "Erneutes Deployment erlauben",
+      "versionPolicy": "Versionsrichtlinie",
+      "remoteUrl": "Remote-URL",
+      "remoteUsername": "Remote-Benutzername",
+      "remotePassword": "Remote-Passwort",
+      "remoteToken": "Remote-Token",
+      "connectTimeout": "Verbindungs-Timeout (Sekunden)",
+      "readTimeout": "Lese-Timeout (Sekunden)",
+      "metadataMaxAge": "Maximales Metadaten-Alter (Minuten)",
+      "negativeCache": "Negativ-Cache (Minuten)",
+      "offlineMode": "Offline-Modus",
+      "members": "Mitglieder"
+    },
+    "hints": {
+      "name": "Buchstaben, Ziffern, Punkte, Binde- und Unterstriche. Wird Teil der URL und kann später nicht geändert werden.",
+      "online": "Offline geschaltete Repositories lehnen jede Anfrage ab.",
+      "allowRedeploy": "Erlaubt das Überschreiben eines bereits vorhandenen Artefakts.",
+      "versionPolicy": "Welche Versionsarten dieses Repository annimmt.",
+      "remoteUrl": "Absolute http(s)-URL der Upstream-Registry.",
+      "remoteAuth": "Nur für private Upstreams nötig. Leer lassen, um das gespeicherte Geheimnis zu behalten.",
+      "remoteToken": "Bearer-Token, wird anstelle von Benutzername und Passwort verwendet.",
+      "timeouts": "Leer lassen, um die Server-Standardwerte zu verwenden.",
+      "metadataMaxAge": "Wie lange zwischengespeicherte Metadaten (Indexdateien) als aktuell gelten, bevor sie beim Upstream erneut geprüft werden. 0 prüft bei jedem Zugriff.",
+      "negativeCache": "Wie lange ein 404 des Upstreams gemerkt wird. 0 deaktiviert es.",
+      "offlineMode": "Nur zwischengespeicherte Inhalte ausliefern; den Upstream nie kontaktieren.",
+      "members": "Geordnete Liste: Das erste Mitglied, das ein Artefakt besitzt, gewinnt."
+    },
+    "sections": {
+      "general": "Allgemein",
+      "hosted": "Einstellungen für gehostete Repositories",
+      "proxy": "Proxy-Einstellungen",
+      "remoteAuth": "Upstream-Zugangsdaten",
+      "group": "Gruppenmitglieder"
+    },
+    "members": {
+      "add": "Mitglied hinzufügen",
+      "empty": "Noch keine Mitglieder.",
+      "noCandidates": "Es gibt kein weiteres {format}-Repository zum Hinzufügen.",
+      "remove": "{name} entfernen",
+      "moveUp": "{name} nach oben verschieben",
+      "moveDown": "{name} nach unten verschieben"
+    },
+    "keepSecret": "unverändert",
+    "actions": {
+      "browse": "Durchsuchen",
+      "connect": "Verbinden",
+      "setOffline": "Offline schalten",
+      "setOnline": "Online schalten",
+      "invalidate": "Cache verwerfen",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "copyUrl": "URL kopieren"
+    },
+    "confirmDelete": "Repository „{name}“ löschen? Alle enthaltenen Artefakte werden entfernt. Dies kann nicht rückgängig gemacht werden.",
+    "toasts": {
+      "created": "Repository „{name}“ angelegt.",
+      "updated": "Repository „{name}“ aktualisiert.",
+      "deleted": "Repository „{name}“ gelöscht.",
+      "invalidated": "Cache von „{name}“ verworfen.",
+      "offline": "„{name}“ ist jetzt offline.",
+      "online": "„{name}“ ist jetzt online."
+    },
+    "upstream": {
+      "reachable": "Erreichbar",
+      "unreachable": "Nicht erreichbar",
+      "offline": "Offline",
+      "notProxy": "—"
+    },
+    "stats": "{components} Komponenten · {assets} Assets",
+    "notFound": "Repository nicht gefunden."
+  },
+  "repository": {
+    "tabs": {
+      "components": "Komponenten",
+      "connect": "Verbinden"
+    },
+    "searchPlaceholder": "Komponenten suchen…",
+    "noComponents": "Keine Komponenten in diesem Repository.",
+    "noMatches": "Keine Komponenten passen zu „{q}“.",
+    "columns": {
+      "namespace": "Namensraum",
+      "name": "Name",
+      "version": "Version",
+      "updated": "Aktualisiert"
+    },
+    "assets": {
+      "title": "Assets von {name}",
+      "path": "Pfad",
+      "size": "Größe",
+      "sha256": "SHA-256",
+      "downloads": "Downloads",
+      "origin": "Herkunft",
+      "contentType": "Inhaltstyp",
+      "empty": "Keine Assets.",
+      "metadata": "Metadaten"
+    },
+    "origins": {
+      "UPLOADED": "Hochgeladen",
+      "CACHED": "Zwischengespeichert",
+      "GENERATED": "Generiert"
+    },
+    "showAssets": "Assets anzeigen",
+    "hideAssets": "Assets ausblenden",
+    "deleteComponent": "Komponente löschen",
+    "deleteAsset": "Asset löschen",
+    "confirmDeleteComponent": "{name} {version} mit allen Assets löschen?",
+    "confirmDeleteAsset": "Asset „{path}“ löschen?",
+    "componentDeleted": "Komponente gelöscht ({count} Assets entfernt).",
+    "assetDeleted": "Asset gelöscht.",
+    "info": {
+      "url": "URL",
+      "remote": "Remote",
+      "members": "Mitglieder",
+      "blobStore": "Blob-Speicher",
+      "created": "Erstellt",
+      "updated": "Aktualisiert",
+      "size": "Größe"
+    }
+  },
+  "connect": {
+    "title": "Werkzeuge verbinden",
+    "intro": "Mit den folgenden Snippets richten Sie Ihren Paketmanager auf dieses Repository aus. Ersetzen Sie die Platzhalter durch Ihren Benutzernamen und ein API-Token von Ihrer Kontoseite.",
+    "tokenLink": "API-Token erstellen",
+    "anonymousHint": "Solange anonymer Zugriff aktiviert ist, sind Zugangsdaten zum Herunterladen optional; zum Veröffentlichen sind sie immer erforderlich.",
+    "maven": {
+      "settings": "settings.xml: dieses Repository als Mirror verwenden und Zugangsdaten hinterlegen",
+      "pom": "pom.xml: in dieses Repository deployen",
+      "deploy": "Mit Maven deployen"
+    },
+    "npm": {
+      "registry": "Registry für dieses Projekt oder global setzen",
+      "npmrc": ".npmrc: Registry und Authentifizierungs-Token",
+      "login": "Oder interaktiv anmelden",
+      "publish": "Ein Paket veröffentlichen"
+    },
+    "nuget": {
+      "source": "Paketquelle hinzufügen",
+      "push": "Ein Paket hochladen",
+      "config": "nuget.config: Quelle für ein Projekt konfigurieren"
+    },
+    "generic": {
+      "url": "Repository-URL"
+    }
+  },
+  "search": {
+    "title": "Suche",
+    "subtitle": "Komponenten in allen Repositories finden, die Sie lesen dürfen",
+    "placeholder": "Name, Namensraum oder Version…",
+    "repository": "Repository",
+    "allRepositories": "Alle Repositories",
+    "results": "{count} Ergebnisse",
+    "empty": "Nichts gefunden für „{q}“.",
+    "prompt": "Geben Sie einen Suchbegriff ein, um Komponenten zu finden.",
+    "columns": {
+      "repository": "Repository"
+    }
+  },
+  "users": {
+    "title": "Benutzer",
+    "subtitle": "Personen, die sich bei Granary anmelden können",
+    "new": "Neuer Benutzer",
+    "create": "Benutzer anlegen",
+    "edit": "Benutzer bearbeiten",
+    "editName": "{name} bearbeiten",
+    "setPassword": "Passwort setzen",
+    "setPasswordFor": "Passwort für {name} setzen",
+    "fields": {
+      "username": "Benutzername",
+      "password": "Passwort",
+      "displayName": "Anzeigename",
+      "email": "E-Mail",
+      "roles": "Rollen",
+      "enabled": "Aktiv"
+    },
+    "hints": {
+      "username": "Buchstaben, Ziffern, Punkte, Binde-, Unterstriche und das At-Zeichen. Kann später nicht geändert werden.",
+      "password": "Mindestens {min} Zeichen.",
+      "enabled": "Deaktivierte Benutzer können sich nicht anmelden und ihre Tokens nicht verwenden."
+    },
+    "columns": {
+      "username": "Benutzername",
+      "displayName": "Anzeigename",
+      "email": "E-Mail",
+      "roles": "Rollen",
+      "status": "Status",
+      "created": "Erstellt"
+    },
+    "builtin": "Integriert",
+    "you": "Sie",
+    "actions": {
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren"
+    },
+    "confirmDelete": "Benutzer „{name}“ löschen? Seine API-Tokens funktionieren sofort nicht mehr.",
+    "toasts": {
+      "created": "Benutzer „{name}“ angelegt.",
+      "updated": "Benutzer „{name}“ aktualisiert.",
+      "deleted": "Benutzer „{name}“ gelöscht.",
+      "passwordSet": "Passwort von „{name}“ geändert.",
+      "enabled": "Benutzer „{name}“ aktiviert.",
+      "disabled": "Benutzer „{name}“ deaktiviert."
+    },
+    "empty": "Keine Benutzer."
+  },
+  "roles": {
+    "title": "Rollen",
+    "subtitle": "Rollen bündeln Berechtigungen und werden Benutzern zugewiesen",
+    "new": "Neue Rolle",
+    "create": "Rolle anlegen",
+    "edit": "Rolle bearbeiten",
+    "editName": "{name} bearbeiten",
+    "fields": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "privileges": "Berechtigungen"
+    },
+    "hints": {
+      "name": "Buchstaben, Ziffern, Punkte, Binde- und Unterstriche. Kann später nicht geändert werden."
+    },
+    "columns": {
+      "name": "Name",
+      "description": "Beschreibung",
+      "privileges": "Berechtigungen"
+    },
+    "builtin": "Integriert",
+    "builtinHint": "Integrierte Rollen können nicht gelöscht werden.",
+    "confirmDelete": "Rolle „{name}“ löschen? Benutzer mit dieser Rolle verlieren deren Berechtigungen.",
+    "toasts": {
+      "created": "Rolle „{name}“ angelegt.",
+      "updated": "Rolle „{name}“ aktualisiert.",
+      "deleted": "Rolle „{name}“ gelöscht."
+    },
+    "empty": "Keine Rollen.",
+    "privilegeCount": "{count} Berechtigungen"
+  },
+  "privileges": {
+    "wellKnown": "Globale Berechtigungen",
+    "perRepository": "Berechtigungen je Repository",
+    "perRepositoryHint": "Zugriff auf einzelne Repositories gewähren. Schreibzugriff schließt Lesezugriff ein.",
+    "repository": "Repository",
+    "read": "Lesen",
+    "write": "Schreiben",
+    "noRepositories": "Es gibt noch keine Repositories.",
+    "readFor": "{name} lesen",
+    "writeFor": "In {name} schreiben",
+    "other": "Weitere Berechtigungen",
+    "names": {
+      "systemAdmin": "Systemadministrator",
+      "repositoriesManage": "Repositories verwalten",
+      "usersManage": "Benutzer und Rollen verwalten",
+      "settingsManage": "Einstellungen verwalten",
+      "repositoryReadAll": "Alle Repositories lesen",
+      "repositoryWriteAll": "In alle Repositories schreiben"
+    },
+    "descriptions": {
+      "systemAdmin": "Alles, ohne Einschränkung.",
+      "repositoriesManage": "Repository-Definitionen anlegen, ändern und löschen; jedes Repository durchsuchen.",
+      "usersManage": "Benutzer, Rollen und deren Berechtigungen anlegen und ändern.",
+      "settingsManage": "Globale Einstellungen wie anonymen Zugriff und Offline-Modus ändern.",
+      "repositoryReadAll": "Aus jedem Repository herunterladen, auch aus später angelegten.",
+      "repositoryWriteAll": "In jedes Repository hochladen (schließt Lesen ein)."
+    }
+  },
+  "account": {
+    "title": "Mein Konto",
+    "subtitle": "Ihr Profil, Ihr Passwort und Ihre API-Tokens",
+    "profile": "Profil",
+    "username": "Benutzername",
+    "roles": "Rollen",
+    "changePassword": "Passwort ändern",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "passwordChanged": "Ihr Passwort wurde geändert.",
+    "tokens": {
+      "title": "API-Tokens",
+      "intro": "Tokens authentifizieren Paketmanager und CI-Jobs, ohne Ihr Passwort preiszugeben. Verwenden Sie eines als Passwort für Maven und NuGet oder als _authToken für npm.",
+      "new": "Neues Token",
+      "create": "Token erstellen",
+      "name": "Name",
+      "namePlaceholder": "z. B. Laptop, CI-Pipeline",
+      "expiresAt": "Läuft ab",
+      "neverExpires": "Läuft nie ab",
+      "expiresOptional": "Leer lassen für ein Token, das nie abläuft.",
+      "created": "Erstellt",
+      "prefix": "Präfix",
+      "lastUsed": "Zuletzt verwendet",
+      "revoke": "Widerrufen",
+      "confirmRevoke": "Token „{name}“ widerrufen? Clients, die es verwenden, funktionieren sofort nicht mehr.",
+      "revoked": "Token „{name}“ widerrufen.",
+      "empty": "Sie haben keine API-Tokens.",
+      "expired": "Abgelaufen",
+      "secretTitle": "Ihr neues Token",
+      "secretHint": "Kopieren Sie es jetzt. Aus Sicherheitsgründen wird es nur einmal angezeigt und kann später nicht wiederhergestellt werden.",
+      "done": "Ich habe das Token kopiert"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Globales Verhalten dieses Servers",
+    "anonymousRead": "Anonymer Lesezugriff",
+    "anonymousReadHint": "Downloads aus allen Repositories ohne Zugangsdaten erlauben. Uploads erfordern immer Zugangsdaten. Schalten Sie dies in einem gemeinsam genutzten Netzwerk aus, wenn Artefakte vertraulich sind.",
+    "offlineMode": "Globaler Offline-Modus",
+    "offlineModeHint": "Hindert jedes Proxy-Repository daran, seinen Upstream zu kontaktieren. Zwischengespeicherte Artefakte werden weiterhin ausgeliefert. Nützlich bei einem Internetausfall oder in einem abgeschotteten Netzwerk.",
+    "baseUrl": "Externe Basis-URL",
+    "baseUrlHint": "Die URL, unter der Clients diesen Server erreichen, z. B. hinter einem Reverse-Proxy. Sie wird für die hier angezeigten Repository-URLs und in generierten Metadaten verwendet. Leer lassen, um sie aus jeder Anfrage abzuleiten.",
+    "baseUrlPlaceholder": "https://granary.example.com",
+    "saved": "Einstellungen gespeichert."
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich.",
+    "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+    "minLength": "Mindestens {min} Zeichen.",
+    "invalidUrl": "Geben Sie eine absolute http(s)-URL ein.",
+    "positive": "Muss größer als null sein.",
+    "nonNegative": "Darf nicht negativ sein.",
+    "futureDate": "Muss in der Zukunft liegen."
+  },
+  "errors": {
+    "title": "Etwas ist schiefgelaufen",
+    "network": "Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung.",
+    "unknown": "Ein unerwarteter Fehler ist aufgetreten.",
+    "validation": "Einige Felder sind ungültig.",
+    "notFound": "Nicht gefunden.",
+    "internal": "Unerwarteter Serverfehler.",
+    "request": {
+      "malformed": "Die Anfrage war fehlerhaft."
+    },
+    "auth": {
+      "required": "Bitte melden Sie sich an.",
+      "forbidden": "Sie haben dafür keine Berechtigung.",
+      "invalid": "Ungültiger Benutzername oder ungültiges Passwort.",
+      "password": {
+        "wrong": "Das aktuelle Passwort ist falsch."
+      }
+    },
+    "repository": {
+      "notFound": "Das Repository existiert nicht.",
+      "inUse": "Das Repository ist Mitglied einer Gruppe und kann nicht gelöscht werden.",
+      "notProxy": "Nur Proxy-Repositories haben einen Offline-Modus.",
+      "name": {
+        "invalid": "Der Name darf Buchstaben, Ziffern, Punkte, Binde- und Unterstriche enthalten und muss mit einem Buchstaben oder einer Ziffer beginnen.",
+        "taken": "Ein Repository mit diesem Namen existiert bereits."
+      },
+      "format": {
+        "unknown": "Unbekanntes Format.",
+        "immutable": "Das Format eines Repositories kann nicht geändert werden."
+      },
+      "type": {
+        "missing": "Wählen Sie einen Repository-Typ.",
+        "immutable": "Der Typ eines Repositories kann nicht geändert werden."
+      },
+      "blobstore": {
+        "unknown": "Unbekannter Blob-Speicher."
+      },
+      "remoteUrl": {
+        "missing": "Ein Proxy-Repository benötigt eine Remote-URL.",
+        "invalid": "Die Remote-URL muss eine absolute http(s)-URL sein."
+      },
+      "members": {
+        "notAllowed": "Nur Gruppen-Repositories haben Mitglieder.",
+        "empty": "Eine Gruppe benötigt mindestens ein Mitglied.",
+        "duplicate": "Das Mitglied „{member}“ ist doppelt aufgeführt.",
+        "self": "Eine Gruppe kann sich nicht selbst enthalten.",
+        "unknown": "Das Mitglieds-Repository „{member}“ existiert nicht.",
+        "formatMismatch": "Das Mitglied „{member}“ hat ein anderes Format als die Gruppe.",
+        "cycle": "Diese Mitgliedschaft würde einen Zyklus bilden."
+      },
+      "field": {
+        "positive": "{field} muss größer als null sein.",
+        "nonNegative": "{field} darf nicht negativ sein."
+      }
+    },
+    "component": {
+      "notFound": "Die Komponente existiert nicht."
+    },
+    "asset": {
+      "notFound": "Das Asset existiert nicht."
+    },
+    "user": {
+      "notFound": "Der Benutzer existiert nicht.",
+      "builtin": "Der integrierte Admin-Benutzer kann weder deaktiviert noch gelöscht werden und muss die Admin-Rolle behalten.",
+      "self": {
+        "disable": "Sie können Ihr eigenes Konto nicht deaktivieren.",
+        "delete": "Sie können Ihr eigenes Konto nicht löschen."
+      },
+      "username": {
+        "invalid": "Der Benutzername darf Buchstaben, Ziffern, Punkte, Binde-, Unterstriche und das At-Zeichen enthalten und muss mit einem Buchstaben oder einer Ziffer beginnen.",
+        "reserved": "Dieser Benutzername ist reserviert.",
+        "taken": "Ein Benutzer mit diesem Namen existiert bereits."
+      },
+      "password": {
+        "tooShort": "Das Passwort muss mindestens 8 Zeichen haben."
+      }
+    },
+    "role": {
+      "notFound": "Die Rolle existiert nicht.",
+      "builtin": "Integrierte Rollen können nicht gelöscht werden.",
+      "name": {
+        "invalid": "Der Rollenname darf Buchstaben, Ziffern, Punkte, Binde- und Unterstriche enthalten und muss mit einem Buchstaben oder einer Ziffer beginnen.",
+        "taken": "Eine Rolle mit diesem Namen existiert bereits."
+      },
+      "admin": {
+        "locked": "Die Admin-Rolle muss die Systemadministrator-Berechtigung behalten."
+      },
+      "privilege": {
+        "invalid": "Eine der Berechtigungen ist ungültig."
+      }
+    },
+    "token": {
+      "notFound": "Das Token existiert nicht.",
+      "name": {
+        "invalid": "Der Token-Name muss zwischen 1 und 200 Zeichen lang sein."
+      },
+      "expiry": {
+        "past": "Das Ablaufdatum muss in der Zukunft liegen."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "text": "Die gesuchte Seite existiert nicht.",
+    "home": "Zur Übersicht"
+  },
+  "forbidden": {
+    "title": "Zugriff verweigert",
+    "text": "Sie haben nicht die nötigen Berechtigungen, um diese Seite anzuzeigen."
+  }
+}

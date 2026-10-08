@@ -1,0 +1,596 @@
+{
+  "app": {
+    "name": "Granary",
+    "tagline": "Yapıt deposu yöneticisi",
+    "skipToContent": "Ana içeriğe atla",
+    "loading": "Yükleniyor…",
+    "version": "Sürüm {version}",
+    "openMenu": "Gezinmeyi aç",
+    "closeMenu": "Gezinmeyi kapat",
+    "language": "Dil",
+    "mainNavigation": "Ana gezinme",
+    "userMenu": "Kullanıcı menüsü",
+    "signedInAs": "Oturum açan"
+  },
+  "nav": {
+    "dashboard": "Genel bakış",
+    "repositories": "Depolar",
+    "search": "Arama",
+    "users": "Kullanıcılar",
+    "roles": "Roller",
+    "account": "Hesabım",
+    "settings": "Ayarlar",
+    "logout": "Oturumu kapat",
+    "administration": "Yönetim",
+    "browse": "Göz at"
+  },
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "create": "Oluştur",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "close": "Kapat",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "actions": "İşlemler",
+    "name": "Ad",
+    "description": "Açıklama",
+    "type": "Tür",
+    "format": "Biçim",
+    "status": "Durum",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "copyToClipboard": "Panoya kopyala",
+    "search": "Ara",
+    "refresh": "Yenile",
+    "loading": "Yükleniyor…",
+    "none": "Yok",
+    "optional": "isteğe bağlı",
+    "required": "zorunlu",
+    "enabled": "Etkin",
+    "disabled": "Devre dışı",
+    "online": "Çevrimiçi",
+    "offline": "Çevrimdışı",
+    "yes": "Evet",
+    "no": "Hayır",
+    "never": "Hiç",
+    "unknown": "Bilinmiyor",
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle",
+    "previous": "Önceki",
+    "next": "Sonraki",
+    "pageOf": "Sayfa {page} / {pages}",
+    "totalCount": "toplam {count}",
+    "noResults": "Sonuç yok",
+    "retry": "Yeniden dene",
+    "saving": "Kaydediliyor…",
+    "remove": "Kaldır",
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "add": "Ekle",
+    "select": "Seçin…",
+    "created": "Oluşturulma",
+    "updated": "Güncellenme",
+    "all": "Tümü",
+    "details": "Ayrıntılar",
+    "expand": "Genişlet",
+    "collapse": "Daralt",
+    "notAvailable": "yok",
+    "clear": "Temizle"
+  },
+  "auth": {
+    "signIn": "Oturum aç",
+    "signInTo": "{name} oturumu aç",
+    "username": "Kullanıcı adı",
+    "password": "Parola",
+    "signingIn": "Oturum açılıyor…",
+    "signedOut": "Oturumunuz kapatıldı.",
+    "sessionExpired": "Oturumunuzun süresi doldu. Lütfen yeniden oturum açın.",
+    "welcomeBack": "Tekrar hoş geldiniz, {name}."
+  },
+  "dashboard": {
+    "title": "Genel bakış",
+    "subtitle": "Bu Granary örneğine genel bakış",
+    "repositories": "Depolar",
+    "components": "Bileşenler",
+    "assets": "Dosyalar",
+    "assetCount": "{count} dosya",
+    "storage": "Depolama",
+    "blobStores": "Blob depoları",
+    "blobStoreUsed": "{used} kullanılıyor",
+    "blobStoreAvailable": "{available} boş",
+    "blobStoreBlobs": "{count} blob",
+    "upstreams": "Uzak kaynak durumu",
+    "upstreamsEmpty": "Henüz vekil depo yok.",
+    "reachable": "Erişilebilir",
+    "unreachable": "Erişilemiyor",
+    "lastError": "Son hata",
+    "lastSuccess": "Son başarı",
+    "lastFailure": "Son başarısızlık",
+    "retryAt": "Sonraki deneme",
+    "failures": "art arda {count} başarısızlık",
+    "offlineMode": "Genel çevrimdışı modu",
+    "offlineModeHint": "Etkinleştirildiğinde hiçbir vekil depo uzak kaynağına bağlanmaz; yalnızca önbellekteki içerik sunulur.",
+    "offlineActive": "Çevrimdışı mod etkin: vekiller yalnızca önbellekteki içeriği sunuyor.",
+    "defaultPasswordTitle": "Admin hesabı hâlâ varsayılan parolayı kullanıyor",
+    "defaultPasswordText": "Varsayılan kimlik bilgilerini bilen herkes bu sunucuyu ele geçirebilir. Parolayı şimdi değiştirin.",
+    "defaultPasswordAction": "Parolayı değiştir",
+    "system": "Sistem",
+    "version": "Sürüm",
+    "jvm": "Java çalışma ortamı",
+    "memory": "Bellek",
+    "memoryDetail": "{used} / {max}",
+    "processors": "İşlemciler",
+    "limited": "Okuma izniniz olan depoları görüyorsunuz. Yöneticiler burada ayrıca sistem durumunu görür."
+  },
+  "repositories": {
+    "title": "Depolar",
+    "subtitle": "Desteklenen her biçim için barındırılan, vekil ve grup depoları",
+    "new": "Yeni depo",
+    "create": "Depo oluştur",
+    "edit": "Depoyu düzenle",
+    "editName": "{name} deposunu düzenle",
+    "empty": "Henüz depo yok.",
+    "emptyHint": "Yapıt yayımlamak için barındırılan bir depo, herkese açık bir kayıt defterini önbelleğe almak için bir vekil oluşturun.",
+    "columns": {
+      "name": "Ad",
+      "format": "Biçim",
+      "type": "Tür",
+      "online": "Çevrimiçi",
+      "upstream": "Uzak kaynak",
+      "size": "Boyut",
+      "assets": "Dosyalar",
+      "url": "URL"
+    },
+    "types": {
+      "HOSTED": "Barındırılan",
+      "PROXY": "Vekil",
+      "GROUP": "Grup"
+    },
+    "typeHints": {
+      "HOSTED": "Yapıtlar istemciler tarafından yüklenir ve burada saklanır.",
+      "PROXY": "Yapıtlar gerektiğinde uzak bir kayıt defterinden alınır ve önbelleğe konur.",
+      "GROUP": "Aynı biçimdeki birden çok depoyu tek bir URL altında birleştirir."
+    },
+    "versionPolicies": {
+      "RELEASE": "Yalnızca sürümler",
+      "SNAPSHOT": "Yalnızca anlık görüntüler",
+      "MIXED": "Sürümler ve anlık görüntüler"
+    },
+    "fields": {
+      "name": "Ad",
+      "format": "Biçim",
+      "type": "Tür",
+      "online": "Çevrimiçi",
+      "blobStore": "Blob deposu",
+      "description": "Açıklama",
+      "allowRedeploy": "Yeniden dağıtıma izin ver",
+      "versionPolicy": "Sürüm politikası",
+      "remoteUrl": "Uzak URL",
+      "remoteUsername": "Uzak kullanıcı adı",
+      "remotePassword": "Uzak parola",
+      "remoteToken": "Uzak jeton",
+      "connectTimeout": "Bağlantı zaman aşımı (saniye)",
+      "readTimeout": "Okuma zaman aşımı (saniye)",
+      "metadataMaxAge": "Meta veri en fazla yaş (dakika)",
+      "negativeCache": "Olumsuz önbellek (dakika)",
+      "offlineMode": "Çevrimdışı mod",
+      "members": "Üyeler"
+    },
+    "hints": {
+      "name": "Harfler, rakamlar, noktalar, tireler ve alt çizgiler. URL’nin bir parçası olur ve sonradan değiştirilemez.",
+      "online": "Çevrimdışı depolar her isteği reddeder.",
+      "allowRedeploy": "Zaten var olan bir yapıtın üzerine yazılmasına izin verir.",
+      "versionPolicy": "Bu deponun kabul ettiği sürüm türleri.",
+      "remoteUrl": "Uzak kayıt defterinin mutlak http(s) URL’si.",
+      "remoteAuth": "Yalnızca özel uzak kaynaklar için gereklidir. Kayıtlı gizli bilgiyi korumak için boş bırakın.",
+      "remoteToken": "Kullanıcı adı ve parola yerine kullanılan Bearer jetonu.",
+      "timeouts": "Sunucu varsayılanlarını kullanmak için boş bırakın.",
+      "metadataMaxAge": "Önbellekteki meta verinin (dizin dosyaları) uzak kaynakta yeniden denetlenmeden önce ne kadar süre güncel sayılacağı. 0 her seferinde denetler.",
+      "negativeCache": "Uzak kaynaktan gelen bir 404 yanıtının ne kadar süre hatırlanacağı. 0 devre dışı bırakır.",
+      "offlineMode": "Yalnızca önbellekteki içeriği sun; uzak kaynağa asla bağlanma.",
+      "members": "Sıralı liste: yapıta sahip olan ilk üye kazanır."
+    },
+    "sections": {
+      "general": "Genel",
+      "hosted": "Barındırılan depo ayarları",
+      "proxy": "Vekil ayarları",
+      "remoteAuth": "Uzak kaynak kimlik bilgileri",
+      "group": "Grup üyeleri"
+    },
+    "members": {
+      "add": "Üye ekle",
+      "empty": "Henüz üye yok.",
+      "noCandidates": "Eklenecek başka {format} deposu yok.",
+      "remove": "{name} üyesini kaldır",
+      "moveUp": "{name} üyesini yukarı taşı",
+      "moveDown": "{name} üyesini aşağı taşı"
+    },
+    "keepSecret": "değişmedi",
+    "actions": {
+      "browse": "Göz at",
+      "connect": "Bağlan",
+      "setOffline": "Çevrimdışına al",
+      "setOnline": "Çevrimiçine al",
+      "invalidate": "Önbelleği geçersiz kıl",
+      "delete": "Sil",
+      "edit": "Düzenle",
+      "copyUrl": "URL’yi kopyala"
+    },
+    "confirmDelete": "“{name}” deposu silinsin mi? Tüm yapıtları kaldırılır. Bu işlem geri alınamaz.",
+    "toasts": {
+      "created": "“{name}” deposu oluşturuldu.",
+      "updated": "“{name}” deposu güncellendi.",
+      "deleted": "“{name}” deposu silindi.",
+      "invalidated": "“{name}” önbelleği geçersiz kılındı.",
+      "offline": "“{name}” artık çevrimdışı.",
+      "online": "“{name}” artık çevrimiçi."
+    },
+    "upstream": {
+      "reachable": "Erişilebilir",
+      "unreachable": "Erişilemiyor",
+      "offline": "Çevrimdışı",
+      "notProxy": "—"
+    },
+    "stats": "{components} bileşen · {assets} dosya",
+    "notFound": "Depo bulunamadı."
+  },
+  "repository": {
+    "tabs": {
+      "components": "Bileşenler",
+      "connect": "Bağlan"
+    },
+    "searchPlaceholder": "Bileşenlerde ara…",
+    "noComponents": "Bu depoda bileşen yok.",
+    "noMatches": "“{q}” ile eşleşen bileşen yok.",
+    "columns": {
+      "namespace": "Ad alanı",
+      "name": "Ad",
+      "version": "Sürüm",
+      "updated": "Güncellenme"
+    },
+    "assets": {
+      "title": "{name} dosyaları",
+      "path": "Yol",
+      "size": "Boyut",
+      "sha256": "SHA-256",
+      "downloads": "İndirmeler",
+      "origin": "Kaynak",
+      "contentType": "İçerik türü",
+      "empty": "Dosya yok.",
+      "metadata": "meta veri"
+    },
+    "origins": {
+      "UPLOADED": "Yüklendi",
+      "CACHED": "Önbellekte",
+      "GENERATED": "Üretildi"
+    },
+    "showAssets": "Dosyaları göster",
+    "hideAssets": "Dosyaları gizle",
+    "deleteComponent": "Bileşeni sil",
+    "deleteAsset": "Dosyayı sil",
+    "confirmDeleteComponent": "{name} {version} ve tüm dosyaları silinsin mi?",
+    "confirmDeleteAsset": "“{path}” dosyası silinsin mi?",
+    "componentDeleted": "Bileşen silindi ({count} dosya kaldırıldı).",
+    "assetDeleted": "Dosya silindi.",
+    "info": {
+      "url": "URL",
+      "remote": "Uzak kaynak",
+      "members": "Üyeler",
+      "blobStore": "Blob deposu",
+      "created": "Oluşturulma",
+      "updated": "Güncellenme",
+      "size": "Boyut"
+    }
+  },
+  "connect": {
+    "title": "Araçlarınızı bağlayın",
+    "intro": "Paket yöneticinizi bu depoya yönlendirmek için aşağıdaki parçacıkları kullanın. Yer tutucuları kullanıcı adınız ve hesap sayfanızdan oluşturduğunuz bir API jetonuyla değiştirin.",
+    "tokenLink": "API jetonu oluştur",
+    "anonymousHint": "Anonim erişim etkinken indirme için kimlik bilgileri isteğe bağlıdır; yayımlama için her zaman gereklidir.",
+    "maven": {
+      "settings": "settings.xml: bu depoyu yansı olarak kullanın ve kimlik bilgilerinizi kaydedin",
+      "pom": "pom.xml: bu depoya dağıtın",
+      "deploy": "Maven ile dağıt"
+    },
+    "npm": {
+      "registry": "Bu proje için veya genel olarak kayıt defterini ayarlayın",
+      "npmrc": ".npmrc: kayıt defteri ve kimlik doğrulama jetonu",
+      "login": "Veya etkileşimli olarak oturum açın",
+      "publish": "Bir paket yayımlayın"
+    },
+    "nuget": {
+      "source": "Paket kaynağını ekleyin",
+      "push": "Bir paket gönderin",
+      "config": "nuget.config: bir proje için kaynağı yapılandırın"
+    },
+    "generic": {
+      "url": "Depo URL’si"
+    }
+  },
+  "search": {
+    "title": "Arama",
+    "subtitle": "Okuma izniniz olan depolarda bileşen bulun",
+    "placeholder": "Ad, ad alanı veya sürüm…",
+    "repository": "Depo",
+    "allRepositories": "Tüm depolar",
+    "results": "{count} sonuç",
+    "empty": "“{q}” için bir şey bulunamadı.",
+    "prompt": "Bileşen bulmak için bir arama terimi girin.",
+    "columns": {
+      "repository": "Depo"
+    }
+  },
+  "users": {
+    "title": "Kullanıcılar",
+    "subtitle": "Granary’de oturum açabilen kişiler",
+    "new": "Yeni kullanıcı",
+    "create": "Kullanıcı oluştur",
+    "edit": "Kullanıcıyı düzenle",
+    "editName": "{name} kullanıcısını düzenle",
+    "setPassword": "Parola belirle",
+    "setPasswordFor": "{name} için parola belirle",
+    "fields": {
+      "username": "Kullanıcı adı",
+      "password": "Parola",
+      "displayName": "Görünen ad",
+      "email": "E-posta",
+      "roles": "Roller",
+      "enabled": "Etkin"
+    },
+    "hints": {
+      "username": "Harfler, rakamlar, noktalar, tireler, alt çizgiler ve kuyruklu a işareti. Sonradan değiştirilemez.",
+      "password": "En az {min} karakter.",
+      "enabled": "Devre dışı kullanıcılar oturum açamaz ve jetonlarını kullanamaz."
+    },
+    "columns": {
+      "username": "Kullanıcı adı",
+      "displayName": "Görünen ad",
+      "email": "E-posta",
+      "roles": "Roller",
+      "status": "Durum",
+      "created": "Oluşturulma"
+    },
+    "builtin": "Yerleşik",
+    "you": "siz",
+    "actions": {
+      "enable": "Etkinleştir",
+      "disable": "Devre dışı bırak"
+    },
+    "confirmDelete": "“{name}” kullanıcısı silinsin mi? API jetonları hemen çalışmayı durdurur.",
+    "toasts": {
+      "created": "“{name}” kullanıcısı oluşturuldu.",
+      "updated": "“{name}” kullanıcısı güncellendi.",
+      "deleted": "“{name}” kullanıcısı silindi.",
+      "passwordSet": "“{name}” kullanıcısının parolası değiştirildi.",
+      "enabled": "“{name}” kullanıcısı etkinleştirildi.",
+      "disabled": "“{name}” kullanıcısı devre dışı bırakıldı."
+    },
+    "empty": "Kullanıcı yok."
+  },
+  "roles": {
+    "title": "Roller",
+    "subtitle": "Roller ayrıcalıkları bir araya getirir ve kullanıcılara atanır",
+    "new": "Yeni rol",
+    "create": "Rol oluştur",
+    "edit": "Rolü düzenle",
+    "editName": "{name} rolünü düzenle",
+    "fields": {
+      "name": "Ad",
+      "description": "Açıklama",
+      "privileges": "Ayrıcalıklar"
+    },
+    "hints": {
+      "name": "Harfler, rakamlar, noktalar, tireler ve alt çizgiler. Sonradan değiştirilemez."
+    },
+    "columns": {
+      "name": "Ad",
+      "description": "Açıklama",
+      "privileges": "Ayrıcalıklar"
+    },
+    "builtin": "Yerleşik",
+    "builtinHint": "Yerleşik roller silinemez.",
+    "confirmDelete": "“{name}” rolü silinsin mi? Bu role sahip kullanıcılar ayrıcalıklarını kaybeder.",
+    "toasts": {
+      "created": "“{name}” rolü oluşturuldu.",
+      "updated": "“{name}” rolü güncellendi.",
+      "deleted": "“{name}” rolü silindi."
+    },
+    "empty": "Rol yok.",
+    "privilegeCount": "{count} ayrıcalık"
+  },
+  "privileges": {
+    "wellKnown": "Genel ayrıcalıklar",
+    "perRepository": "Depo bazlı ayrıcalıklar",
+    "perRepositoryHint": "Tek tek depolara erişim verin. Yazma erişimi okuma erişimini de kapsar.",
+    "repository": "Depo",
+    "read": "Okuma",
+    "write": "Yazma",
+    "noRepositories": "Henüz depo yok.",
+    "readFor": "{name} deposunu oku",
+    "writeFor": "{name} deposuna yaz",
+    "other": "Diğer ayrıcalıklar",
+    "names": {
+      "systemAdmin": "Sistem yöneticisi",
+      "repositoriesManage": "Depoları yönet",
+      "usersManage": "Kullanıcıları ve rolleri yönet",
+      "settingsManage": "Ayarları yönet",
+      "repositoryReadAll": "Tüm depoları oku",
+      "repositoryWriteAll": "Tüm depolara yaz"
+    },
+    "descriptions": {
+      "systemAdmin": "Her şey, kısıtlama olmadan.",
+      "repositoriesManage": "Depo tanımlarını oluşturun, değiştirin ve silin; tüm depolara göz atın.",
+      "usersManage": "Kullanıcıları, rolleri ve ayrıcalıklarını oluşturun ve değiştirin.",
+      "settingsManage": "Anonim erişim ve çevrimdışı mod gibi genel ayarları değiştirin.",
+      "repositoryReadAll": "Sonradan oluşturulanlar dahil her depodan indirin.",
+      "repositoryWriteAll": "Her depoya yükleyin (okumayı da kapsar)."
+    }
+  },
+  "account": {
+    "title": "Hesabım",
+    "subtitle": "Profiliniz, parolanız ve API jetonlarınız",
+    "profile": "Profil",
+    "username": "Kullanıcı adı",
+    "roles": "Roller",
+    "changePassword": "Parolayı değiştir",
+    "currentPassword": "Mevcut parola",
+    "newPassword": "Yeni parola",
+    "confirmPassword": "Yeni parolayı onayla",
+    "passwordChanged": "Parolanız değiştirildi.",
+    "tokens": {
+      "title": "API jetonları",
+      "intro": "Jetonlar, parolanızı açığa çıkarmadan paket yöneticilerinin ve CI işlerinin kimliğini doğrular. Maven ve NuGet için parola olarak, npm için _authToken olarak kullanın.",
+      "new": "Yeni jeton",
+      "create": "Jeton oluştur",
+      "name": "Ad",
+      "namePlaceholder": "örn. dizüstü, CI hattı",
+      "expiresAt": "Son kullanma",
+      "neverExpires": "Süresi dolmaz",
+      "expiresOptional": "Süresi dolmayan bir jeton için boş bırakın.",
+      "created": "Oluşturulma",
+      "prefix": "Ön ek",
+      "lastUsed": "Son kullanım",
+      "revoke": "İptal et",
+      "confirmRevoke": "“{name}” jetonu iptal edilsin mi? Bu jetonu kullanan istemciler hemen çalışmayı durdurur.",
+      "revoked": "“{name}” jetonu iptal edildi.",
+      "empty": "API jetonunuz yok.",
+      "expired": "Süresi doldu",
+      "secretTitle": "Yeni jetonunuz",
+      "secretHint": "Şimdi kopyalayın. Güvenlik nedeniyle yalnızca bir kez gösterilir ve sonradan kurtarılamaz.",
+      "done": "Jetonu kopyaladım"
+    }
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "subtitle": "Bu sunucunun genel davranışı",
+    "anonymousRead": "Anonim okuma erişimi",
+    "anonymousReadHint": "Kimlik bilgisi olmadan tüm depolardan indirmeye izin verin. Yüklemeler her zaman kimlik bilgisi gerektirir. Yapıtların gizli olduğu paylaşılan bir ağda bunu kapatın.",
+    "offlineMode": "Genel çevrimdışı modu",
+    "offlineModeHint": "Tüm vekil depoların uzak kaynaklarına bağlanmasını engeller. Önbellekteki yapıtlar sunulmaya devam eder. İnternet kesintisinde veya yalıtılmış bir ağda yararlıdır.",
+    "baseUrl": "Dış temel URL",
+    "baseUrlHint": "İstemcilerin bu sunucuya ulaştığı URL; örneğin bir ters vekilin arkasında. Burada gösterilen depo URL’lerinde ve üretilen meta veride kullanılır. Her istekten türetmek için boş bırakın.",
+    "baseUrlPlaceholder": "https://granary.example.com",
+    "saved": "Ayarlar kaydedildi."
+  },
+  "validation": {
+    "required": "Bu alan zorunludur.",
+    "passwordMismatch": "Parolalar eşleşmiyor.",
+    "minLength": "En az {min} karakter.",
+    "invalidUrl": "Mutlak bir http(s) URL’si girin.",
+    "positive": "Sıfırdan büyük olmalıdır.",
+    "nonNegative": "Negatif olmamalıdır.",
+    "futureDate": "Gelecekte bir tarih olmalıdır."
+  },
+  "errors": {
+    "title": "Bir sorun oluştu",
+    "network": "Sunucuya ulaşılamadı. Bağlantınızı denetleyin.",
+    "unknown": "Beklenmeyen bir hata oluştu.",
+    "validation": "Bazı alanlar geçersiz.",
+    "notFound": "Bulunamadı.",
+    "internal": "Beklenmeyen sunucu hatası.",
+    "request": {
+      "malformed": "İstek hatalı biçimlendirilmiş."
+    },
+    "auth": {
+      "required": "Lütfen oturum açın.",
+      "forbidden": "Bunu yapmak için izniniz yok.",
+      "invalid": "Geçersiz kullanıcı adı veya parola.",
+      "password": {
+        "wrong": "Mevcut parola yanlış."
+      }
+    },
+    "repository": {
+      "notFound": "Depo mevcut değil.",
+      "inUse": "Depo bir grubun üyesi ve silinemez.",
+      "notProxy": "Yalnızca vekil depoların çevrimdışı modu vardır.",
+      "name": {
+        "invalid": "Ad harf, rakam, nokta, tire ve alt çizgi içerebilir ve bir harf ya da rakamla başlamalıdır.",
+        "taken": "Bu ada sahip bir depo zaten var."
+      },
+      "format": {
+        "unknown": "Bilinmeyen biçim.",
+        "immutable": "Bir deponun biçimi değiştirilemez."
+      },
+      "type": {
+        "missing": "Bir depo türü seçin.",
+        "immutable": "Bir deponun türü değiştirilemez."
+      },
+      "blobstore": {
+        "unknown": "Bilinmeyen blob deposu."
+      },
+      "remoteUrl": {
+        "missing": "Vekil depo için uzak URL gereklidir.",
+        "invalid": "Uzak URL mutlak bir http(s) URL’si olmalıdır."
+      },
+      "members": {
+        "notAllowed": "Yalnızca grup depolarının üyeleri olur.",
+        "empty": "Bir grubun en az bir üyesi olmalıdır.",
+        "duplicate": "“{member}” üyesi iki kez listelenmiş.",
+        "self": "Bir grup kendisini içeremez.",
+        "unknown": "“{member}” üye deposu mevcut değil.",
+        "formatMismatch": "“{member}” üyesinin biçimi grubunkinden farklı.",
+        "cycle": "Bu üyelik bir döngü oluştururdu."
+      },
+      "field": {
+        "positive": "{field} sıfırdan büyük olmalıdır.",
+        "nonNegative": "{field} negatif olmamalıdır."
+      }
+    },
+    "component": {
+      "notFound": "Bileşen mevcut değil."
+    },
+    "asset": {
+      "notFound": "Dosya mevcut değil."
+    },
+    "user": {
+      "notFound": "Kullanıcı mevcut değil.",
+      "builtin": "Yerleşik admin kullanıcısı devre dışı bırakılamaz, silinemez ve admin rolü kaldırılamaz.",
+      "self": {
+        "disable": "Kendi hesabınızı devre dışı bırakamazsınız.",
+        "delete": "Kendi hesabınızı silemezsiniz."
+      },
+      "username": {
+        "invalid": "Kullanıcı adı harf, rakam, nokta, tire, alt çizgi ve kuyruklu a işareti içerebilir ve bir harf ya da rakamla başlamalıdır.",
+        "reserved": "Bu kullanıcı adı ayrılmıştır.",
+        "taken": "Bu ada sahip bir kullanıcı zaten var."
+      },
+      "password": {
+        "tooShort": "Parola en az 8 karakter olmalıdır."
+      }
+    },
+    "role": {
+      "notFound": "Rol mevcut değil.",
+      "builtin": "Yerleşik roller silinemez.",
+      "name": {
+        "invalid": "Rol adı harf, rakam, nokta, tire ve alt çizgi içerebilir ve bir harf ya da rakamla başlamalıdır.",
+        "taken": "Bu ada sahip bir rol zaten var."
+      },
+      "admin": {
+        "locked": "Admin rolü sistem yöneticisi ayrıcalığını korumalıdır."
+      },
+      "privilege": {
+        "invalid": "Ayrıcalıklardan biri geçerli değil."
+      }
+    },
+    "token": {
+      "notFound": "Jeton mevcut değil.",
+      "name": {
+        "invalid": "Jeton adı 1 ile 200 karakter arasında olmalıdır."
+      },
+      "expiry": {
+        "past": "Son kullanma tarihi gelecekte olmalıdır."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Sayfa bulunamadı",
+    "text": "Aradığınız sayfa mevcut değil.",
+    "home": "Genel bakışa git"
+  },
+  "forbidden": {
+    "title": "Erişim reddedildi",
+    "text": "Bu sayfayı görüntülemek için gerekli ayrıcalıklara sahip değilsiniz."
+  }
+}

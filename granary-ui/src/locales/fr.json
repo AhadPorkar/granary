@@ -1,0 +1,596 @@
+{
+  "app": {
+    "name": "Granary",
+    "tagline": "Gestionnaire de dépôts d’artefacts",
+    "skipToContent": "Aller au contenu principal",
+    "loading": "Chargement…",
+    "version": "Version {version}",
+    "openMenu": "Ouvrir la navigation",
+    "closeMenu": "Fermer la navigation",
+    "language": "Langue",
+    "mainNavigation": "Navigation principale",
+    "userMenu": "Menu utilisateur",
+    "signedInAs": "Connecté en tant que"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "repositories": "Dépôts",
+    "search": "Recherche",
+    "users": "Utilisateurs",
+    "roles": "Rôles",
+    "account": "Mon compte",
+    "settings": "Paramètres",
+    "logout": "Se déconnecter",
+    "administration": "Administration",
+    "browse": "Parcourir"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "create": "Créer",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "actions": "Actions",
+    "name": "Nom",
+    "description": "Description",
+    "type": "Type",
+    "format": "Format",
+    "status": "État",
+    "copy": "Copier",
+    "copied": "Copié",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "search": "Rechercher",
+    "refresh": "Actualiser",
+    "loading": "Chargement…",
+    "none": "Aucun",
+    "optional": "facultatif",
+    "required": "obligatoire",
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "yes": "Oui",
+    "no": "Non",
+    "never": "Jamais",
+    "unknown": "Inconnu",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "pageOf": "Page {page} sur {pages}",
+    "totalCount": "{count} au total",
+    "noResults": "Aucun résultat",
+    "retry": "Réessayer",
+    "saving": "Enregistrement…",
+    "remove": "Retirer",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "add": "Ajouter",
+    "select": "Sélectionner…",
+    "created": "Créé",
+    "updated": "Mis à jour",
+    "all": "Tous",
+    "details": "Détails",
+    "expand": "Déplier",
+    "collapse": "Replier",
+    "notAvailable": "n/d",
+    "clear": "Effacer"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signInTo": "Se connecter à {name}",
+    "username": "Nom d’utilisateur",
+    "password": "Mot de passe",
+    "signingIn": "Connexion…",
+    "signedOut": "Vous avez été déconnecté.",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "welcomeBack": "Bon retour, {name}."
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Vue d’ensemble de cette instance Granary",
+    "repositories": "Dépôts",
+    "components": "Composants",
+    "assets": "Fichiers",
+    "assetCount": "{count} fichiers",
+    "storage": "Stockage",
+    "blobStores": "Espaces de stockage",
+    "blobStoreUsed": "{used} utilisés",
+    "blobStoreAvailable": "{available} disponibles",
+    "blobStoreBlobs": "{count} blobs",
+    "upstreams": "État des sources distantes",
+    "upstreamsEmpty": "Aucun dépôt proxy pour le moment.",
+    "reachable": "Joignable",
+    "unreachable": "Injoignable",
+    "lastError": "Dernière erreur",
+    "lastSuccess": "Dernier succès",
+    "lastFailure": "Dernier échec",
+    "retryAt": "Prochaine tentative",
+    "failures": "{count} échecs consécutifs",
+    "offlineMode": "Mode hors ligne global",
+    "offlineModeHint": "Lorsqu’il est activé, aucun dépôt proxy ne contacte sa source distante ; seul le contenu en cache est servi.",
+    "offlineActive": "Le mode hors ligne est actif : les proxys ne servent que le contenu en cache.",
+    "defaultPasswordTitle": "Le compte admin utilise encore le mot de passe par défaut",
+    "defaultPasswordText": "Quiconque connaît les identifiants par défaut peut prendre le contrôle de ce serveur. Changez le mot de passe maintenant.",
+    "defaultPasswordAction": "Changer le mot de passe",
+    "system": "Système",
+    "version": "Version",
+    "jvm": "Environnement Java",
+    "memory": "Mémoire",
+    "memoryDetail": "{used} sur {max}",
+    "processors": "Processeurs",
+    "limited": "Vous voyez les dépôts que vous pouvez lire. Les administrateurs voient aussi l’état du système ici."
+  },
+  "repositories": {
+    "title": "Dépôts",
+    "subtitle": "Dépôts hébergés, proxy et groupes pour chaque format pris en charge",
+    "new": "Nouveau dépôt",
+    "create": "Créer le dépôt",
+    "edit": "Modifier le dépôt",
+    "editName": "Modifier {name}",
+    "empty": "Aucun dépôt pour le moment.",
+    "emptyHint": "Créez un dépôt hébergé pour publier des artefacts, ou un proxy pour mettre en cache un registre public.",
+    "columns": {
+      "name": "Nom",
+      "format": "Format",
+      "type": "Type",
+      "online": "En ligne",
+      "upstream": "Source distante",
+      "size": "Taille",
+      "assets": "Fichiers",
+      "url": "URL"
+    },
+    "types": {
+      "HOSTED": "Hébergé",
+      "PROXY": "Proxy",
+      "GROUP": "Groupe"
+    },
+    "typeHints": {
+      "HOSTED": "Les artefacts sont téléversés par les clients et stockés ici.",
+      "PROXY": "Les artefacts sont récupérés à la demande depuis un registre distant et mis en cache.",
+      "GROUP": "Fusionne plusieurs dépôts du même format sous une seule URL."
+    },
+    "versionPolicies": {
+      "RELEASE": "Versions finales uniquement",
+      "SNAPSHOT": "Snapshots uniquement",
+      "MIXED": "Versions finales et snapshots"
+    },
+    "fields": {
+      "name": "Nom",
+      "format": "Format",
+      "type": "Type",
+      "online": "En ligne",
+      "blobStore": "Espace de stockage",
+      "description": "Description",
+      "allowRedeploy": "Autoriser le redéploiement",
+      "versionPolicy": "Politique de versions",
+      "remoteUrl": "URL distante",
+      "remoteUsername": "Nom d’utilisateur distant",
+      "remotePassword": "Mot de passe distant",
+      "remoteToken": "Jeton distant",
+      "connectTimeout": "Délai de connexion (secondes)",
+      "readTimeout": "Délai de lecture (secondes)",
+      "metadataMaxAge": "Âge maximal des métadonnées (minutes)",
+      "negativeCache": "Cache négatif (minutes)",
+      "offlineMode": "Mode hors ligne",
+      "members": "Membres"
+    },
+    "hints": {
+      "name": "Lettres, chiffres, points, tirets et traits de soulignement. Fait partie de l’URL et ne peut plus être modifié ensuite.",
+      "online": "Un dépôt hors ligne rejette toutes les requêtes.",
+      "allowRedeploy": "Autoriser l’écrasement d’un artefact déjà présent.",
+      "versionPolicy": "Les types de versions que ce dépôt accepte.",
+      "remoteUrl": "URL http(s) absolue du registre distant.",
+      "remoteAuth": "Nécessaire uniquement pour les sources privées. Laissez vide pour conserver le secret enregistré.",
+      "remoteToken": "Jeton Bearer, utilisé à la place du nom d’utilisateur et du mot de passe.",
+      "timeouts": "Laissez vide pour utiliser les valeurs par défaut du serveur.",
+      "metadataMaxAge": "Durée pendant laquelle les métadonnées en cache (fichiers d’index) restent valides avant d’être revérifiées en amont. 0 revérifie à chaque fois.",
+      "negativeCache": "Durée pendant laquelle un 404 distant est mémorisé. 0 désactive ce cache.",
+      "offlineMode": "Ne servir que le contenu en cache ; ne jamais contacter la source distante.",
+      "members": "Liste ordonnée : le premier membre qui possède un artefact l’emporte."
+    },
+    "sections": {
+      "general": "Général",
+      "hosted": "Paramètres du dépôt hébergé",
+      "proxy": "Paramètres du proxy",
+      "remoteAuth": "Identifiants de la source distante",
+      "group": "Membres du groupe"
+    },
+    "members": {
+      "add": "Ajouter un membre",
+      "empty": "Aucun membre pour le moment.",
+      "noCandidates": "Il n’y a aucun autre dépôt {format} à ajouter.",
+      "remove": "Retirer {name}",
+      "moveUp": "Monter {name}",
+      "moveDown": "Descendre {name}"
+    },
+    "keepSecret": "inchangé",
+    "actions": {
+      "browse": "Parcourir",
+      "connect": "Connecter",
+      "setOffline": "Passer hors ligne",
+      "setOnline": "Passer en ligne",
+      "invalidate": "Invalider le cache",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "copyUrl": "Copier l’URL"
+    },
+    "confirmDelete": "Supprimer le dépôt « {name} » ? Tous ses artefacts seront supprimés. Cette action est irréversible.",
+    "toasts": {
+      "created": "Dépôt « {name} » créé.",
+      "updated": "Dépôt « {name} » mis à jour.",
+      "deleted": "Dépôt « {name} » supprimé.",
+      "invalidated": "Cache de « {name} » invalidé.",
+      "offline": "« {name} » est maintenant hors ligne.",
+      "online": "« {name} » est maintenant en ligne."
+    },
+    "upstream": {
+      "reachable": "Joignable",
+      "unreachable": "Injoignable",
+      "offline": "Hors ligne",
+      "notProxy": "—"
+    },
+    "stats": "{components} composants · {assets} fichiers",
+    "notFound": "Dépôt introuvable."
+  },
+  "repository": {
+    "tabs": {
+      "components": "Composants",
+      "connect": "Connexion"
+    },
+    "searchPlaceholder": "Rechercher des composants…",
+    "noComponents": "Aucun composant dans ce dépôt.",
+    "noMatches": "Aucun composant ne correspond à « {q} ».",
+    "columns": {
+      "namespace": "Espace de noms",
+      "name": "Nom",
+      "version": "Version",
+      "updated": "Mis à jour"
+    },
+    "assets": {
+      "title": "Fichiers de {name}",
+      "path": "Chemin",
+      "size": "Taille",
+      "sha256": "SHA-256",
+      "downloads": "Téléchargements",
+      "origin": "Origine",
+      "contentType": "Type de contenu",
+      "empty": "Aucun fichier.",
+      "metadata": "métadonnées"
+    },
+    "origins": {
+      "UPLOADED": "Téléversé",
+      "CACHED": "En cache",
+      "GENERATED": "Généré"
+    },
+    "showAssets": "Afficher les fichiers",
+    "hideAssets": "Masquer les fichiers",
+    "deleteComponent": "Supprimer le composant",
+    "deleteAsset": "Supprimer le fichier",
+    "confirmDeleteComponent": "Supprimer {name} {version} et tous ses fichiers ?",
+    "confirmDeleteAsset": "Supprimer le fichier « {path} » ?",
+    "componentDeleted": "Composant supprimé ({count} fichiers retirés).",
+    "assetDeleted": "Fichier supprimé.",
+    "info": {
+      "url": "URL",
+      "remote": "Source distante",
+      "members": "Membres",
+      "blobStore": "Espace de stockage",
+      "created": "Créé",
+      "updated": "Mis à jour",
+      "size": "Taille"
+    }
+  },
+  "connect": {
+    "title": "Connecter vos outils",
+    "intro": "Utilisez les extraits ci-dessous pour diriger votre gestionnaire de paquets vers ce dépôt. Remplacez les espaces réservés par votre nom d’utilisateur et un jeton d’API créé depuis la page de votre compte.",
+    "tokenLink": "Créer un jeton d’API",
+    "anonymousHint": "Les identifiants sont facultatifs pour télécharger tant que l’accès anonyme est activé ; ils sont toujours requis pour publier.",
+    "maven": {
+      "settings": "settings.xml : utiliser ce dépôt comme miroir et enregistrer vos identifiants",
+      "pom": "pom.xml : déployer vers ce dépôt",
+      "deploy": "Déployer avec Maven"
+    },
+    "npm": {
+      "registry": "Définir le registre pour ce projet ou globalement",
+      "npmrc": ".npmrc : registre et jeton d’authentification",
+      "login": "Ou se connecter de manière interactive",
+      "publish": "Publier un paquet"
+    },
+    "nuget": {
+      "source": "Ajouter la source de paquets",
+      "push": "Envoyer un paquet",
+      "config": "nuget.config : configurer la source pour un projet"
+    },
+    "generic": {
+      "url": "URL du dépôt"
+    }
+  },
+  "search": {
+    "title": "Recherche",
+    "subtitle": "Trouver des composants dans les dépôts que vous pouvez lire",
+    "placeholder": "Nom, espace de noms ou version…",
+    "repository": "Dépôt",
+    "allRepositories": "Tous les dépôts",
+    "results": "{count} résultats",
+    "empty": "Aucun résultat pour « {q} ».",
+    "prompt": "Saisissez un terme pour rechercher des composants.",
+    "columns": {
+      "repository": "Dépôt"
+    }
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "subtitle": "Personnes pouvant se connecter à Granary",
+    "new": "Nouvel utilisateur",
+    "create": "Créer l’utilisateur",
+    "edit": "Modifier l’utilisateur",
+    "editName": "Modifier {name}",
+    "setPassword": "Définir le mot de passe",
+    "setPasswordFor": "Définir le mot de passe de {name}",
+    "fields": {
+      "username": "Nom d’utilisateur",
+      "password": "Mot de passe",
+      "displayName": "Nom affiché",
+      "email": "E-mail",
+      "roles": "Rôles",
+      "enabled": "Activé"
+    },
+    "hints": {
+      "username": "Lettres, chiffres, points, tirets, traits de soulignement et arobase. Ne peut plus être modifié ensuite.",
+      "password": "Au moins {min} caractères.",
+      "enabled": "Un utilisateur désactivé ne peut ni se connecter ni utiliser ses jetons."
+    },
+    "columns": {
+      "username": "Nom d’utilisateur",
+      "displayName": "Nom affiché",
+      "email": "E-mail",
+      "roles": "Rôles",
+      "status": "État",
+      "created": "Créé"
+    },
+    "builtin": "Intégré",
+    "you": "vous",
+    "actions": {
+      "enable": "Activer",
+      "disable": "Désactiver"
+    },
+    "confirmDelete": "Supprimer l’utilisateur « {name} » ? Ses jetons d’API cesseront immédiatement de fonctionner.",
+    "toasts": {
+      "created": "Utilisateur « {name} » créé.",
+      "updated": "Utilisateur « {name} » mis à jour.",
+      "deleted": "Utilisateur « {name} » supprimé.",
+      "passwordSet": "Mot de passe de « {name} » modifié.",
+      "enabled": "Utilisateur « {name} » activé.",
+      "disabled": "Utilisateur « {name} » désactivé."
+    },
+    "empty": "Aucun utilisateur."
+  },
+  "roles": {
+    "title": "Rôles",
+    "subtitle": "Les rôles regroupent des privilèges et sont attribués aux utilisateurs",
+    "new": "Nouveau rôle",
+    "create": "Créer le rôle",
+    "edit": "Modifier le rôle",
+    "editName": "Modifier {name}",
+    "fields": {
+      "name": "Nom",
+      "description": "Description",
+      "privileges": "Privilèges"
+    },
+    "hints": {
+      "name": "Lettres, chiffres, points, tirets et traits de soulignement. Ne peut plus être modifié ensuite."
+    },
+    "columns": {
+      "name": "Nom",
+      "description": "Description",
+      "privileges": "Privilèges"
+    },
+    "builtin": "Intégré",
+    "builtinHint": "Les rôles intégrés ne peuvent pas être supprimés.",
+    "confirmDelete": "Supprimer le rôle « {name} » ? Les utilisateurs qui le possèdent perdront ses privilèges.",
+    "toasts": {
+      "created": "Rôle « {name} » créé.",
+      "updated": "Rôle « {name} » mis à jour.",
+      "deleted": "Rôle « {name} » supprimé."
+    },
+    "empty": "Aucun rôle.",
+    "privilegeCount": "{count} privilèges"
+  },
+  "privileges": {
+    "wellKnown": "Privilèges globaux",
+    "perRepository": "Privilèges par dépôt",
+    "perRepositoryHint": "Accorder l’accès à des dépôts précis. L’accès en écriture inclut la lecture.",
+    "repository": "Dépôt",
+    "read": "Lecture",
+    "write": "Écriture",
+    "noRepositories": "Aucun dépôt n’existe pour le moment.",
+    "readFor": "Lire {name}",
+    "writeFor": "Écrire dans {name}",
+    "other": "Autres privilèges",
+    "names": {
+      "systemAdmin": "Administrateur système",
+      "repositoriesManage": "Gérer les dépôts",
+      "usersManage": "Gérer les utilisateurs et les rôles",
+      "settingsManage": "Gérer les paramètres",
+      "repositoryReadAll": "Lire tous les dépôts",
+      "repositoryWriteAll": "Écrire dans tous les dépôts"
+    },
+    "descriptions": {
+      "systemAdmin": "Tout, sans restriction.",
+      "repositoriesManage": "Créer, modifier et supprimer les définitions de dépôts ; parcourir tous les dépôts.",
+      "usersManage": "Créer et modifier les utilisateurs, les rôles et leurs privilèges.",
+      "settingsManage": "Modifier les paramètres globaux tels que l’accès anonyme et le mode hors ligne.",
+      "repositoryReadAll": "Télécharger depuis tous les dépôts, y compris ceux créés plus tard.",
+      "repositoryWriteAll": "Téléverser vers tous les dépôts (inclut la lecture)."
+    }
+  },
+  "account": {
+    "title": "Mon compte",
+    "subtitle": "Votre profil, votre mot de passe et vos jetons d’API",
+    "profile": "Profil",
+    "username": "Nom d’utilisateur",
+    "roles": "Rôles",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "passwordChanged": "Votre mot de passe a été modifié.",
+    "tokens": {
+      "title": "Jetons d’API",
+      "intro": "Les jetons authentifient les gestionnaires de paquets et les tâches CI sans exposer votre mot de passe. Utilisez-en un comme mot de passe pour Maven et NuGet, ou comme _authToken pour npm.",
+      "new": "Nouveau jeton",
+      "create": "Créer le jeton",
+      "name": "Nom",
+      "namePlaceholder": "p. ex. portable, pipeline CI",
+      "expiresAt": "Expire",
+      "neverExpires": "N’expire jamais",
+      "expiresOptional": "Laissez vide pour un jeton sans expiration.",
+      "created": "Créé",
+      "prefix": "Préfixe",
+      "lastUsed": "Dernière utilisation",
+      "revoke": "Révoquer",
+      "confirmRevoke": "Révoquer le jeton « {name} » ? Les clients qui l’utilisent cesseront immédiatement de fonctionner.",
+      "revoked": "Jeton « {name} » révoqué.",
+      "empty": "Vous n’avez aucun jeton d’API.",
+      "expired": "Expiré",
+      "secretTitle": "Votre nouveau jeton",
+      "secretHint": "Copiez-le maintenant. Pour des raisons de sécurité, il n’est affiché qu’une seule fois et ne pourra pas être récupéré ensuite.",
+      "done": "J’ai copié le jeton"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Comportement global de ce serveur",
+    "anonymousRead": "Lecture anonyme",
+    "anonymousReadHint": "Autoriser les téléchargements depuis tous les dépôts sans identifiants. Les téléversements exigent toujours des identifiants. Désactivez cette option sur un réseau partagé si les artefacts sont confidentiels.",
+    "offlineMode": "Mode hors ligne global",
+    "offlineModeHint": "Empêche tous les dépôts proxy de contacter leur source distante. Les artefacts en cache restent servis. Utile pendant une panne d’Internet ou sur un réseau isolé.",
+    "baseUrl": "URL de base externe",
+    "baseUrlHint": "L’URL par laquelle les clients atteignent ce serveur, par exemple derrière un reverse proxy. Elle sert aux URL de dépôts affichées ici et aux métadonnées générées. Laissez vide pour la déduire de chaque requête.",
+    "baseUrlPlaceholder": "https://granary.example.com",
+    "saved": "Paramètres enregistrés."
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "minLength": "Au moins {min} caractères.",
+    "invalidUrl": "Saisissez une URL http(s) absolue.",
+    "positive": "Doit être supérieur à zéro.",
+    "nonNegative": "Ne doit pas être négatif.",
+    "futureDate": "Doit être dans le futur."
+  },
+  "errors": {
+    "title": "Une erreur s’est produite",
+    "network": "Le serveur est injoignable. Vérifiez votre connexion.",
+    "unknown": "Une erreur inattendue s’est produite.",
+    "validation": "Certains champs sont invalides.",
+    "notFound": "Introuvable.",
+    "internal": "Erreur serveur inattendue.",
+    "request": {
+      "malformed": "La requête est mal formée."
+    },
+    "auth": {
+      "required": "Veuillez vous connecter.",
+      "forbidden": "Vous n’avez pas la permission d’effectuer cette action.",
+      "invalid": "Nom d’utilisateur ou mot de passe invalide.",
+      "password": {
+        "wrong": "Le mot de passe actuel est incorrect."
+      }
+    },
+    "repository": {
+      "notFound": "Le dépôt n’existe pas.",
+      "inUse": "Le dépôt est membre d’un groupe et ne peut pas être supprimé.",
+      "notProxy": "Seuls les dépôts proxy ont un mode hors ligne.",
+      "name": {
+        "invalid": "Le nom peut contenir des lettres, des chiffres, des points, des tirets et des traits de soulignement, et doit commencer par une lettre ou un chiffre.",
+        "taken": "Un dépôt portant ce nom existe déjà."
+      },
+      "format": {
+        "unknown": "Format inconnu.",
+        "immutable": "Le format d’un dépôt ne peut pas être modifié."
+      },
+      "type": {
+        "missing": "Choisissez un type de dépôt.",
+        "immutable": "Le type d’un dépôt ne peut pas être modifié."
+      },
+      "blobstore": {
+        "unknown": "Espace de stockage inconnu."
+      },
+      "remoteUrl": {
+        "missing": "Un dépôt proxy a besoin d’une URL distante.",
+        "invalid": "L’URL distante doit être une URL http(s) absolue."
+      },
+      "members": {
+        "notAllowed": "Seuls les dépôts de type groupe ont des membres.",
+        "empty": "Un groupe a besoin d’au moins un membre.",
+        "duplicate": "Le membre « {member} » apparaît deux fois.",
+        "self": "Un groupe ne peut pas se contenir lui-même.",
+        "unknown": "Le dépôt membre « {member} » n’existe pas.",
+        "formatMismatch": "Le membre « {member} » n’a pas le même format que le groupe.",
+        "cycle": "Cette composition formerait un cycle."
+      },
+      "field": {
+        "positive": "{field} doit être supérieur à zéro.",
+        "nonNegative": "{field} ne doit pas être négatif."
+      }
+    },
+    "component": {
+      "notFound": "Le composant n’existe pas."
+    },
+    "asset": {
+      "notFound": "Le fichier n’existe pas."
+    },
+    "user": {
+      "notFound": "L’utilisateur n’existe pas.",
+      "builtin": "L’utilisateur admin intégré ne peut être ni désactivé, ni supprimé, ni privé du rôle admin.",
+      "self": {
+        "disable": "Vous ne pouvez pas désactiver votre propre compte.",
+        "delete": "Vous ne pouvez pas supprimer votre propre compte."
+      },
+      "username": {
+        "invalid": "Le nom d’utilisateur peut contenir des lettres, des chiffres, des points, des tirets, des traits de soulignement et l’arobase, et doit commencer par une lettre ou un chiffre.",
+        "reserved": "Ce nom d’utilisateur est réservé.",
+        "taken": "Un utilisateur portant ce nom existe déjà."
+      },
+      "password": {
+        "tooShort": "Le mot de passe doit contenir au moins 8 caractères."
+      }
+    },
+    "role": {
+      "notFound": "Le rôle n’existe pas.",
+      "builtin": "Les rôles intégrés ne peuvent pas être supprimés.",
+      "name": {
+        "invalid": "Le nom du rôle peut contenir des lettres, des chiffres, des points, des tirets et des traits de soulignement, et doit commencer par une lettre ou un chiffre.",
+        "taken": "Un rôle portant ce nom existe déjà."
+      },
+      "admin": {
+        "locked": "Le rôle admin doit conserver le privilège d’administrateur système."
+      },
+      "privilege": {
+        "invalid": "L’un des privilèges est invalide."
+      }
+    },
+    "token": {
+      "notFound": "Le jeton n’existe pas.",
+      "name": {
+        "invalid": "Le nom du jeton doit contenir entre 1 et 200 caractères."
+      },
+      "expiry": {
+        "past": "La date d’expiration doit être dans le futur."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "text": "La page que vous cherchez n’existe pas.",
+    "home": "Aller au tableau de bord"
+  },
+  "forbidden": {
+    "title": "Accès refusé",
+    "text": "Vous n’avez pas les privilèges nécessaires pour afficher cette page."
+  }
+}

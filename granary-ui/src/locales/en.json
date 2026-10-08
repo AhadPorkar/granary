@@ -1,0 +1,596 @@
+{
+  "app": {
+    "name": "Granary",
+    "tagline": "Artifact repository manager",
+    "skipToContent": "Skip to main content",
+    "loading": "Loading…",
+    "version": "Version {version}",
+    "openMenu": "Open navigation",
+    "closeMenu": "Close navigation",
+    "language": "Language",
+    "mainNavigation": "Main navigation",
+    "userMenu": "User menu",
+    "signedInAs": "Signed in as"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "repositories": "Repositories",
+    "search": "Search",
+    "users": "Users",
+    "roles": "Roles",
+    "account": "My account",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "administration": "Administration",
+    "browse": "Browse"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "actions": "Actions",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "format": "Format",
+    "status": "Status",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyToClipboard": "Copy to clipboard",
+    "search": "Search",
+    "refresh": "Refresh",
+    "loading": "Loading…",
+    "none": "None",
+    "optional": "optional",
+    "required": "required",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "online": "Online",
+    "offline": "Offline",
+    "yes": "Yes",
+    "no": "No",
+    "never": "Never",
+    "unknown": "Unknown",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}",
+    "totalCount": "{count} total",
+    "noResults": "No results",
+    "retry": "Retry",
+    "saving": "Saving…",
+    "remove": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "add": "Add",
+    "select": "Select…",
+    "created": "Created",
+    "updated": "Updated",
+    "all": "All",
+    "details": "Details",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "notAvailable": "n/a",
+    "clear": "Clear"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signInTo": "Sign in to {name}",
+    "username": "Username",
+    "password": "Password",
+    "signingIn": "Signing in…",
+    "signedOut": "You have been signed out.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "welcomeBack": "Welcome back, {name}."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of this Granary instance",
+    "repositories": "Repositories",
+    "components": "Components",
+    "assets": "Assets",
+    "assetCount": "{count} assets",
+    "storage": "Storage",
+    "blobStores": "Blob stores",
+    "blobStoreUsed": "{used} used",
+    "blobStoreAvailable": "{available} available",
+    "blobStoreBlobs": "{count} blobs",
+    "upstreams": "Upstream health",
+    "upstreamsEmpty": "No proxy repositories yet.",
+    "reachable": "Reachable",
+    "unreachable": "Unreachable",
+    "lastError": "Last error",
+    "lastSuccess": "Last success",
+    "lastFailure": "Last failure",
+    "retryAt": "Next retry",
+    "failures": "{count} consecutive failures",
+    "offlineMode": "Global offline mode",
+    "offlineModeHint": "When enabled, no proxy repository contacts its upstream; only cached content is served.",
+    "offlineActive": "Offline mode is active: proxies serve cached content only.",
+    "defaultPasswordTitle": "The admin account still uses the default password",
+    "defaultPasswordText": "Anyone who knows the default credentials can take over this server. Change the password now.",
+    "defaultPasswordAction": "Change password",
+    "system": "System",
+    "version": "Version",
+    "jvm": "Java runtime",
+    "memory": "Memory",
+    "memoryDetail": "{used} of {max}",
+    "processors": "Processors",
+    "limited": "You see the repositories you may read. Administrators also see system health here."
+  },
+  "repositories": {
+    "title": "Repositories",
+    "subtitle": "Hosted, proxy and group repositories for every supported format",
+    "new": "New repository",
+    "create": "Create repository",
+    "edit": "Edit repository",
+    "editName": "Edit {name}",
+    "empty": "No repositories yet.",
+    "emptyHint": "Create a hosted repository to publish artifacts, or a proxy to cache a public registry.",
+    "columns": {
+      "name": "Name",
+      "format": "Format",
+      "type": "Type",
+      "online": "Online",
+      "upstream": "Upstream",
+      "size": "Size",
+      "assets": "Assets",
+      "url": "URL"
+    },
+    "types": {
+      "HOSTED": "Hosted",
+      "PROXY": "Proxy",
+      "GROUP": "Group"
+    },
+    "typeHints": {
+      "HOSTED": "Artifacts are uploaded by clients and stored here.",
+      "PROXY": "Artifacts are fetched from a remote registry on demand and cached.",
+      "GROUP": "Merges several repositories of the same format under one URL."
+    },
+    "versionPolicies": {
+      "RELEASE": "Releases only",
+      "SNAPSHOT": "Snapshots only",
+      "MIXED": "Releases and snapshots"
+    },
+    "fields": {
+      "name": "Name",
+      "format": "Format",
+      "type": "Type",
+      "online": "Online",
+      "blobStore": "Blob store",
+      "description": "Description",
+      "allowRedeploy": "Allow redeploy",
+      "versionPolicy": "Version policy",
+      "remoteUrl": "Remote URL",
+      "remoteUsername": "Remote username",
+      "remotePassword": "Remote password",
+      "remoteToken": "Remote token",
+      "connectTimeout": "Connect timeout (seconds)",
+      "readTimeout": "Read timeout (seconds)",
+      "metadataMaxAge": "Metadata max age (minutes)",
+      "negativeCache": "Negative cache (minutes)",
+      "offlineMode": "Offline mode",
+      "members": "Members"
+    },
+    "hints": {
+      "name": "Letters, digits, dots, dashes and underscores. Becomes part of the URL and cannot be changed later.",
+      "online": "Offline repositories reject every request.",
+      "allowRedeploy": "Allow overwriting an artifact that already exists.",
+      "versionPolicy": "Which kinds of versions this repository accepts.",
+      "remoteUrl": "Absolute http(s) URL of the upstream registry.",
+      "remoteAuth": "Only needed for private upstreams. Leave blank to keep the stored secret.",
+      "remoteToken": "Bearer token, used instead of username and password.",
+      "timeouts": "Leave blank to use the server defaults.",
+      "metadataMaxAge": "How long cached metadata (index files) stays fresh before it is re-checked upstream. 0 re-checks every time.",
+      "negativeCache": "How long an upstream 404 is remembered. 0 disables it.",
+      "offlineMode": "Serve cached content only; never contact the upstream.",
+      "members": "Ordered list: the first member that has an artifact wins."
+    },
+    "sections": {
+      "general": "General",
+      "hosted": "Hosted settings",
+      "proxy": "Proxy settings",
+      "remoteAuth": "Upstream credentials",
+      "group": "Group members"
+    },
+    "members": {
+      "add": "Add member",
+      "empty": "No members yet.",
+      "noCandidates": "There is no other {format} repository to add.",
+      "remove": "Remove {name}",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down"
+    },
+    "keepSecret": "unchanged",
+    "actions": {
+      "browse": "Browse",
+      "connect": "Connect",
+      "setOffline": "Go offline",
+      "setOnline": "Go online",
+      "invalidate": "Invalidate cache",
+      "delete": "Delete",
+      "edit": "Edit",
+      "copyUrl": "Copy URL"
+    },
+    "confirmDelete": "Delete the repository “{name}”? All of its artifacts are removed. This cannot be undone.",
+    "toasts": {
+      "created": "Repository “{name}” created.",
+      "updated": "Repository “{name}” updated.",
+      "deleted": "Repository “{name}” deleted.",
+      "invalidated": "Cache of “{name}” invalidated.",
+      "offline": "“{name}” is now offline.",
+      "online": "“{name}” is now online."
+    },
+    "upstream": {
+      "reachable": "Reachable",
+      "unreachable": "Unreachable",
+      "offline": "Offline",
+      "notProxy": "—"
+    },
+    "stats": "{components} components · {assets} assets",
+    "notFound": "Repository not found."
+  },
+  "repository": {
+    "tabs": {
+      "components": "Components",
+      "connect": "Connect"
+    },
+    "searchPlaceholder": "Search components…",
+    "noComponents": "No components in this repository.",
+    "noMatches": "No components match “{q}”.",
+    "columns": {
+      "namespace": "Namespace",
+      "name": "Name",
+      "version": "Version",
+      "updated": "Updated"
+    },
+    "assets": {
+      "title": "Assets of {name}",
+      "path": "Path",
+      "size": "Size",
+      "sha256": "SHA-256",
+      "downloads": "Downloads",
+      "origin": "Origin",
+      "contentType": "Content type",
+      "empty": "No assets.",
+      "metadata": "metadata"
+    },
+    "origins": {
+      "UPLOADED": "Uploaded",
+      "CACHED": "Cached",
+      "GENERATED": "Generated"
+    },
+    "showAssets": "Show assets",
+    "hideAssets": "Hide assets",
+    "deleteComponent": "Delete component",
+    "deleteAsset": "Delete asset",
+    "confirmDeleteComponent": "Delete {name} {version} and all of its assets?",
+    "confirmDeleteAsset": "Delete the asset “{path}”?",
+    "componentDeleted": "Component deleted ({count} assets removed).",
+    "assetDeleted": "Asset deleted.",
+    "info": {
+      "url": "URL",
+      "remote": "Remote",
+      "members": "Members",
+      "blobStore": "Blob store",
+      "created": "Created",
+      "updated": "Updated",
+      "size": "Size"
+    }
+  },
+  "connect": {
+    "title": "Connect your tools",
+    "intro": "Use the snippets below to point your package manager at this repository. Replace the placeholders with your username and an API token from your account page.",
+    "tokenLink": "Create an API token",
+    "anonymousHint": "Credentials are optional for downloads while anonymous access is enabled; they are always required for publishing.",
+    "maven": {
+      "settings": "settings.xml: use this repository as a mirror and store your credentials",
+      "pom": "pom.xml: deploy to this repository",
+      "deploy": "Deploy with Maven"
+    },
+    "npm": {
+      "registry": "Set the registry for this project or globally",
+      "npmrc": ".npmrc: registry and authentication token",
+      "login": "Or log in interactively",
+      "publish": "Publish a package"
+    },
+    "nuget": {
+      "source": "Add the package source",
+      "push": "Push a package",
+      "config": "nuget.config: configure the source for a project"
+    },
+    "generic": {
+      "url": "Repository URL"
+    }
+  },
+  "search": {
+    "title": "Search",
+    "subtitle": "Find components across the repositories you may read",
+    "placeholder": "Name, namespace or version…",
+    "repository": "Repository",
+    "allRepositories": "All repositories",
+    "results": "{count} results",
+    "empty": "Nothing found for “{q}”.",
+    "prompt": "Enter a search term to find components.",
+    "columns": {
+      "repository": "Repository"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "People who can sign in to Granary",
+    "new": "New user",
+    "create": "Create user",
+    "edit": "Edit user",
+    "editName": "Edit {name}",
+    "setPassword": "Set password",
+    "setPasswordFor": "Set password for {name}",
+    "fields": {
+      "username": "Username",
+      "password": "Password",
+      "displayName": "Display name",
+      "email": "E-mail",
+      "roles": "Roles",
+      "enabled": "Enabled"
+    },
+    "hints": {
+      "username": "Letters, digits, dots, dashes, underscores and the at-sign. Cannot be changed later.",
+      "password": "At least {min} characters.",
+      "enabled": "Disabled users cannot sign in or use their tokens."
+    },
+    "columns": {
+      "username": "Username",
+      "displayName": "Display name",
+      "email": "E-mail",
+      "roles": "Roles",
+      "status": "Status",
+      "created": "Created"
+    },
+    "builtin": "Built-in",
+    "you": "you",
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "confirmDelete": "Delete the user “{name}”? Their API tokens stop working immediately.",
+    "toasts": {
+      "created": "User “{name}” created.",
+      "updated": "User “{name}” updated.",
+      "deleted": "User “{name}” deleted.",
+      "passwordSet": "Password of “{name}” changed.",
+      "enabled": "User “{name}” enabled.",
+      "disabled": "User “{name}” disabled."
+    },
+    "empty": "No users."
+  },
+  "roles": {
+    "title": "Roles",
+    "subtitle": "Roles bundle privileges and are assigned to users",
+    "new": "New role",
+    "create": "Create role",
+    "edit": "Edit role",
+    "editName": "Edit {name}",
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "privileges": "Privileges"
+    },
+    "hints": {
+      "name": "Letters, digits, dots, dashes and underscores. Cannot be changed later."
+    },
+    "columns": {
+      "name": "Name",
+      "description": "Description",
+      "privileges": "Privileges"
+    },
+    "builtin": "Built-in",
+    "builtinHint": "Built-in roles cannot be deleted.",
+    "confirmDelete": "Delete the role “{name}”? Users who have it lose its privileges.",
+    "toasts": {
+      "created": "Role “{name}” created.",
+      "updated": "Role “{name}” updated.",
+      "deleted": "Role “{name}” deleted."
+    },
+    "empty": "No roles.",
+    "privilegeCount": "{count} privileges"
+  },
+  "privileges": {
+    "wellKnown": "Global privileges",
+    "perRepository": "Per-repository privileges",
+    "perRepositoryHint": "Grant access to single repositories. Write access implies read access.",
+    "repository": "Repository",
+    "read": "Read",
+    "write": "Write",
+    "noRepositories": "No repositories exist yet.",
+    "readFor": "Read {name}",
+    "writeFor": "Write {name}",
+    "other": "Other privileges",
+    "names": {
+      "systemAdmin": "System administrator",
+      "repositoriesManage": "Manage repositories",
+      "usersManage": "Manage users and roles",
+      "settingsManage": "Manage settings",
+      "repositoryReadAll": "Read all repositories",
+      "repositoryWriteAll": "Write to all repositories"
+    },
+    "descriptions": {
+      "systemAdmin": "Everything, without restriction.",
+      "repositoriesManage": "Create, change and delete repository definitions; browse every repository.",
+      "usersManage": "Create and change users, roles and their privileges.",
+      "settingsManage": "Change global settings such as anonymous access and offline mode.",
+      "repositoryReadAll": "Download from every repository, including ones created later.",
+      "repositoryWriteAll": "Upload to every repository (implies read)."
+    }
+  },
+  "account": {
+    "title": "My account",
+    "subtitle": "Your profile, password and API tokens",
+    "profile": "Profile",
+    "username": "Username",
+    "roles": "Roles",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordChanged": "Your password has been changed.",
+    "tokens": {
+      "title": "API tokens",
+      "intro": "Tokens authenticate package managers and CI jobs without exposing your password. Use one as the password for Maven and NuGet, or as the _authToken for npm.",
+      "new": "New token",
+      "create": "Create token",
+      "name": "Name",
+      "namePlaceholder": "e.g. laptop, CI pipeline",
+      "expiresAt": "Expires",
+      "neverExpires": "Never expires",
+      "expiresOptional": "Leave blank for a token that never expires.",
+      "created": "Created",
+      "prefix": "Prefix",
+      "lastUsed": "Last used",
+      "revoke": "Revoke",
+      "confirmRevoke": "Revoke the token “{name}”? Clients using it stop working immediately.",
+      "revoked": "Token “{name}” revoked.",
+      "empty": "You have no API tokens.",
+      "expired": "Expired",
+      "secretTitle": "Your new token",
+      "secretHint": "Copy it now. For security reasons it is shown only once and cannot be recovered later.",
+      "done": "I have copied the token"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Global behaviour of this server",
+    "anonymousRead": "Anonymous read access",
+    "anonymousReadHint": "Allow downloads from every repository without credentials. Uploads always need credentials. Turn this off on a shared network where artifacts are confidential.",
+    "offlineMode": "Global offline mode",
+    "offlineModeHint": "Stop every proxy repository from contacting its upstream. Cached artifacts are still served. Useful during an internet outage or on an air-gapped network.",
+    "baseUrl": "External base URL",
+    "baseUrlHint": "The URL under which clients reach this server, for example behind a reverse proxy. It is used for the repository URLs shown here and in generated metadata. Leave blank to derive it from each request.",
+    "baseUrlPlaceholder": "https://granary.example.com",
+    "saved": "Settings saved."
+  },
+  "validation": {
+    "required": "This field is required.",
+    "passwordMismatch": "The passwords do not match.",
+    "minLength": "At least {min} characters.",
+    "invalidUrl": "Enter an absolute http(s) URL.",
+    "positive": "Must be greater than zero.",
+    "nonNegative": "Must not be negative.",
+    "futureDate": "Must be in the future."
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "network": "The server could not be reached. Check your connection.",
+    "unknown": "An unexpected error occurred.",
+    "validation": "Some fields are invalid.",
+    "notFound": "Not found.",
+    "internal": "Unexpected server error.",
+    "request": {
+      "malformed": "The request was malformed."
+    },
+    "auth": {
+      "required": "Please sign in.",
+      "forbidden": "You do not have permission to do this.",
+      "invalid": "Invalid username or password.",
+      "password": {
+        "wrong": "The current password is wrong."
+      }
+    },
+    "repository": {
+      "notFound": "The repository does not exist.",
+      "inUse": "The repository is a member of a group and cannot be deleted.",
+      "notProxy": "Only proxy repositories have an offline mode.",
+      "name": {
+        "invalid": "The name may contain letters, digits, dots, dashes and underscores and must start with a letter or digit.",
+        "taken": "A repository with this name already exists."
+      },
+      "format": {
+        "unknown": "Unknown format.",
+        "immutable": "The format of a repository cannot be changed."
+      },
+      "type": {
+        "missing": "Choose a repository type.",
+        "immutable": "The type of a repository cannot be changed."
+      },
+      "blobstore": {
+        "unknown": "Unknown blob store."
+      },
+      "remoteUrl": {
+        "missing": "A proxy repository needs a remote URL.",
+        "invalid": "The remote URL must be an absolute http(s) URL."
+      },
+      "members": {
+        "notAllowed": "Only group repositories have members.",
+        "empty": "A group needs at least one member.",
+        "duplicate": "The member “{member}” is listed twice.",
+        "self": "A group cannot contain itself.",
+        "unknown": "The member repository “{member}” does not exist.",
+        "formatMismatch": "The member “{member}” has a different format than the group.",
+        "cycle": "This membership would form a cycle."
+      },
+      "field": {
+        "positive": "{field} must be greater than zero.",
+        "nonNegative": "{field} must not be negative."
+      }
+    },
+    "component": {
+      "notFound": "The component does not exist."
+    },
+    "asset": {
+      "notFound": "The asset does not exist."
+    },
+    "user": {
+      "notFound": "The user does not exist.",
+      "builtin": "The built-in admin user cannot be disabled, deleted or stripped of the admin role.",
+      "self": {
+        "disable": "You cannot disable your own account.",
+        "delete": "You cannot delete your own account."
+      },
+      "username": {
+        "invalid": "The username may contain letters, digits, dots, dashes, underscores and the at-sign and must start with a letter or digit.",
+        "reserved": "This username is reserved.",
+        "taken": "A user with this name already exists."
+      },
+      "password": {
+        "tooShort": "The password must have at least 8 characters."
+      }
+    },
+    "role": {
+      "notFound": "The role does not exist.",
+      "builtin": "Built-in roles cannot be deleted.",
+      "name": {
+        "invalid": "The role name may contain letters, digits, dots, dashes and underscores and must start with a letter or digit.",
+        "taken": "A role with this name already exists."
+      },
+      "admin": {
+        "locked": "The admin role must keep the system administrator privilege."
+      },
+      "privilege": {
+        "invalid": "One of the privileges is not valid."
+      }
+    },
+    "token": {
+      "notFound": "The token does not exist.",
+      "name": {
+        "invalid": "The token name must have between 1 and 200 characters."
+      },
+      "expiry": {
+        "past": "The expiry must be in the future."
+      }
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "The page you are looking for does not exist.",
+    "home": "Go to the dashboard"
+  },
+  "forbidden": {
+    "title": "Access denied",
+    "text": "You do not have the privileges to view this page."
+  }
+}

@@ -114,10 +114,12 @@ public final class MavenVersions {
                 return compareNumbers(value, other.value);
             }
             if (numeric) {
-                return 1; // any number outranks any qualifier: 1.0.1 > 1.0-rc, 1.0.1 > 1.0-sp1
+                // a padding zero equals a missing item (1.0-SNAPSHOT == 1-SNAPSHOT); any other number
+                // outranks any qualifier: 1.0.1 > 1.0-rc, 1.0.1 > 1.0-sp1
+                return other.isNull() && isNull() ? 0 : 1;
             }
             if (other.numeric) {
-                return -1;
+                return isNull() && other.isNull() ? 0 : -1;
             }
             int byRank = Integer.compare(qualifierRank(value), qualifierRank(other.value));
             if (byRank != 0) {

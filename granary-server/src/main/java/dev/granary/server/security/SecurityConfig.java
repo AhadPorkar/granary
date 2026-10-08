@@ -7,6 +7,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
@@ -33,8 +35,16 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, e) ->
                                 SecurityResponses.unauthorized(request, response, "Authentication required"))
-                        .accessDeniedHandler((request, response, e) ->
-                                SecurityResponses.forbidden(response, "Insufficient privileges")))
+                        .accessDeniedHandler((request, response, e) -> {
+                            // an anonymous caller (no credentials at all) reaches the access-denied handler
+                            // with an unauthenticated principal; that is a 401, not a 403
+                            Authentication current = SecurityContextHolder.getContext().getAuthentication();
+                            if (current == null || !current.isAuthenticated()) {
+                                SecurityResponses.unauthorized(request, response, "Authentication required");
+                            } else {
+                                SecurityResponses.forbidden(response, "Insufficient privileges");
+                            }
+                        }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/system/info").permitAll()

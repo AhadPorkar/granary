@@ -1,5 +1,6 @@
 package dev.granary.server;
 
+import dev.granary.core.GranaryException;
 import dev.granary.core.dao.RepositoryDao;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
@@ -53,10 +54,22 @@ public abstract class IntegrationTest {
 
     @BeforeEach
     void resetState() {
-        // groups first, members afterwards, so the "in use" check never blocks the cleanup
-        List<Repository> all = repositoryDao.findAll();
-        all.stream().filter(Repository::isGroup).forEach(r -> repositories.delete(r.getName()));
-        all.stream().filter(r -> !r.isGroup()).forEach(r -> repositories.delete(r.getName()));
+        // groups may nest, so delete whatever is not a member of something else until nothing is left
+        List<Repository> remaining = repositoryDao.findAll();
+        while (!remaining.isEmpty()) {
+            int before = remaining.size();
+            for (Repository r : remaining) {
+                try {
+                    repositories.delete(r.getName());
+                } catch (GranaryException inUse) {
+                    // still referenced by a group; retried in the next round
+                }
+            }
+            remaining = repositoryDao.findAll();
+            if (remaining.size() == before) {
+                throw new IllegalStateException("could not clean repositories: " + remaining);
+            }
+        }
         settings.setAnonymousReadEnabled(true);
         settings.setGlobalOffline(false);
         settings.setBaseUrl("");

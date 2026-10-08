@@ -119,8 +119,8 @@ public class MavenFormatHandler implements FormatHandler {
     private ResponseEntity<?> checksum(RepositoryRequest request, MavenPath path) throws IOException {
         MavenPath subject = MavenPath.parse(path.checksumOf());
         String algorithm = Checksums.algorithmFor(path.checksumAlgorithm()).orElse(null);
-        if (algorithm == null) {
-            return ContentResponses.notFound();
+        if (algorithm == null || subject.kind() == MavenPath.Kind.CHECKSUM) {
+            return ContentResponses.notFound(); // no checksums of checksums
         }
         if (subject.kind() == MavenPath.Kind.METADATA) {
             Optional<byte[]> xml = metadataBytes(request.repository(), subject);

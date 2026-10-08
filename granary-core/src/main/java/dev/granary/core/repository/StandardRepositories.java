@@ -80,7 +80,9 @@ public class StandardRepositories {
             repo.setFormat(t.format());
             repo.setType(t.type());
             repo.setRemoteUrl(t.remoteUrl());
-            repo.setVersionPolicy(t.versionPolicy());
+            if (t.versionPolicy() != null) {
+                repo.setVersionPolicy(t.versionPolicy());
+            }
             repo.setMembers(new ArrayList<>(t.members()));
             repo.setDescription(t.description());
             repositories.create(repo);

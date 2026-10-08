@@ -1,6 +1,7 @@
 package dev.granary.server;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.dao.ApiTokenDao;
 import dev.granary.core.dao.RepositoryDao;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
@@ -47,6 +48,9 @@ public abstract class IntegrationTest {
     protected ApiTokenService tokens;
 
     @Autowired
+    protected ApiTokenDao apiTokenDao;
+
+    @Autowired
     protected SettingsService settings;
 
     @Autowired
@@ -70,6 +74,8 @@ public abstract class IntegrationTest {
                 throw new IllegalStateException("could not clean repositories: " + remaining);
             }
         }
+        apiTokenDao.deleteAll();
+        users.list().stream().filter(u -> !u.isBuiltin()).forEach(u -> users.delete(u.getUsername()));
         settings.setAnonymousReadEnabled(true);
         settings.setGlobalOffline(false);
         settings.setBaseUrl("");

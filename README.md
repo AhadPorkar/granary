@@ -180,7 +180,7 @@ Gradle: `maven { url = uri("http://granary.example.com:8081/repository/maven-pub
 
 ```bash
 npm config set registry http://granary.example.com:8081/repository/npm-group/
-npm login --registry=http://granary.example.com:8081/repository/npm-hosted/   # or put an API token in .npmrc:
+npm login --registry=http://granary.example.com:8081/repository/npm-hosted/ --auth-type=legacy   # or put an API token in .npmrc:
 echo "//granary.example.com:8081/repository/npm-hosted/:_authToken=gry_…" >> ~/.npmrc
 npm publish --registry=http://granary.example.com:8081/repository/npm-hosted/
 ```
@@ -287,7 +287,7 @@ mvn -B -Dui.skip=true verify   # server only
 * `granary-server`: MockMvc integration tests that run the full HTTP stack against an embedded
   database: deploy and resolve, checksums, snapshots, group merging, offline fallbacks,
   authentication in every credential shape, the admin API and the SPA fallback.
-* `granary-ui`: Vitest unit tests for the stores and views.
+* `granary-ui`: Vitest unit tests for the stores, API client, locales and views.
 * CI additionally starts the Docker Compose stack and performs a Maven round trip against it.
 
 ## Development

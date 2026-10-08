@@ -133,6 +133,8 @@
     "editName": "Edit {name}",
     "empty": "No repositories yet.",
     "emptyHint": "Create a hosted repository to publish artifacts, or a proxy to cache a public registry.",
+    "standard": "Create standard repositories",
+    "standardHint": "One click creates the usual proxy, hosted and group repositories for every installed format (Maven Central, npmjs.org, nuget.org and your own).",
     "columns": {
       "name": "Name",
       "format": "Format",
@@ -225,7 +227,9 @@
       "deleted": "Repository “{name}” deleted.",
       "invalidated": "Cache of “{name}” invalidated.",
       "offline": "“{name}” is now offline.",
-      "online": "“{name}” is now online."
+      "online": "“{name}” is now online.",
+      "standardCreated": "{count} standard repositories created.",
+      "standardNone": "All standard repositories already exist."
     },
     "upstream": {
       "reachable": "Reachable",

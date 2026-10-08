@@ -90,6 +90,25 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
+const creatingStandard = ref(false);
+
+async function createStandard(): Promise<void> {
+  creatingStandard.value = true;
+  try {
+    const result = await api.repositories.createStandard();
+    toast.success(
+      result.created.length
+        ? t('repositories.toasts.standardCreated', { count: result.created.length })
+        : t('repositories.toasts.standardNone'),
+    );
+    await load();
+  } catch (e) {
+    toast.error(apiError.message(e));
+  } finally {
+    creatingStandard.value = false;
+  }
+}
+
 function typeVariant(type: RepositoryView['type']): 'info' | 'warning' | 'neutral' {
   return type === 'HOSTED' ? 'info' : type === 'PROXY' ? 'warning' : 'neutral';
 }
@@ -104,6 +123,18 @@ onMounted(load);
         <AppIcon name="refresh" :size="16" />
         {{ t('common.refresh') }}
       </button>
+      <button
+        v-if="canManage"
+        type="button"
+        class="btn"
+        :disabled="creatingStandard"
+        :title="t('repositories.standardHint')"
+        data-testid="create-standard"
+        @click="createStandard"
+      >
+        <AppIcon name="package" :size="16" />
+        {{ t('repositories.standard') }}
+      </button>
       <RouterLink v-if="canManage" class="btn btn--primary" :to="{ name: 'repository-new' }">
         <AppIcon name="plus" :size="16" />
         {{ t('repositories.new') }}
@@ -114,8 +145,11 @@ onMounted(load);
     <LoadingIndicator v-if="loading" />
 
     <div v-else class="card">
-      <EmptyState v-if="!repositories.length" :title="t('repositories.empty')" :text="canManage ? t('repositories.emptyHint') : undefined">
-        <RouterLink v-if="canManage" class="btn btn--primary" :to="{ name: 'repository-new' }">{{ t('repositories.new') }}</RouterLink>
+      <EmptyState v-if="!repositories.length" :title="t('repositories.empty')" :text="canManage ? t('repositories.standardHint') : undefined">
+        <button v-if="canManage" type="button" class="btn btn--primary" :disabled="creatingStandard" @click="createStandard">
+          {{ t('repositories.standard') }}
+        </button>
+        <RouterLink v-if="canManage" class="btn" :to="{ name: 'repository-new' }">{{ t('repositories.new') }}</RouterLink>
       </EmptyState>
 
       <div v-else class="table-wrap">

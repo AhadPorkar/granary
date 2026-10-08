@@ -133,6 +133,8 @@
     "editName": "Modifier {name}",
     "empty": "Aucun dépôt pour le moment.",
     "emptyHint": "Créez un dépôt hébergé pour publier des artefacts, ou un proxy pour mettre en cache un registre public.",
+    "standard": "Créer les dépôts standard",
+    "standardHint": "Un clic crée les dépôts proxy, hébergés et de groupe habituels pour chaque format installé (Maven Central, npmjs.org, nuget.org et les vôtres).",
     "columns": {
       "name": "Nom",
       "format": "Format",
@@ -225,7 +227,9 @@
       "deleted": "Dépôt « {name} » supprimé.",
       "invalidated": "Cache de « {name} » invalidé.",
       "offline": "« {name} » est maintenant hors ligne.",
-      "online": "« {name} » est maintenant en ligne."
+      "online": "« {name} » est maintenant en ligne.",
+      "standardCreated": "{count} dépôts standard créés.",
+      "standardNone": "Tous les dépôts standard existent déjà."
     },
     "upstream": {
       "reachable": "Joignable",

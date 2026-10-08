@@ -223,3 +223,9 @@ export interface SettingsRequest {
   offlineMode?: boolean;
   baseUrl?: string;
 }
+
+/** Result of creating the conventional proxy/hosted/group repositories for every installed format. */
+export interface StandardRepositoriesResult {
+  created: string[];
+  templates: string[];
+}

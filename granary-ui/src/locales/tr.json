@@ -133,6 +133,8 @@
     "editName": "{name} deposunu düzenle",
     "empty": "Henüz depo yok.",
     "emptyHint": "Yapıt yayımlamak için barındırılan bir depo, herkese açık bir kayıt defterini önbelleğe almak için bir vekil oluşturun.",
+    "standard": "Standart depoları oluştur",
+    "standardHint": "Tek tıkla kurulu her biçim için olağan vekil, barındırılan ve grup depoları oluşturulur (Maven Central, npmjs.org, nuget.org ve kendi depolarınız).",
     "columns": {
       "name": "Ad",
       "format": "Biçim",
@@ -225,7 +227,9 @@
       "deleted": "“{name}” deposu silindi.",
       "invalidated": "“{name}” önbelleği geçersiz kılındı.",
       "offline": "“{name}” artık çevrimdışı.",
-      "online": "“{name}” artık çevrimiçi."
+      "online": "“{name}” artık çevrimiçi.",
+      "standardCreated": "{count} standart depo oluşturuldu.",
+      "standardNone": "Tüm standart depolar zaten mevcut."
     },
     "upstream": {
       "reachable": "Erişilebilir",

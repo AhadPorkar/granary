@@ -133,6 +133,8 @@
     "editName": "{name} bearbeiten",
     "empty": "Noch keine Repositories.",
     "emptyHint": "Legen Sie ein gehostetes Repository an, um Artefakte zu veröffentlichen, oder einen Proxy, um eine öffentliche Registry zwischenzuspeichern.",
+    "standard": "Standard-Repositories anlegen",
+    "standardHint": "Ein Klick legt die üblichen Proxy-, gehosteten und Gruppen-Repositories für jedes installierte Format an (Maven Central, npmjs.org, nuget.org und Ihre eigenen).",
     "columns": {
       "name": "Name",
       "format": "Format",
@@ -225,7 +227,9 @@
       "deleted": "Repository „{name}“ gelöscht.",
       "invalidated": "Cache von „{name}“ verworfen.",
       "offline": "„{name}“ ist jetzt offline.",
-      "online": "„{name}“ ist jetzt online."
+      "online": "„{name}“ ist jetzt online.",
+      "standardCreated": "{count} Standard-Repositories angelegt.",
+      "standardNone": "Alle Standard-Repositories existieren bereits."
     },
     "upstream": {
       "reachable": "Erreichbar",

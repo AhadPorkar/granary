@@ -10,6 +10,7 @@ import type {
   PrincipalView,
   RepositoryRequest,
   RepositoryView,
+  StandardRepositoriesResult,
   RoleRequest,
   RoleView,
   Settings,
@@ -53,6 +54,7 @@ export const api = {
     setOffline: (name: string, offline: boolean) =>
       http.post<RepositoryView>(`/repositories/${enc(name)}/offline`, { offline }),
     invalidate: (name: string) => http.post<RepositoryView>(`/repositories/${enc(name)}/invalidate`),
+    createStandard: () => http.post<StandardRepositoriesResult>('/repositories/standard'),
     components: (name: string, q = '', page = 0, size = 50) =>
       http.get<Page<ComponentView>>(`/repositories/${enc(name)}/components`, { query: { q, page, size } }),
     componentAssets: (name: string, componentId: string) =>

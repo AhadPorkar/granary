@@ -4,6 +4,8 @@ import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.http.ResponseEntity;
 
@@ -42,4 +44,30 @@ public interface FormatHandler {
     }
 
     ResponseEntity<?> handle(RepositoryRequest request) throws IOException;
+
+    /**
+     * The conventional repositories of this format (proxy of the public registry, a hosted repository, a group),
+     * created on demand by {@code POST /api/v1/repositories/standard}. Members before groups.
+     */
+    default List<RepositoryTemplate> templates() {
+        return List.of();
+    }
+
+    /** Ready-to-paste client configuration for one repository, shown on its "Connect" page. */
+    default List<ConnectSnippet> connectSnippets(ConnectContext context) {
+        return List.of();
+    }
+
+    /** Format-specific repository settings the UI offers and {@link #validate(Repository)} may check. */
+    default List<SettingDescriptor> settings() {
+        return List.of();
+    }
+
+    /**
+     * Claims a request that arrived at the server root (outside {@code /repository/…}) for one of this format's
+     * repositories. Only protocols with fixed root URLs need this; everything else answers {@link Optional#empty()}.
+     */
+    default Optional<RootRoute> routeRoot(RootRequest request) {
+        return Optional.empty();
+    }
 }

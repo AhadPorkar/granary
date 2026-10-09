@@ -33,6 +33,62 @@
     </dependency>
     <dependency>
       <groupId>dev.granary</groupId>
+      <artifactId>granary-format-raw</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-pypi</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-composer</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-rubygems</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-cargo</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-go</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-docker</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-helm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-terraform</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-conan</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-hex</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-pub</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-swift</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
+      <artifactId>granary-format-cocoapods</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dev.granary</groupId>
       <artifactId>granary-ui</artifactId>
     </dependency>
 

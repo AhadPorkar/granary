@@ -2,6 +2,7 @@ package dev.granary.core.model;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,7 +18,10 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -100,6 +104,13 @@ public class Repository {
     @OrderColumn(name = "position")
     @Column(name = "member_name", nullable = false, length = 100)
     private List<String> members = new ArrayList<>();
+
+    // --- format specific --------------------------------------------------------------------
+
+    /** Free-form settings a format declares through {@code FormatHandler.settings()}; stored as JSON. */
+    @Convert(converter = StringMapConverter.class)
+    @Column(name = "format_settings", length = 100000)
+    private Map<String, String> formatSettings = new LinkedHashMap<>();
 
     // --- audit ----------------------------------------------------------------------------
 
@@ -285,6 +296,29 @@ public class Repository {
 
     public void setMembers(List<String> members) {
         this.members = members == null ? new ArrayList<>() : new ArrayList<>(members);
+    }
+
+    public Map<String, String> getFormatSettings() {
+        return formatSettings;
+    }
+
+    public void setFormatSettings(Map<String, String> formatSettings) {
+        this.formatSettings = formatSettings == null ? new LinkedHashMap<>() : new LinkedHashMap<>(formatSettings);
+    }
+
+    /** A format setting, if set and not blank. */
+    public Optional<String> setting(String key) {
+        String value = formatSettings == null ? null : formatSettings.get(key);
+        return value == null || value.isBlank() ? Optional.empty() : Optional.of(value.trim());
+    }
+
+    public String setting(String key, String defaultValue) {
+        return setting(key).orElse(defaultValue);
+    }
+
+    public boolean settingEnabled(String key, boolean defaultValue) {
+        return setting(key).map(v -> v.equalsIgnoreCase("true") || v.equals("1") || v.equalsIgnoreCase("yes"))
+                .orElse(defaultValue);
     }
 
     public Instant getCreatedAt() {

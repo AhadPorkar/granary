@@ -101,6 +101,7 @@ public class RepositoryService {
         existing.setNegativeCacheMinutes(changes.getNegativeCacheMinutes());
         existing.setOfflineMode(changes.isOfflineMode());
         existing.setMembers(changes.getMembers());
+        existing.setFormatSettings(changes.getFormatSettings());
         validator.validate(existing, false);
         return repositories.save(existing);
     }

@@ -67,6 +67,12 @@ class AdminApiIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.metadataMaxAgeMinutes").value(5));
         mvc.perform(json(put("/api/v1/repositories/maven-central"), "{\"name\":\"maven-central\",\"format\":\"npm\",\"type\":\"PROXY\",\"remoteUrl\":\"https://x/\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("repository.format.immutable"));
+        // format-specific settings round-trip as a string map and survive an update
+        mvc.perform(json(put("/api/v1/repositories/maven-central"), "{\"name\":\"maven-central\",\"format\":\"maven2\",\"type\":\"PROXY\",\"remoteUrl\":\"https://repo1.maven.org/maven2/\",\"formatSettings\":{\"maven.example\":\"yes\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formatSettings['maven.example']").value("yes"));
+        mvc.perform(get("/api/v1/repositories/maven-central").header("Authorization", adminBearer()))
+                .andExpect(jsonPath("$.formatSettings['maven.example']").value("yes"));
 
         mvc.perform(delete("/api/v1/repositories/maven-releases").header("Authorization", adminBearer()))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("repository.inUse"));
@@ -165,7 +171,16 @@ class AdminApiIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.created[?(@ == 'maven-public')]").exists());
         mvc.perform(get("/api/v1/repositories/maven-public").header("Authorization", adminBearer()))
                 .andExpect(jsonPath("$.type").value("GROUP"))
-                .andExpect(jsonPath("$.members.length()").value(3));
+                .andExpect(jsonPath("$.members[0]").value("maven-releases"))
+                .andExpect(jsonPath("$.members[?(@ == 'maven-central')]").exists())
+                .andExpect(jsonPath("$.members[?(@ == 'maven-google')]").exists());
+        mvc.perform(get("/api/v1/formats").header("Authorization", adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == 'maven2' && 'maven-public' in @.templates)]").exists())
+                .andExpect(jsonPath("$[?(@.id == 'npm')].types").isArray());
+        mvc.perform(get("/api/v1/repositories/maven-public/connect").header("Authorization", adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
         // repeating is a no-op
         mvc.perform(post("/api/v1/repositories/standard").header("Authorization", adminBearer()))
                 .andExpect(jsonPath("$.created.length()").value(0));

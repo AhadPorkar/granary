@@ -1,6 +1,7 @@
 package dev.granary.server.api;
 
 import dev.granary.core.model.ApiToken;
+import dev.granary.core.format.SettingDescriptor;
 import dev.granary.core.model.Asset;
 import dev.granary.core.model.Component;
 import dev.granary.core.model.Repository;
@@ -62,7 +63,8 @@ public final class Dtos {
             Integer metadataMaxAgeMinutes,
             Integer negativeCacheMinutes,
             Boolean offlineMode,
-            List<String> members) {
+            List<String> members,
+            Map<String, String> formatSettings) {
 
         public Repository toEntity() {
             Repository r = new Repository();
@@ -84,6 +86,7 @@ public final class Dtos {
             r.setNegativeCacheMinutes(negativeCacheMinutes);
             r.setOfflineMode(Boolean.TRUE.equals(offlineMode));
             r.setMembers(members == null ? List.of() : members);
+            r.setFormatSettings(formatSettings == null ? Map.of() : formatSettings);
             return r;
         }
     }
@@ -101,8 +104,8 @@ public final class Dtos {
             String description, boolean allowRedeploy, VersionPolicy versionPolicy, String remoteUrl,
             String remoteUsername, boolean hasRemotePassword, boolean hasRemoteToken,
             Integer connectTimeoutSeconds, Integer readTimeoutSeconds, Integer metadataMaxAgeMinutes,
-            Integer negativeCacheMinutes, boolean offlineMode, List<String> members, String url,
-            Instant createdAt, Instant updatedAt, Map<String, Object> statistics, UpstreamView upstream) {
+            Integer negativeCacheMinutes, boolean offlineMode, List<String> members, Map<String, String> formatSettings,
+            String url, Instant createdAt, Instant updatedAt, Map<String, Object> statistics, UpstreamView upstream) {
 
         public static RepositoryView of(Repository r, String url, Map<String, Object> statistics, UpstreamView upstream) {
             return new RepositoryView(r.getId(), r.getName(), r.getFormat(), r.getType(), r.isOnline(),
@@ -110,7 +113,7 @@ public final class Dtos {
                     r.getRemoteUsername(), r.getRemotePassword() != null && !r.getRemotePassword().isEmpty(),
                     r.getRemoteToken() != null && !r.getRemoteToken().isEmpty(),
                     r.getConnectTimeoutSeconds(), r.getReadTimeoutSeconds(), r.getMetadataMaxAgeMinutes(),
-                    r.getNegativeCacheMinutes(), r.isOfflineMode(), r.getMembers(), url,
+                    r.getNegativeCacheMinutes(), r.isOfflineMode(), r.getMembers(), r.getFormatSettings(), url,
                     r.getCreatedAt(), r.getUpdatedAt(), statistics, upstream);
         }
     }
@@ -118,7 +121,8 @@ public final class Dtos {
     public record OfflineRequest(boolean offline) {
     }
 
-    public record FormatView(String id, String displayName) {
+    public record FormatView(String id, String displayName, Set<RepositoryType> types,
+                             List<SettingDescriptor> settings, List<String> templates) {
     }
 
     public record ComponentView(UUID id, UUID repositoryId, String repository, String format, String namespace,

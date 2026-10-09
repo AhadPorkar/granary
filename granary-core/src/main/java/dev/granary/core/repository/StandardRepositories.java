@@ -1,53 +1,21 @@
 package dev.granary.core.repository;
 
+import dev.granary.core.format.FormatHandler;
 import dev.granary.core.format.FormatRegistry;
+import dev.granary.core.format.RepositoryTemplate;
 import dev.granary.core.model.Repository;
-import dev.granary.core.model.RepositoryType;
-import dev.granary.core.model.VersionPolicy;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
  * The conventional proxy / hosted / group trio for every format Granary knows, so a fresh server is
- * usable with one click. Only repositories whose name is still free are created; existing ones are
- * left untouched, which makes the operation safe to repeat.
+ * usable with one click. Each format declares its own templates through {@link FormatHandler#templates()};
+ * only repositories whose name is still free are created and existing ones are left untouched, which
+ * makes the operation safe to repeat.
  */
 @Service
 public class StandardRepositories {
-
-    public record Template(String name, String format, RepositoryType type, String remoteUrl,
-                           VersionPolicy versionPolicy, List<String> members, String description) {
-    }
-
-    private static final Map<String, List<Template>> BY_FORMAT = new LinkedHashMap<>();
-
-    static {
-        BY_FORMAT.put("maven2", List.of(
-                new Template("maven-central", "maven2", RepositoryType.PROXY, "https://repo1.maven.org/maven2/",
-                        VersionPolicy.RELEASE, List.of(), "Proxy of Maven Central"),
-                new Template("maven-releases", "maven2", RepositoryType.HOSTED, null,
-                        VersionPolicy.RELEASE, List.of(), "Your released artifacts"),
-                new Template("maven-snapshots", "maven2", RepositoryType.HOSTED, null,
-                        VersionPolicy.SNAPSHOT, List.of(), "Your snapshot builds"),
-                new Template("maven-public", "maven2", RepositoryType.GROUP, null, VersionPolicy.MIXED,
-                        List.of("maven-releases", "maven-snapshots", "maven-central"),
-                        "Single URL for Maven and Gradle clients")));
-        BY_FORMAT.put("npm", List.of(
-                new Template("npm-proxy", "npm", RepositoryType.PROXY, "https://registry.npmjs.org/",
-                        null, List.of(), "Proxy of the public npm registry"),
-                new Template("npm-hosted", "npm", RepositoryType.HOSTED, null, null, List.of(), "Your own packages"),
-                new Template("npm-group", "npm", RepositoryType.GROUP, null, null,
-                        List.of("npm-hosted", "npm-proxy"), "Single registry URL for npm, pnpm and yarn")));
-        BY_FORMAT.put("nuget", List.of(
-                new Template("nuget.org", "nuget", RepositoryType.PROXY, "https://api.nuget.org/v3/index.json",
-                        null, List.of(), "Proxy of nuget.org"),
-                new Template("nuget-hosted", "nuget", RepositoryType.HOSTED, null, null, List.of(), "Your own packages"),
-                new Template("nuget-group", "nuget", RepositoryType.GROUP, null, null,
-                        List.of("nuget-hosted", "nuget.org"), "Single package source for dotnet and Visual Studio")));
-    }
 
     private final RepositoryService repositories;
     private final FormatRegistry formats;
@@ -57,21 +25,39 @@ public class StandardRepositories {
         this.formats = formats;
     }
 
-    /** Templates for the formats that are actually installed, in creation order (members before groups). */
-    public List<Template> templates() {
-        List<Template> result = new ArrayList<>();
-        BY_FORMAT.forEach((format, templates) -> {
-            if (formats.find(format).isPresent()) {
-                result.addAll(templates);
+    /** Templates of the installed formats, in creation order (members before groups). */
+    public List<RepositoryTemplate> templates() {
+        List<RepositoryTemplate> result = new ArrayList<>();
+        for (FormatHandler handler : formats.all()) {
+            for (RepositoryTemplate template : handler.templates()) {
+                if (!handler.format().equals(template.format())) {
+                    throw new IllegalStateException("template " + template.name() + " declared by format "
+                            + handler.format() + " but targets " + template.format());
+                }
+                result.add(template);
             }
-        });
+        }
         return result;
+    }
+
+    /** Templates of one format, in creation order. */
+    public List<RepositoryTemplate> templates(String format) {
+        return templates().stream().filter(t -> t.format().equals(format)).toList();
     }
 
     /** Creates every missing standard repository and returns the names that were created. */
     public List<String> createMissing() {
+        return create(templates());
+    }
+
+    /** Creates the missing standard repositories of one format and returns the names that were created. */
+    public List<String> createMissing(String format) {
+        return create(templates(format));
+    }
+
+    private List<String> create(List<RepositoryTemplate> templates) {
         List<String> created = new ArrayList<>();
-        for (Template t : templates()) {
+        for (RepositoryTemplate t : templates) {
             if (repositories.find(t.name()).isPresent()) {
                 continue;
             }
@@ -85,6 +71,7 @@ public class StandardRepositories {
             }
             repo.setMembers(new ArrayList<>(t.members()));
             repo.setDescription(t.description());
+            repo.setFormatSettings(t.formatSettings());
             repositories.create(repo);
             created.add(t.name());
         }

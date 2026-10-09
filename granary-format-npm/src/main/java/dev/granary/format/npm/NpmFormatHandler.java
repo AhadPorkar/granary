@@ -3,6 +3,7 @@ package dev.granary.format.npm;
 import dev.granary.core.format.AccessLevel;
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.FormatHandler;
+import dev.granary.core.format.RepositoryTemplate;
 import dev.granary.core.format.RepositoryRequest;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.User;
@@ -14,6 +15,7 @@ import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -67,6 +69,15 @@ public class NpmFormatHandler implements FormatHandler {
     @Override
     public String displayName() {
         return "npm";
+    }
+
+    @Override
+    public List<RepositoryTemplate> templates() {
+        return List.of(
+                RepositoryTemplate.proxy("npm-proxy", FORMAT, "https://registry.npmjs.org/", "Proxy of the public npm registry"),
+                RepositoryTemplate.hosted("npm-hosted", FORMAT, "Your own packages"),
+                RepositoryTemplate.group("npm-group", FORMAT, List.of("npm-hosted", "npm-proxy"),
+                        "Single registry URL for npm, pnpm, yarn and bun"));
     }
 
     @Override

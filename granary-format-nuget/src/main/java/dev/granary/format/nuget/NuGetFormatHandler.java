@@ -2,6 +2,7 @@ package dev.granary.format.nuget;
 
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.FormatHandler;
+import dev.granary.core.format.RepositoryTemplate;
 import dev.granary.core.format.RepositoryRequest;
 import dev.granary.core.model.Asset;
 import dev.granary.core.model.Repository;
@@ -90,6 +91,15 @@ public class NuGetFormatHandler implements FormatHandler {
     @Override
     public String displayName() {
         return "NuGet";
+    }
+
+    @Override
+    public List<RepositoryTemplate> templates() {
+        return List.of(
+                RepositoryTemplate.proxy("nuget.org", FORMAT, "https://api.nuget.org/v3/index.json", "Proxy of nuget.org"),
+                RepositoryTemplate.hosted("nuget-hosted", FORMAT, "Your own packages"),
+                RepositoryTemplate.group("nuget-group", FORMAT, List.of("nuget-hosted", "nuget.org"),
+                        "Single package source for dotnet, nuget.exe and Visual Studio"));
     }
 
     /** Index documents (service, flat-container, registration) change with every push; packages never do. */

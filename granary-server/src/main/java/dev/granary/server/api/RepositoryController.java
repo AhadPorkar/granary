@@ -2,7 +2,10 @@ package dev.granary.server.api;
 
 import dev.granary.core.dao.AssetDao;
 import dev.granary.core.dao.ComponentDao;
+import dev.granary.core.format.ConnectContext;
+import dev.granary.core.format.ConnectSnippet;
 import dev.granary.core.format.FormatHandler;
+import dev.granary.core.format.RepositoryTemplate;
 import dev.granary.core.format.FormatRegistry;
 import dev.granary.core.model.Asset;
 import dev.granary.core.model.Component;
@@ -64,7 +67,26 @@ public class RepositoryController {
 
     @GetMapping("/formats")
     public List<Dtos.FormatView> formats() {
-        return formats.all().stream().map(f -> new Dtos.FormatView(f.format(), f.displayName())).toList();
+        return formats.all().stream()
+                .sorted(java.util.Comparator.comparing(f -> f.displayName().toLowerCase(java.util.Locale.ROOT)))
+                .map(f -> new Dtos.FormatView(f.format(), f.displayName(), f.supportedTypes(), f.settings(),
+                        f.templates().stream().map(RepositoryTemplate::name).toList()))
+                .toList();
+    }
+
+    /** Ready-to-paste client configuration for a repository the caller may read. */
+    @GetMapping("/repositories/{name}/connect")
+    public List<ConnectSnippet> connect(@PathVariable String name, HttpServletRequest http) {
+        Repository repo = repositories.require(name);
+        GranaryPrincipal principal = CurrentUser.principal();
+        if (!principal.has("repositories:manage") && !principal.canRead(name)) {
+            throw new dev.granary.core.GranaryException(403, "auth.forbidden", "Insufficient privileges");
+        }
+        String root = serverRoot(http);
+        ConnectContext context = new ConnectContext(repo, root + "/repository/" + repo.getName(), root,
+                principal.anonymous() ? ConnectContext.USERNAME_PLACEHOLDER : principal.username(),
+                ConnectContext.TOKEN_PLACEHOLDER, settings.isAnonymousReadEnabled());
+        return formats.find(repo.getFormat()).map(h -> h.connectSnippets(context)).orElse(List.of());
     }
 
     /** Every repository the caller may read; admins and repository managers see all of them. */
@@ -205,9 +227,13 @@ public class RepositoryController {
         return repo;
     }
 
-    private Dtos.RepositoryView view(Repository repo, HttpServletRequest http) {
-        String root = settings.baseUrl().orElseGet(() ->
+    private String serverRoot(HttpServletRequest http) {
+        return settings.baseUrl().orElseGet(() ->
                 ServletUriComponentsBuilder.fromContextPath(http).build().toUriString());
+    }
+
+    private Dtos.RepositoryView view(Repository repo, HttpServletRequest http) {
+        String root = serverRoot(http);
         Dtos.UpstreamView upstream = repo.isProxy() ? Dtos.UpstreamView.of(proxy.status(repo)) : null;
         FormatHandler handler = formats.find(repo.getFormat()).orElse(null);
         String url = root + "/repository/" + repo.getName() + (handler == null ? "" : "/");

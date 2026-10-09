@@ -4,6 +4,7 @@ import dev.granary.core.format.ContentResolver;
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.DirectoryListing;
 import dev.granary.core.format.FormatHandler;
+import dev.granary.core.format.RepositoryTemplate;
 import dev.granary.core.format.RepositoryRequest;
 import dev.granary.core.model.Asset;
 import dev.granary.core.model.Repository;
@@ -60,6 +61,27 @@ public class MavenFormatHandler implements FormatHandler {
     @Override
     public String displayName() {
         return "Maven";
+    }
+
+    @Override
+    public List<RepositoryTemplate> templates() {
+        return List.of(
+                RepositoryTemplate.proxy("maven-central", FORMAT, "https://repo1.maven.org/maven2/", "Proxy of Maven Central")
+                        .withVersionPolicy(VersionPolicy.RELEASE),
+                RepositoryTemplate.proxy("maven-google", FORMAT, "https://maven.google.com/", "Proxy of Google's Maven repository (Android, Jetpack)")
+                        .withVersionPolicy(VersionPolicy.RELEASE),
+                RepositoryTemplate.proxy("clojars", FORMAT, "https://repo.clojars.org/", "Proxy of Clojars (Clojure libraries)")
+                        .withVersionPolicy(VersionPolicy.MIXED),
+                RepositoryTemplate.proxy("gradle-plugins", FORMAT, "https://plugins.gradle.org/m2/", "Proxy of the Gradle Plugin Portal")
+                        .withVersionPolicy(VersionPolicy.RELEASE),
+                RepositoryTemplate.hosted("maven-releases", FORMAT, "Your released artifacts")
+                        .withVersionPolicy(VersionPolicy.RELEASE),
+                RepositoryTemplate.hosted("maven-snapshots", FORMAT, "Your snapshot builds")
+                        .withVersionPolicy(VersionPolicy.SNAPSHOT),
+                RepositoryTemplate.group("maven-public", FORMAT,
+                        List.of("maven-releases", "maven-snapshots", "maven-central", "maven-google", "clojars", "gradle-plugins"),
+                        "Single URL for Maven, Gradle, sbt, Leiningen and Android builds")
+                        .withVersionPolicy(VersionPolicy.MIXED));
     }
 
     @Override

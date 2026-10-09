@@ -69,14 +69,30 @@ public class CredentialsFilter extends OncePerRequestFilter {
             if (parts.length == 2 && parts[0].equalsIgnoreCase("Bearer")) {
                 return bearer(parts[1].trim());
             }
+            if (parts.length == 2 && parts[0].equalsIgnoreCase("Token")) {
+                return apiToken(parts[1].trim(), "Invalid or expired API token");
+            }
+            // cargo, gem push, mix hex.publish and the Conan client send the bare key as the whole header
+            if (parts.length == 1 && ApiTokenService.looksLikeToken(parts[0])) {
+                return apiToken(parts[0], "Invalid or expired API token");
+            }
             throw new BadCredentials("Unsupported Authorization scheme");
         }
-        String nugetKey = request.getHeader("X-NuGet-ApiKey");
-        if (nugetKey != null && !nugetKey.isBlank()) {
-            return Optional.of(authentication.authenticateToken(nugetKey.trim())
-                    .orElseThrow(() -> new BadCredentials("Invalid NuGet API key")));
+        for (String keyHeader : API_KEY_HEADERS) {
+            String key = request.getHeader(keyHeader);
+            if (key != null && !key.isBlank()) {
+                return apiToken(key.trim(), "Invalid " + keyHeader + " value");
+            }
         }
         return Optional.empty();
+    }
+
+    /** Headers package managers use to carry an API key instead of {@code Authorization}. */
+    private static final java.util.List<String> API_KEY_HEADERS = java.util.List.of("X-NuGet-ApiKey", "X-Api-Key");
+
+    private Optional<GranaryPrincipal> apiToken(String secret, String failure) {
+        return Optional.of(authentication.authenticateToken(secret)
+                .orElseThrow(() -> new BadCredentials(failure)));
     }
 
     private Optional<GranaryPrincipal> basic(String encoded) {

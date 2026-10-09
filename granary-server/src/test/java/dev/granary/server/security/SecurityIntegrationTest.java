@@ -93,6 +93,13 @@ class SecurityIntegrationTest extends IntegrationTest {
                 .andExpect(status().isCreated());
         mvc.perform(put("/repository/maven-releases/com/acme/x/3/x-3.jar").header("X-NuGet-ApiKey", token.secret()).content("x"))
                 .andExpect(status().isCreated());
+        // cargo, gem push and mix hex.publish send the bare key; some tools use "Token" or X-Api-Key
+        mvc.perform(put("/repository/maven-releases/com/acme/x/4/x-4.jar").header("Authorization", token.secret()).content("x"))
+                .andExpect(status().isCreated());
+        mvc.perform(put("/repository/maven-releases/com/acme/x/5/x-5.jar").header("Authorization", "Token " + token.secret()).content("x"))
+                .andExpect(status().isCreated());
+        mvc.perform(put("/repository/maven-releases/com/acme/x/6/x-6.jar").header("X-Api-Key", token.secret()).content("x"))
+                .andExpect(status().isCreated());
         mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token.secret()))
                 .andExpect(jsonPath("$.username").value("admin"));
     }
@@ -112,6 +119,8 @@ class SecurityIntegrationTest extends IntegrationTest {
                 .andExpect(status().isUnauthorized());
         mvc.perform(get("/repository/maven-releases/" + JAR).header("X-NuGet-ApiKey", "nope"))
                 .andExpect(status().isUnauthorized());
+        mvc.perform(get("/repository/maven-releases/" + JAR).header("Authorization", "gry_" + "x".repeat(40)))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("Invalid or expired API token"));
     }
 
     @Test

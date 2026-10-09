@@ -2,6 +2,7 @@ import { http } from './client';
 import type {
   AssetView,
   ComponentView,
+  ConnectSnippet,
   CreateUserRequest,
   FormatView,
   IssuedToken,
@@ -48,6 +49,7 @@ export const api = {
   repositories: {
     list: () => http.get<RepositoryView[]>('/repositories'),
     get: (name: string) => http.get<RepositoryView>(`/repositories/${enc(name)}`),
+    connect: (name: string) => http.get<ConnectSnippet[]>(`/repositories/${enc(name)}/connect`),
     create: (body: RepositoryRequest) => http.post<RepositoryView>('/repositories', body),
     update: (name: string, body: RepositoryRequest) => http.put<RepositoryView>(`/repositories/${enc(name)}`, body),
     delete: (name: string) => http.delete(`/repositories/${enc(name)}`),

@@ -93,6 +93,7 @@
     "title": "Übersicht",
     "subtitle": "Überblick über diese Granary-Instanz",
     "repositories": "Repositories",
+    "byFormat": "Repositories nach Format",
     "components": "Komponenten",
     "assets": "Assets",
     "assetCount": "{count} Assets",
@@ -134,7 +135,16 @@
     "empty": "Noch keine Repositories.",
     "emptyHint": "Legen Sie ein gehostetes Repository an, um Artefakte zu veröffentlichen, oder einen Proxy, um eine öffentliche Registry zwischenzuspeichern.",
     "standard": "Standard-Repositories anlegen",
-    "standardHint": "Ein Klick legt die üblichen Proxy-, gehosteten und Gruppen-Repositories für jedes installierte Format an (Maven Central, npmjs.org, nuget.org und Ihre eigenen).",
+    "standardHint": "Ein Klick legt die üblichen Proxy-, gehosteten und Gruppen-Repositories für jedes installierte Format an: den Proxy der öffentlichen Registry, ein Repository für Ihre eigenen Pakete und eine Gruppe, die beide vereint.",
+    "standardCreatedList": "{count} Standard-Repositories angelegt: {names}",
+    "filter": {
+      "search": "Repositories filtern",
+      "searchPlaceholder": "Nach Name oder Beschreibung filtern…",
+      "format": "Format",
+      "allFormats": "Alle Formate",
+      "count": "{shown} von {total} Repositories",
+      "noMatches": "Kein Repository entspricht dem Filter."
+    },
     "columns": {
       "name": "Name",
       "format": "Format",
@@ -192,14 +202,17 @@
       "metadataMaxAge": "Wie lange zwischengespeicherte Metadaten (Indexdateien) als aktuell gelten, bevor sie beim Upstream erneut geprüft werden. 0 prüft bei jedem Zugriff.",
       "negativeCache": "Wie lange ein 404 des Upstreams gemerkt wird. 0 deaktiviert es.",
       "offlineMode": "Nur zwischengespeicherte Inhalte ausliefern; den Upstream nie kontaktieren.",
-      "members": "Geordnete Liste: Das erste Mitglied, das ein Artefakt besitzt, gewinnt."
+      "members": "Geordnete Liste: Das erste Mitglied, das ein Artefakt besitzt, gewinnt.",
+      "formatTemplates": "Standard-Repositories dieses Formats: {names}",
+      "formatSettings": "Einstellungen speziell für {format}. Leere Felder verwenden den Standardwert."
     },
     "sections": {
       "general": "Allgemein",
       "hosted": "Einstellungen für gehostete Repositories",
       "proxy": "Proxy-Einstellungen",
       "remoteAuth": "Upstream-Zugangsdaten",
-      "group": "Gruppenmitglieder"
+      "group": "Gruppenmitglieder",
+      "formatSettings": "Formateinstellungen"
     },
     "members": {
       "add": "Mitglied hinzufügen",
@@ -280,6 +293,8 @@
     "assetDeleted": "Asset gelöscht.",
     "info": {
       "url": "URL",
+      "format": "Format",
+      "formatSettings": "Formateinstellungen",
       "remote": "Remote",
       "members": "Mitglieder",
       "blobStore": "Blob-Speicher",
@@ -293,25 +308,9 @@
     "intro": "Mit den folgenden Snippets richten Sie Ihren Paketmanager auf dieses Repository aus. Ersetzen Sie die Platzhalter durch Ihren Benutzernamen und ein API-Token von Ihrer Kontoseite.",
     "tokenLink": "API-Token erstellen",
     "anonymousHint": "Solange anonymer Zugriff aktiviert ist, sind Zugangsdaten zum Herunterladen optional; zum Veröffentlichen sind sie immer erforderlich.",
-    "maven": {
-      "settings": "settings.xml: dieses Repository als Mirror verwenden und Zugangsdaten hinterlegen",
-      "pom": "pom.xml: in dieses Repository deployen",
-      "deploy": "Mit Maven deployen"
-    },
-    "npm": {
-      "registry": "Registry für dieses Projekt oder global setzen",
-      "npmrc": ".npmrc: Registry und Authentifizierungs-Token",
-      "login": "Oder interaktiv anmelden",
-      "publish": "Ein Paket veröffentlichen"
-    },
-    "nuget": {
-      "source": "Paketquelle hinzufügen",
-      "push": "Ein Paket hochladen",
-      "config": "nuget.config: Quelle für ein Projekt konfigurieren"
-    },
-    "generic": {
-      "url": "Repository-URL"
-    }
+    "empty": "Für dieses Format gibt es noch keine Snippets.",
+    "emptyHint": "Verwenden Sie die Repository-URL oben in der Konfiguration Ihres Clients.",
+    "language": "Sprache: {language}"
   },
   "search": {
     "title": "Suche",
@@ -485,7 +484,8 @@
     "invalidUrl": "Geben Sie eine absolute http(s)-URL ein.",
     "positive": "Muss größer als null sein.",
     "nonNegative": "Darf nicht negativ sein.",
-    "futureDate": "Muss in der Zukunft liegen."
+    "futureDate": "Muss in der Zukunft liegen.",
+    "integer": "Geben Sie eine ganze Zahl ein."
   },
   "errors": {
     "title": "Etwas ist schiefgelaufen",

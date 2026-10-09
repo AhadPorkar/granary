@@ -93,6 +93,7 @@
     "title": "Genel bakış",
     "subtitle": "Bu Granary örneğine genel bakış",
     "repositories": "Depolar",
+    "byFormat": "Biçime göre depolar",
     "components": "Bileşenler",
     "assets": "Dosyalar",
     "assetCount": "{count} dosya",
@@ -134,7 +135,16 @@
     "empty": "Henüz depo yok.",
     "emptyHint": "Yapıt yayımlamak için barındırılan bir depo, herkese açık bir kayıt defterini önbelleğe almak için bir vekil oluşturun.",
     "standard": "Standart depoları oluştur",
-    "standardHint": "Tek tıkla kurulu her biçim için olağan vekil, barındırılan ve grup depoları oluşturulur (Maven Central, npmjs.org, nuget.org ve kendi depolarınız).",
+    "standardHint": "Tek tıkla kurulu her biçim için olağan vekil, barındırılan ve grup depoları oluşturulur: genel kayıt defterinin vekili, kendi paketleriniz için bir depo ve ikisini birleştiren bir grup.",
+    "standardCreatedList": "{count} standart depo oluşturuldu: {names}",
+    "filter": {
+      "search": "Depoları filtrele",
+      "searchPlaceholder": "Ada veya açıklamaya göre filtrele…",
+      "format": "Biçim",
+      "allFormats": "Tüm biçimler",
+      "count": "{total} depodan {shown} tanesi",
+      "noMatches": "Filtreyle eşleşen depo yok."
+    },
     "columns": {
       "name": "Ad",
       "format": "Biçim",
@@ -192,14 +202,17 @@
       "metadataMaxAge": "Önbellekteki meta verinin (dizin dosyaları) uzak kaynakta yeniden denetlenmeden önce ne kadar süre güncel sayılacağı. 0 her seferinde denetler.",
       "negativeCache": "Uzak kaynaktan gelen bir 404 yanıtının ne kadar süre hatırlanacağı. 0 devre dışı bırakır.",
       "offlineMode": "Yalnızca önbellekteki içeriği sun; uzak kaynağa asla bağlanma.",
-      "members": "Sıralı liste: yapıta sahip olan ilk üye kazanır."
+      "members": "Sıralı liste: yapıta sahip olan ilk üye kazanır.",
+      "formatTemplates": "Bu biçimin standart depoları: {names}",
+      "formatSettings": "{format} biçimine özgü ayarlar. Varsayılanı kullanmak için alanı boş bırakın."
     },
     "sections": {
       "general": "Genel",
       "hosted": "Barındırılan depo ayarları",
       "proxy": "Vekil ayarları",
       "remoteAuth": "Uzak kaynak kimlik bilgileri",
-      "group": "Grup üyeleri"
+      "group": "Grup üyeleri",
+      "formatSettings": "Biçim ayarları"
     },
     "members": {
       "add": "Üye ekle",
@@ -280,6 +293,8 @@
     "assetDeleted": "Dosya silindi.",
     "info": {
       "url": "URL",
+      "format": "Biçim",
+      "formatSettings": "Biçim ayarları",
       "remote": "Uzak kaynak",
       "members": "Üyeler",
       "blobStore": "Blob deposu",
@@ -293,25 +308,9 @@
     "intro": "Paket yöneticinizi bu depoya yönlendirmek için aşağıdaki parçacıkları kullanın. Yer tutucuları kullanıcı adınız ve hesap sayfanızdan oluşturduğunuz bir API jetonuyla değiştirin.",
     "tokenLink": "API jetonu oluştur",
     "anonymousHint": "Anonim erişim etkinken indirme için kimlik bilgileri isteğe bağlıdır; yayımlama için her zaman gereklidir.",
-    "maven": {
-      "settings": "settings.xml: bu depoyu yansı olarak kullanın ve kimlik bilgilerinizi kaydedin",
-      "pom": "pom.xml: bu depoya dağıtın",
-      "deploy": "Maven ile dağıt"
-    },
-    "npm": {
-      "registry": "Bu proje için veya genel olarak kayıt defterini ayarlayın",
-      "npmrc": ".npmrc: kayıt defteri ve kimlik doğrulama jetonu",
-      "login": "Veya etkileşimli olarak oturum açın",
-      "publish": "Bir paket yayımlayın"
-    },
-    "nuget": {
-      "source": "Paket kaynağını ekleyin",
-      "push": "Bir paket gönderin",
-      "config": "nuget.config: bir proje için kaynağı yapılandırın"
-    },
-    "generic": {
-      "url": "Depo URL’si"
-    }
+    "empty": "Bu biçim için henüz hazır parçacık yok.",
+    "emptyHint": "İstemcinizin yapılandırmasında yukarıdaki depo URL’sini kullanın.",
+    "language": "Dil: {language}"
   },
   "search": {
     "title": "Arama",
@@ -485,7 +484,8 @@
     "invalidUrl": "Mutlak bir http(s) URL’si girin.",
     "positive": "Sıfırdan büyük olmalıdır.",
     "nonNegative": "Negatif olmamalıdır.",
-    "futureDate": "Gelecekte bir tarih olmalıdır."
+    "futureDate": "Gelecekte bir tarih olmalıdır.",
+    "integer": "Bir tam sayı girin."
   },
   "errors": {
     "title": "Bir sorun oluştu",

@@ -1,26 +1,60 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { RepositoryView } from '@/api/types';
-import { useAuthStore } from '@/stores/auth';
-import { connectSnippets } from '@/utils/snippets';
+import { api } from '@/api';
+import type { ConnectSnippet, RepositoryView } from '@/api/types';
 import CodeBlock from './CodeBlock.vue';
 import CopyButton from './CopyButton.vue';
 import AppIcon from './AppIcon.vue';
+import EmptyState from './EmptyState.vue';
+import ErrorAlert from './ErrorAlert.vue';
+import LoadingIndicator from './LoadingIndicator.vue';
 
+/**
+ * The "Connect" tab of a repository: the snippets come from the server, rendered by the repository's
+ * format with the caller's username already filled in; the API token stays a placeholder.
+ */
 const props = defineProps<{ repository: RepositoryView; anonymousRead?: boolean }>();
 
 const { t } = useI18n();
-const auth = useAuthStore();
 
-const snippets = computed(() =>
-  connectSnippets({
-    format: props.repository.format,
-    url: props.repository.url,
-    name: props.repository.name,
-    username: auth.username ?? undefined,
-  }),
+const snippets = ref<ConnectSnippet[]>([]);
+const loading = ref(true);
+const error = ref<unknown>(null);
+let controller: AbortController | null = null;
+
+async function load(name: string): Promise<void> {
+  controller?.abort();
+  const current = new AbortController();
+  controller = current;
+  loading.value = true;
+  error.value = null;
+  try {
+    const result = await api.repositories.connect(name);
+    if (!current.signal.aborted) {
+      snippets.value = result;
+    }
+  } catch (e) {
+    if (!current.signal.aborted) {
+      snippets.value = [];
+      error.value = e;
+    }
+  } finally {
+    if (!current.signal.aborted) {
+      loading.value = false;
+    }
+  }
+}
+
+watch(
+  () => props.repository.name,
+  (name) => {
+    void load(name);
+  },
+  { immediate: true },
 );
+
+onBeforeUnmount(() => controller?.abort());
 </script>
 
 <template>
@@ -43,6 +77,19 @@ const snippets = computed(() =>
       </div>
     </div>
 
-    <CodeBlock v-for="snippet in snippets" :key="snippet.id" :code="snippet.code" :title="t(snippet.titleKey)" :filename="snippet.filename" />
+    <LoadingIndicator v-if="loading" />
+    <template v-else>
+      <ErrorAlert :error="error" />
+      <EmptyState v-if="!error && !snippets.length" :title="t('connect.empty')" :text="t('connect.emptyHint')" />
+      <CodeBlock
+        v-for="snippet in snippets"
+        :key="snippet.id"
+        :code="snippet.code"
+        :title="snippet.title"
+        :filename="snippet.filename ?? null"
+        :language="snippet.language"
+        :data-snippet="snippet.id"
+      />
+    </template>
   </div>
 </template>

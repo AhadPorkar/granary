@@ -3,12 +3,13 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '@/api';
-import type { AssetView, ComponentView, RepositoryView } from '@/api/types';
+import type { AssetView, ComponentView, FormatView, RepositoryView } from '@/api/types';
 import { REPOSITORIES_MANAGE, useAuthStore } from '@/stores/auth';
 import { useSystemStore } from '@/stores/system';
 import { useToastStore } from '@/stores/toast';
 import { useApiError } from '@/composables/useApiError';
 import { useFormatters } from '@/composables/useFormatters';
+import { formatDisplayName } from '@/utils/repositories';
 import AppIcon from '@/components/AppIcon.vue';
 import AssetTable from '@/components/AssetTable.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -35,6 +36,7 @@ const router = useRouter();
 const PAGE_SIZE = 25;
 
 const repository = ref<RepositoryView | null>(null);
+const formats = ref<FormatView[]>([]);
 const loading = ref(true);
 const error = ref<unknown>(null);
 const busy = ref(false);
@@ -56,7 +58,26 @@ const pendingDelete = ref<{ kind: 'repository' } | { kind: 'component'; componen
 const deleting = ref(false);
 
 const canManage = computed(() => auth.can(REPOSITORIES_MANAGE));
+const formatName = computed(() => (repository.value ? formatDisplayName(repository.value.format, formats.value) : ''));
+const format = computed(() => formats.value.find((f) => f.id === repository.value?.format) ?? null);
+
+/** The configured format settings with the label the format gives them, when it describes the key. */
+const formatSettings = computed(() =>
+  Object.entries(repository.value?.formatSettings ?? {}).map(([key, value]) => ({
+    key,
+    value,
+    label: format.value?.settings.find((s) => s.key === key)?.label ?? null,
+  })),
+);
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function loadFormats(): Promise<void> {
+  try {
+    formats.value = await api.formats();
+  } catch {
+    /* the id is shown instead of the display name */
+  }
+}
 
 async function loadRepository(): Promise<void> {
   loading.value = true;
@@ -236,7 +257,7 @@ watch(
 
 onMounted(() => {
   void system.loadInfo();
-  void Promise.all([loadRepository(), loadComponents()]);
+  void Promise.all([loadRepository(), loadComponents(), loadFormats()]);
 });
 </script>
 
@@ -270,7 +291,7 @@ onMounted(() => {
       <div class="card" style="margin-bottom: 1.25rem">
         <div class="card__body">
           <div class="cluster" style="margin-bottom: 0.75rem">
-            <StatusBadge plain>{{ repository.format }}</StatusBadge>
+            <StatusBadge plain :title="repository.format" data-testid="format-name">{{ formatName }}</StatusBadge>
             <StatusBadge plain variant="info">{{ t(`repositories.types.${repository.type}`) }}</StatusBadge>
             <StatusBadge :variant="repository.online ? 'success' : 'danger'">{{ repository.online ? t('common.online') : t('common.offline') }}</StatusBadge>
             <template v-if="repository.type === 'PROXY'">
@@ -303,6 +324,21 @@ onMounted(() => {
             </template>
             <dt>{{ t('repository.info.size') }}</dt>
             <dd>{{ fmt.bytes(repository.statistics?.bytes ?? 0) }} · {{ t('repositories.stats', { components: fmt.number(repository.statistics?.components ?? 0), assets: fmt.number(repository.statistics?.assets ?? 0) }) }}</dd>
+            <dt>{{ t('repository.info.format') }}</dt>
+            <dd>{{ formatName }} <code v-if="formatName !== repository.format" class="small muted ltr">{{ repository.format }}</code></dd>
+            <template v-if="formatSettings.length">
+              <dt>{{ t('repository.info.formatSettings') }}</dt>
+              <dd>
+                <ul class="setting-list" data-testid="format-settings">
+                  <li v-for="setting in formatSettings" :key="setting.key">
+                    <code class="ltr" :title="setting.label ?? undefined">{{ setting.key }}</code>
+                    <span aria-hidden="true">: </span>
+                    <code class="ltr">{{ setting.value }}</code>
+                    <span v-if="setting.label" class="muted small"> ({{ setting.label }})</span>
+                  </li>
+                </ul>
+              </dd>
+            </template>
             <dt>{{ t('repository.info.blobStore') }}</dt>
             <dd>{{ repository.blobStore }}</dd>
             <dt>{{ t('repository.info.updated') }}</dt>
@@ -396,3 +432,14 @@ onMounted(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.setting-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+</style>

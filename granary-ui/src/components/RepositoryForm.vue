@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { FormatView, RepositoryRequest, RepositoryType, RepositoryView, VersionPolicy } from '@/api/types';
+import type { FormatView, RepositoryRequest, RepositoryType, RepositoryView, SettingDescriptor, VersionPolicy } from '@/api/types';
 import { useApiError } from '@/composables/useApiError';
 import FormField from './FormField.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
@@ -48,6 +48,8 @@ const form = reactive({
   negativeCacheMinutes: '' as string | number,
   offlineMode: false,
   members: [] as string[],
+  /** Format-specific settings as the server stores them: every value is a string. */
+  formatSettings: {} as Record<string, string>,
 });
 
 const localErrors = ref<Record<string, string>>({});
@@ -73,13 +75,19 @@ watch(
       form.negativeCacheMinutes = numberToInput(initial.negativeCacheMinutes);
       form.offlineMode = initial.offlineMode;
       form.members = [...initial.members];
+      form.formatSettings = { ...(initial.formatSettings ?? {}) };
     }
   },
   { immediate: true },
 );
 
+/** Display names sorted alphabetically; the server sorts already, this keeps it so whatever the source. */
+const sortedFormats = computed(() =>
+  [...props.formats].sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }) || a.id.localeCompare(b.id)),
+);
+
 watch(
-  () => props.formats,
+  sortedFormats,
   (formats) => {
     if (!form.format && formats.length) {
       form.format = formats[0].id;
@@ -93,6 +101,45 @@ const isHosted = computed(() => form.type === 'HOSTED');
 const isProxy = computed(() => form.type === 'PROXY');
 const isGroup = computed(() => form.type === 'GROUP');
 const isMaven = computed(() => form.format === MAVEN_FORMAT);
+
+const selectedFormat = computed(() => props.formats.find((f) => f.id === form.format) ?? null);
+
+/** The types the selected format supports, in the canonical order; an unknown format allows all. */
+const allowedTypes = computed<RepositoryType[]>(() => {
+  const supported = selectedFormat.value?.types;
+  const allowed = supported?.length ? TYPES.filter((type) => supported.includes(type)) : TYPES;
+  return allowed.length ? allowed : TYPES;
+});
+
+watch(
+  allowedTypes,
+  (allowed) => {
+    if (!isEdit.value && !allowed.includes(form.type)) {
+      form.type = allowed[0];
+    }
+  },
+  { immediate: true },
+);
+
+/** Settings belong to one format: a new repository must not inherit values typed for the format chosen before. */
+watch(
+  () => form.format,
+  (format, previous) => {
+    if (!isEdit.value && previous && format !== previous) {
+      form.formatSettings = {};
+    }
+  },
+);
+
+/** The settings of the selected format that apply to the selected type. */
+const visibleSettings = computed<SettingDescriptor[]>(() =>
+  (selectedFormat.value?.settings ?? []).filter((s) => !s.appliesTo?.length || s.appliesTo.includes(form.type)),
+);
+
+const templatesHint = computed(() => {
+  const names = selectedFormat.value?.templates ?? [];
+  return !isEdit.value && names.length ? t('repositories.hints.formatTemplates', { names: names.join(', ') }) : undefined;
+});
 
 const memberCandidates = computed(() =>
   props.repositories.filter((r) => r.format === form.format && r.name !== form.name).map((r) => r.name),
@@ -115,6 +162,28 @@ function inputToNumber(value: string | number): number | null {
   }
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
+}
+
+function settingId(setting: SettingDescriptor): string {
+  return `repo-setting-${setting.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+}
+
+function settingValue(setting: SettingDescriptor): string {
+  return form.formatSettings[setting.key] ?? '';
+}
+
+function setSetting(setting: SettingDescriptor, value: string): void {
+  form.formatSettings = { ...form.formatSettings, [setting.key]: value };
+}
+
+/** An untouched boolean shows the server default; once toggled it is stored as "true" or "false". */
+function booleanValue(setting: SettingDescriptor): boolean {
+  const value = form.formatSettings[setting.key] ?? setting.defaultValue ?? 'false';
+  return value.trim().toLowerCase() === 'true';
+}
+
+function settingInputType(setting: SettingDescriptor): 'number' | 'url' | 'text' {
+  return setting.type === 'INTEGER' ? 'number' : setting.type === 'URL' ? 'url' : 'text';
 }
 
 function validate(): boolean {
@@ -150,8 +219,41 @@ function validate(): boolean {
   if (isGroup.value && form.members.length === 0) {
     found.members = t('errors.repository.members.empty');
   }
+  for (const setting of visibleSettings.value) {
+    const value = settingValue(setting).trim();
+    if (!value) {
+      continue;
+    }
+    if (setting.type === 'INTEGER' && !/^-?\d+$/.test(value)) {
+      found[settingId(setting)] = t('validation.integer');
+    } else if (setting.type === 'URL' && !/^https?:\/\/[^\s/]+/i.test(value)) {
+      found[settingId(setting)] = t('validation.invalidUrl');
+    }
+  }
   localErrors.value = found;
   return Object.keys(found).length === 0;
+}
+
+/**
+ * Blank values are dropped so the server applies its defaults; settings that belong to the selected
+ * format but not to the selected type are dropped too. Keys the form does not know (set through the
+ * API) are passed through untouched.
+ */
+function buildFormatSettings(): Record<string, string> {
+  const described = new Map((selectedFormat.value?.settings ?? []).map((s) => [s.key, s]));
+  const result: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(form.formatSettings)) {
+    const value = (raw ?? '').trim();
+    if (!value) {
+      continue;
+    }
+    const descriptor = described.get(key);
+    if (descriptor && descriptor.appliesTo?.length && !descriptor.appliesTo.includes(form.type)) {
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
 }
 
 function buildRequest(): RepositoryRequest {
@@ -165,6 +267,7 @@ function buildRequest(): RepositoryRequest {
     versionPolicy: isHosted.value && isMaven.value ? form.versionPolicy : 'MIXED',
     members: isGroup.value ? [...form.members] : [],
     offlineMode: isProxy.value ? form.offlineMode : false,
+    formatSettings: buildFormatSettings(),
   };
   if (isProxy.value) {
     request.remoteUrl = form.remoteUrl.trim();
@@ -201,10 +304,10 @@ defineExpose({ form });
         </template>
       </FormField>
 
-      <FormField id="repo-format" :label="t('repositories.fields.format')" :error="errors.format" required>
+      <FormField id="repo-format" :label="t('repositories.fields.format')" :hint="templatesHint" :error="errors.format" required>
         <template #default="{ id, invalid, describedBy }">
           <select :id="id" v-model="form.format" class="select" :disabled="isEdit" :aria-invalid="invalid" :aria-describedby="describedBy" data-testid="format-select">
-            <option v-for="f in formats" :key="f.id" :value="f.id">{{ f.displayName }}</option>
+            <option v-for="f in sortedFormats" :key="f.id" :value="f.id">{{ f.displayName }}</option>
           </select>
         </template>
       </FormField>
@@ -213,7 +316,7 @@ defineExpose({ form });
     <fieldset class="field" style="border: 0; padding: 0; margin: 0">
       <legend class="field__label">{{ t('repositories.fields.type') }}</legend>
       <div class="type-options">
-        <label v-for="type in TYPES" :key="type" class="radio type-option" :class="{ 'type-option--selected': form.type === type }">
+        <label v-for="type in allowedTypes" :key="type" class="radio type-option" :class="{ 'type-option--selected': form.type === type }">
           <input v-model="form.type" type="radio" name="repo-type" :value="type" :disabled="isEdit" :data-testid="`type-${type}`" />
           <span class="checkbox__text">
             <strong>{{ t(`repositories.types.${type}`) }}</strong>
@@ -322,6 +425,43 @@ defineExpose({ form });
           <MemberPicker :id="id" v-model="form.members" :candidates="memberCandidates" :format="form.format" />
         </template>
       </FormField>
+    </section>
+
+    <section v-if="visibleSettings.length" class="form-section" data-testid="format-settings-section">
+      <h2 class="form-section__title">{{ t('repositories.sections.formatSettings') }}</h2>
+      <p class="field__hint" style="margin: 0">{{ t('repositories.hints.formatSettings', { format: selectedFormat?.displayName ?? form.format }) }}</p>
+      <div class="form-grid">
+        <template v-for="setting in visibleSettings" :key="setting.key">
+          <ToggleSwitch
+            v-if="setting.type === 'BOOLEAN'"
+            :id="settingId(setting)"
+            :model-value="booleanValue(setting)"
+            :label="setting.label"
+            :hint="setting.description ?? undefined"
+            :data-setting="setting.key"
+            @update:model-value="(value) => setSetting(setting, value ? 'true' : 'false')"
+          />
+          <FormField v-else :id="settingId(setting)" :label="setting.label" :hint="setting.description ?? undefined" :error="errors[settingId(setting)]" optional>
+            <template #default="{ id, invalid, describedBy }">
+              <input
+                :id="id"
+                class="input"
+                :class="{ 'input--mono ltr': setting.type === 'URL' }"
+                :type="settingInputType(setting)"
+                :inputmode="setting.type === 'INTEGER' ? 'numeric' : setting.type === 'URL' ? 'url' : undefined"
+                :step="setting.type === 'INTEGER' ? 1 : undefined"
+                :placeholder="setting.defaultValue ?? undefined"
+                :value="settingValue(setting)"
+                :aria-invalid="invalid"
+                :aria-describedby="describedBy"
+                :data-setting="setting.key"
+                autocomplete="off"
+                @input="setSetting(setting, ($event.target as HTMLInputElement).value)"
+              />
+            </template>
+          </FormField>
+        </template>
+      </div>
     </section>
 
     <div class="form-actions">

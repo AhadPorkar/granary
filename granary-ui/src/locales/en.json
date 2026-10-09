@@ -93,6 +93,7 @@
     "title": "Dashboard",
     "subtitle": "Overview of this Granary instance",
     "repositories": "Repositories",
+    "byFormat": "Repositories by format",
     "components": "Components",
     "assets": "Assets",
     "assetCount": "{count} assets",
@@ -134,7 +135,16 @@
     "empty": "No repositories yet.",
     "emptyHint": "Create a hosted repository to publish artifacts, or a proxy to cache a public registry.",
     "standard": "Create standard repositories",
-    "standardHint": "One click creates the usual proxy, hosted and group repositories for every installed format (Maven Central, npmjs.org, nuget.org and your own).",
+    "standardHint": "One click creates the usual proxy, hosted and group repositories for every installed format: the proxy of the public registry, a repository for your own packages and a group that joins both.",
+    "standardCreatedList": "{count} standard repositories created: {names}",
+    "filter": {
+      "search": "Filter repositories",
+      "searchPlaceholder": "Filter by name or description…",
+      "format": "Format",
+      "allFormats": "All formats",
+      "count": "{shown} of {total} repositories",
+      "noMatches": "No repositories match the filter."
+    },
     "columns": {
       "name": "Name",
       "format": "Format",
@@ -192,14 +202,17 @@
       "metadataMaxAge": "How long cached metadata (index files) stays fresh before it is re-checked upstream. 0 re-checks every time.",
       "negativeCache": "How long an upstream 404 is remembered. 0 disables it.",
       "offlineMode": "Serve cached content only; never contact the upstream.",
-      "members": "Ordered list: the first member that has an artifact wins."
+      "members": "Ordered list: the first member that has an artifact wins.",
+      "formatTemplates": "Standard repositories of this format: {names}",
+      "formatSettings": "Settings specific to {format}. Leave a field blank to use the default."
     },
     "sections": {
       "general": "General",
       "hosted": "Hosted settings",
       "proxy": "Proxy settings",
       "remoteAuth": "Upstream credentials",
-      "group": "Group members"
+      "group": "Group members",
+      "formatSettings": "Format settings"
     },
     "members": {
       "add": "Add member",
@@ -280,6 +293,8 @@
     "assetDeleted": "Asset deleted.",
     "info": {
       "url": "URL",
+      "format": "Format",
+      "formatSettings": "Format settings",
       "remote": "Remote",
       "members": "Members",
       "blobStore": "Blob store",
@@ -293,25 +308,9 @@
     "intro": "Use the snippets below to point your package manager at this repository. Replace the placeholders with your username and an API token from your account page.",
     "tokenLink": "Create an API token",
     "anonymousHint": "Credentials are optional for downloads while anonymous access is enabled; they are always required for publishing.",
-    "maven": {
-      "settings": "settings.xml: use this repository as a mirror and store your credentials",
-      "pom": "pom.xml: deploy to this repository",
-      "deploy": "Deploy with Maven"
-    },
-    "npm": {
-      "registry": "Set the registry for this project or globally",
-      "npmrc": ".npmrc: registry and authentication token",
-      "login": "Or log in interactively",
-      "publish": "Publish a package"
-    },
-    "nuget": {
-      "source": "Add the package source",
-      "push": "Push a package",
-      "config": "nuget.config: configure the source for a project"
-    },
-    "generic": {
-      "url": "Repository URL"
-    }
+    "empty": "This format has no ready-made snippets yet.",
+    "emptyHint": "Use the repository URL above in your client's configuration.",
+    "language": "Language: {language}"
   },
   "search": {
     "title": "Search",
@@ -485,7 +484,8 @@
     "invalidUrl": "Enter an absolute http(s) URL.",
     "positive": "Must be greater than zero.",
     "nonNegative": "Must not be negative.",
-    "futureDate": "Must be in the future."
+    "futureDate": "Must be in the future.",
+    "integer": "Enter a whole number."
   },
   "errors": {
     "title": "Something went wrong",

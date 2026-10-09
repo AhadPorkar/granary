@@ -2,12 +2,13 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '@/api';
-import type { RepositoryView, SystemStatus } from '@/api/types';
+import type { FormatView, RepositoryView, SystemStatus } from '@/api/types';
 import { REPOSITORIES_MANAGE, SETTINGS_MANAGE, useAuthStore } from '@/stores/auth';
 import { useSystemStore } from '@/stores/system';
 import { useToastStore } from '@/stores/toast';
 import { useApiError } from '@/composables/useApiError';
 import { useFormatters } from '@/composables/useFormatters';
+import { countByFormat } from '@/utils/repositories';
 import AppIcon from '@/components/AppIcon.vue';
 import ErrorAlert from '@/components/ErrorAlert.vue';
 import LoadingIndicator from '@/components/LoadingIndicator.vue';
@@ -26,12 +27,14 @@ const loading = ref(true);
 const error = ref<unknown>(null);
 const status = ref<SystemStatus | null>(null);
 const repositories = ref<RepositoryView[]>([]);
+const formats = ref<FormatView[]>([]);
 const togglingOffline = ref(false);
 
 const seesStatus = computed(() => auth.can(SETTINGS_MANAGE) || auth.can(REPOSITORIES_MANAGE));
 const canToggleOffline = computed(() => auth.can(SETTINGS_MANAGE));
 
 const repositoryCount = computed(() => status.value?.repositories ?? repositories.value.length);
+const byFormat = computed(() => countByFormat(repositories.value, formats.value));
 const componentCount = computed(() => repositories.value.reduce((sum, r) => sum + (r.statistics?.components ?? 0), 0));
 const assetCount = computed(() => repositories.value.reduce((sum, r) => sum + (r.statistics?.assets ?? 0), 0));
 const totalBytes = computed(() => repositories.value.reduce((sum, r) => sum + (r.statistics?.bytes ?? 0), 0));
@@ -48,9 +51,14 @@ async function load(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const [repos, stat] = await Promise.all([api.repositories.list(), seesStatus.value ? api.system.status() : Promise.resolve(null)]);
+    const [repos, stat, fmts] = await Promise.all([
+      api.repositories.list(),
+      seesStatus.value ? api.system.status() : Promise.resolve(null),
+      api.formats().catch(() => [] as FormatView[]),
+    ]);
     repositories.value = repos;
     status.value = stat;
+    formats.value = fmts;
   } catch (e) {
     error.value = e;
   } finally {
@@ -123,6 +131,16 @@ onMounted(load);
           <span class="stat__detail">{{ t('dashboard.jvm') }} {{ status.jvm.version }}</span>
         </div>
       </div>
+
+      <section v-if="byFormat.length" class="card" data-testid="by-format">
+        <div class="card__header"><h2>{{ t('dashboard.byFormat') }}</h2></div>
+        <ul class="format-counts">
+          <li v-for="entry in byFormat" :key="entry.format" class="format-counts__item">
+            <RouterLink :to="{ name: 'repositories', query: { format: entry.format } }">{{ entry.displayName }}</RouterLink>
+            <span class="format-counts__value">{{ fmt.number(entry.count) }}</span>
+          </li>
+        </ul>
+      </section>
 
       <div v-if="status" class="grid grid--2">
         <section class="card">
@@ -206,6 +224,29 @@ onMounted(load);
 </template>
 
 <style scoped>
+.format-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 1rem 0.75rem;
+  display: grid;
+  gap: 0.25rem 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+}
+
+.format-counts__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.format-counts__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 .stat--link {
   color: inherit;
 }

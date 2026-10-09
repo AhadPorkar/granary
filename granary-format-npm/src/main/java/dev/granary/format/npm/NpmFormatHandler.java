@@ -1,6 +1,8 @@
 package dev.granary.format.npm;
 
 import dev.granary.core.format.AccessLevel;
+import dev.granary.core.format.ConnectContext;
+import dev.granary.core.format.ConnectSnippet;
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.FormatHandler;
 import dev.granary.core.format.RepositoryTemplate;
@@ -78,6 +80,11 @@ public class NpmFormatHandler implements FormatHandler {
                 RepositoryTemplate.hosted("npm-hosted", FORMAT, "Your own packages"),
                 RepositoryTemplate.group("npm-group", FORMAT, List.of("npm-hosted", "npm-proxy"),
                         "Single registry URL for npm, pnpm, yarn and bun"));
+    }
+
+    @Override
+    public List<ConnectSnippet> connectSnippets(ConnectContext context) {
+        return NpmConnectSnippets.of(context);
     }
 
     @Override

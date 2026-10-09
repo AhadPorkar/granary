@@ -93,6 +93,7 @@
     "title": "Tableau de bord",
     "subtitle": "Vue d’ensemble de cette instance Granary",
     "repositories": "Dépôts",
+    "byFormat": "Dépôts par format",
     "components": "Composants",
     "assets": "Fichiers",
     "assetCount": "{count} fichiers",
@@ -134,7 +135,16 @@
     "empty": "Aucun dépôt pour le moment.",
     "emptyHint": "Créez un dépôt hébergé pour publier des artefacts, ou un proxy pour mettre en cache un registre public.",
     "standard": "Créer les dépôts standard",
-    "standardHint": "Un clic crée les dépôts proxy, hébergés et de groupe habituels pour chaque format installé (Maven Central, npmjs.org, nuget.org et les vôtres).",
+    "standardHint": "Un clic crée les dépôts proxy, hébergés et de groupe habituels pour chaque format installé : le proxy du registre public, un dépôt pour vos propres paquets et un groupe qui réunit les deux.",
+    "standardCreatedList": "{count} dépôts standard créés : {names}",
+    "filter": {
+      "search": "Filtrer les dépôts",
+      "searchPlaceholder": "Filtrer par nom ou description…",
+      "format": "Format",
+      "allFormats": "Tous les formats",
+      "count": "{shown} dépôts sur {total}",
+      "noMatches": "Aucun dépôt ne correspond au filtre."
+    },
     "columns": {
       "name": "Nom",
       "format": "Format",
@@ -192,14 +202,17 @@
       "metadataMaxAge": "Durée pendant laquelle les métadonnées en cache (fichiers d’index) restent valides avant d’être revérifiées en amont. 0 revérifie à chaque fois.",
       "negativeCache": "Durée pendant laquelle un 404 distant est mémorisé. 0 désactive ce cache.",
       "offlineMode": "Ne servir que le contenu en cache ; ne jamais contacter la source distante.",
-      "members": "Liste ordonnée : le premier membre qui possède un artefact l’emporte."
+      "members": "Liste ordonnée : le premier membre qui possède un artefact l’emporte.",
+      "formatTemplates": "Dépôts standard de ce format : {names}",
+      "formatSettings": "Paramètres propres à {format}. Laissez un champ vide pour utiliser la valeur par défaut."
     },
     "sections": {
       "general": "Général",
       "hosted": "Paramètres du dépôt hébergé",
       "proxy": "Paramètres du proxy",
       "remoteAuth": "Identifiants de la source distante",
-      "group": "Membres du groupe"
+      "group": "Membres du groupe",
+      "formatSettings": "Paramètres du format"
     },
     "members": {
       "add": "Ajouter un membre",
@@ -280,6 +293,8 @@
     "assetDeleted": "Fichier supprimé.",
     "info": {
       "url": "URL",
+      "format": "Format",
+      "formatSettings": "Paramètres du format",
       "remote": "Source distante",
       "members": "Membres",
       "blobStore": "Espace de stockage",
@@ -293,25 +308,9 @@
     "intro": "Utilisez les extraits ci-dessous pour diriger votre gestionnaire de paquets vers ce dépôt. Remplacez les espaces réservés par votre nom d’utilisateur et un jeton d’API créé depuis la page de votre compte.",
     "tokenLink": "Créer un jeton d’API",
     "anonymousHint": "Les identifiants sont facultatifs pour télécharger tant que l’accès anonyme est activé ; ils sont toujours requis pour publier.",
-    "maven": {
-      "settings": "settings.xml : utiliser ce dépôt comme miroir et enregistrer vos identifiants",
-      "pom": "pom.xml : déployer vers ce dépôt",
-      "deploy": "Déployer avec Maven"
-    },
-    "npm": {
-      "registry": "Définir le registre pour ce projet ou globalement",
-      "npmrc": ".npmrc : registre et jeton d’authentification",
-      "login": "Ou se connecter de manière interactive",
-      "publish": "Publier un paquet"
-    },
-    "nuget": {
-      "source": "Ajouter la source de paquets",
-      "push": "Envoyer un paquet",
-      "config": "nuget.config : configurer la source pour un projet"
-    },
-    "generic": {
-      "url": "URL du dépôt"
-    }
+    "empty": "Ce format ne propose pas encore d’extraits.",
+    "emptyHint": "Utilisez l’URL du dépôt ci-dessus dans la configuration de votre client.",
+    "language": "Langage : {language}"
   },
   "search": {
     "title": "Recherche",
@@ -485,7 +484,8 @@
     "invalidUrl": "Saisissez une URL http(s) absolue.",
     "positive": "Doit être supérieur à zéro.",
     "nonNegative": "Ne doit pas être négatif.",
-    "futureDate": "Doit être dans le futur."
+    "futureDate": "Doit être dans le futur.",
+    "integer": "Saisissez un nombre entier."
   },
   "errors": {
     "title": "Une erreur s’est produite",

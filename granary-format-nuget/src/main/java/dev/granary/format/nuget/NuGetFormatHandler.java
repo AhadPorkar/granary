@@ -1,5 +1,7 @@
 package dev.granary.format.nuget;
 
+import dev.granary.core.format.ConnectContext;
+import dev.granary.core.format.ConnectSnippet;
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.FormatHandler;
 import dev.granary.core.format.RepositoryTemplate;
@@ -100,6 +102,11 @@ public class NuGetFormatHandler implements FormatHandler {
                 RepositoryTemplate.hosted("nuget-hosted", FORMAT, "Your own packages"),
                 RepositoryTemplate.group("nuget-group", FORMAT, List.of("nuget-hosted", "nuget.org"),
                         "Single package source for dotnet, nuget.exe and Visual Studio"));
+    }
+
+    @Override
+    public List<ConnectSnippet> connectSnippets(ConnectContext context) {
+        return NuGetConnectSnippets.of(context);
     }
 
     /** Index documents (service, flat-container, registration) change with every push; packages never do. */

@@ -1,6 +1,8 @@
 package dev.granary.format.maven;
 
 import dev.granary.core.format.ContentResolver;
+import dev.granary.core.format.ConnectContext;
+import dev.granary.core.format.ConnectSnippet;
 import dev.granary.core.format.ContentResponses;
 import dev.granary.core.format.DirectoryListing;
 import dev.granary.core.format.FormatHandler;
@@ -82,6 +84,11 @@ public class MavenFormatHandler implements FormatHandler {
                         List.of("maven-releases", "maven-snapshots", "maven-central", "maven-google", "clojars", "gradle-plugins"),
                         "Single URL for Maven, Gradle, sbt, Leiningen and Android builds")
                         .withVersionPolicy(VersionPolicy.MIXED));
+    }
+
+    @Override
+    public List<ConnectSnippet> connectSnippets(ConnectContext context) {
+        return MavenConnectSnippets.of(context);
     }
 
     @Override

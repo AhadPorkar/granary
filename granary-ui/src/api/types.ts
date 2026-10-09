@@ -28,9 +28,37 @@ export interface PrincipalView {
   privileges: string[];
 }
 
+export type SettingType = 'STRING' | 'BOOLEAN' | 'INTEGER' | 'URL';
+
+/** One format-specific repository setting, described by the server so the form can render an editor for it. */
+export interface SettingDescriptor {
+  key: string;
+  label: string;
+  type: SettingType;
+  defaultValue?: string | null;
+  description?: string | null;
+  appliesTo: RepositoryType[];
+}
+
 export interface FormatView {
   id: string;
   displayName: string;
+  /** Repository types the format supports; the form offers only these. */
+  types: RepositoryType[];
+  settings: SettingDescriptor[];
+  /** Names of the standard repositories created by POST /repositories/standard. */
+  templates: string[];
+}
+
+export type SnippetLanguage = 'shell' | 'ini' | 'xml' | 'json' | 'yaml' | 'toml' | 'text';
+
+/** Ready-to-paste client configuration rendered by the repository's format on the server. */
+export interface ConnectSnippet {
+  id: string;
+  title: string;
+  language: SnippetLanguage;
+  filename?: string | null;
+  code: string;
 }
 
 export interface UpstreamView {
@@ -68,6 +96,7 @@ export interface RepositoryView {
   negativeCacheMinutes?: number | null;
   offlineMode: boolean;
   members: string[];
+  formatSettings?: Record<string, string>;
   url: string;
   createdAt: string;
   updatedAt: string;
@@ -94,6 +123,7 @@ export interface RepositoryRequest {
   negativeCacheMinutes?: number | null;
   offlineMode?: boolean;
   members?: string[];
+  formatSettings?: Record<string, string>;
 }
 
 export interface ComponentView {

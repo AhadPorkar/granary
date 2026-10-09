@@ -17,7 +17,7 @@
   <packaging>pom</packaging>
 
   <name>Granary</name>
-  <description>Universal, offline-first artifact repository manager (Maven, npm, NuGet, …)</description>
+  <description>Universal, offline-first artifact repository manager (Maven, npm, NuGet, PyPI, Docker, Go, Cargo, Helm and more)</description>
   <url>https://github.com/AhadPorkar/granary</url>
   <inceptionYear>2026</inceptionYear>
 
@@ -33,6 +33,20 @@
     <module>granary-format-maven</module>
     <module>granary-format-npm</module>
     <module>granary-format-nuget</module>
+    <module>granary-format-raw</module>
+    <module>granary-format-pypi</module>
+    <module>granary-format-composer</module>
+    <module>granary-format-rubygems</module>
+    <module>granary-format-cargo</module>
+    <module>granary-format-go</module>
+    <module>granary-format-docker</module>
+    <module>granary-format-helm</module>
+    <module>granary-format-terraform</module>
+    <module>granary-format-conan</module>
+    <module>granary-format-hex</module>
+    <module>granary-format-pub</module>
+    <module>granary-format-swift</module>
+    <module>granary-format-cocoapods</module>
     <module>granary-ui</module>
     <module>granary-server</module>
   </modules>
@@ -77,6 +91,76 @@
       <dependency>
         <groupId>dev.granary</groupId>
         <artifactId>granary-format-nuget</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-raw</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-pypi</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-composer</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-rubygems</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-cargo</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-go</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-docker</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-helm</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-terraform</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-conan</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-hex</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-pub</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-swift</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>dev.granary</groupId>
+        <artifactId>granary-format-cocoapods</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

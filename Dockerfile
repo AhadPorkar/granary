@@ -28,6 +28,20 @@ COPY granary-core/pom.xml granary-core/
 COPY granary-format-maven/pom.xml granary-format-maven/
 COPY granary-format-npm/pom.xml granary-format-npm/
 COPY granary-format-nuget/pom.xml granary-format-nuget/
+COPY granary-format-raw/pom.xml granary-format-raw/
+COPY granary-format-pypi/pom.xml granary-format-pypi/
+COPY granary-format-composer/pom.xml granary-format-composer/
+COPY granary-format-rubygems/pom.xml granary-format-rubygems/
+COPY granary-format-cargo/pom.xml granary-format-cargo/
+COPY granary-format-go/pom.xml granary-format-go/
+COPY granary-format-docker/pom.xml granary-format-docker/
+COPY granary-format-helm/pom.xml granary-format-helm/
+COPY granary-format-terraform/pom.xml granary-format-terraform/
+COPY granary-format-conan/pom.xml granary-format-conan/
+COPY granary-format-hex/pom.xml granary-format-hex/
+COPY granary-format-pub/pom.xml granary-format-pub/
+COPY granary-format-swift/pom.xml granary-format-swift/
+COPY granary-format-cocoapods/pom.xml granary-format-cocoapods/
 COPY granary-ui/pom.xml granary-ui/
 COPY granary-server/pom.xml granary-server/
 # Resolve dependencies first so source changes do not invalidate the download layer.
@@ -41,7 +55,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # ---------------------------------------------------------------- 3. runtime
 FROM ${JRE_IMAGE} AS runtime
 LABEL org.opencontainers.image.title="Granary" \
-      org.opencontainers.image.description="Offline-first artifact repository manager for Maven, npm and NuGet" \
+      org.opencontainers.image.description="Offline-first artifact repository manager for Maven, npm, NuGet, PyPI, Docker, Go, Cargo, Helm and more" \
       org.opencontainers.image.source="https://github.com/AhadPorkar/granary" \
       org.opencontainers.image.licenses="BUSL-1.1"
 

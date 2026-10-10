@@ -23,8 +23,7 @@ public final class ContentResponses {
     /** Streams the asset, honouring {@code If-None-Match}. The caller records the download separately. */
     public static ResponseEntity<?> stream(RepositoryRequest request, StoredContent content) {
         String etag = "\"" + content.asset().getBlobSha256() + "\"";
-        String ifNoneMatch = request.header(HttpHeaders.IF_NONE_MATCH);
-        if (ifNoneMatch != null && ifNoneMatch.contains(etag)) {
+        if (matchesIfNoneMatch(request.header(HttpHeaders.IF_NONE_MATCH), etag)) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED).eTag(etag).build();
         }
         Instant lastModified = content.asset().getUpdatedAt() == null ? Instant.now() : content.asset().getUpdatedAt();
@@ -41,6 +40,30 @@ public final class ContentResponses {
             return builder.build();
         }
         return builder.body(new StoredContentResource(content));
+    }
+
+    /**
+     * Whether an {@code If-None-Match} header matches the strong entity tag {@code etag} (quoted). Implements the
+     * weak comparison RFC 9110 prescribes for this header: {@code *} matches any existing representation, and
+     * {@code W/"x"} matches {@code "x"}.
+     */
+    public static boolean matchesIfNoneMatch(String ifNoneMatch, String etag) {
+        if (ifNoneMatch == null || ifNoneMatch.isBlank()) {
+            return false;
+        }
+        for (String candidate : ifNoneMatch.split(",")) {
+            String tag = candidate.trim();
+            if (tag.equals("*")) {
+                return true;
+            }
+            if (tag.startsWith("W/")) {
+                tag = tag.substring(2);
+            }
+            if (tag.equals(etag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static ResponseEntity<?> notFound() {

@@ -116,8 +116,9 @@ its protocol as well:
   types) describe the keys a repository may carry in its `formatSettings` map, stored as JSON text
   in `repositories.format_settings`. `GET /api/v1/formats` publishes them with the supported types
   and template names, and the UI builds its repository form from that. Values are strings; the
-  handler's `validate` checks them. Every key is listed in
-  [configuration.md](configuration.md#format-settings).
+  handler's `validate` checks them. Core adds its own settings there (`FormatRegistry.settings`):
+  `upstream.credentialHosts` for every format with proxy repositories, checked by core's repository
+  validation. Every key is listed in [configuration.md](configuration.md#format-settings).
 * **Root routes** are described below.
 
 Adding a format therefore means one new Maven module, one handler bean and tests. The core,

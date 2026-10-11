@@ -788,6 +788,12 @@
           "label": "/.well-known/terraform.json ausliefern",
           "description": "Beantwortet das serverweite Service-Discovery-Dokument aus diesem Repository, sodass der Granary-Hostname in Provider- und Moduladressen funktioniert. Ein Repository pro Server, meist die Gruppe."
         }
+      },
+      "upstream": {
+        "credentialHosts": {
+          "label": "Weitere Hosts für Upstream-Zugangsdaten",
+          "description": "Kommagetrennte Hosts, die neben Schema, Host und Port der Remote-URL selbst die Upstream-Zugangsdaten dieses Proxys erhalten: host, host:port (ein Host ohne Port steht für den Standardport) oder *.example.com für dessen Subdomains. Kein anderer Host erhält sie jemals, und unverschlüsseltes HTTP nie, wenn die Remote-URL HTTPS verwendet."
+        }
       }
     }
   }

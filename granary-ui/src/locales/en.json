@@ -788,6 +788,12 @@
           "label": "Serve /.well-known/terraform.json",
           "description": "Answer the server-wide service discovery document from this repository, so the Granary host name works in provider and module addresses. One repository per server, usually the group."
         }
+      },
+      "upstream": {
+        "credentialHosts": {
+          "label": "Additional hosts for upstream credentials",
+          "description": "Comma-separated hosts that receive this proxy's upstream credentials besides the remote URL's own scheme, host and port: host, host:port (a bare host means the default port) or *.example.com for its subdomains. No other host ever receives them, and plain HTTP never does when the remote URL uses HTTPS."
+        }
       }
     }
   }

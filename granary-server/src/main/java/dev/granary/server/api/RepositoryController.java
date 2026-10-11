@@ -69,7 +69,7 @@ public class RepositoryController {
     public List<Dtos.FormatView> formats() {
         return formats.all().stream()
                 .sorted(java.util.Comparator.comparing(f -> f.displayName().toLowerCase(java.util.Locale.ROOT)))
-                .map(f -> new Dtos.FormatView(f.format(), f.displayName(), f.supportedTypes(), f.settings(),
+                .map(f -> new Dtos.FormatView(f.format(), f.displayName(), f.supportedTypes(), formats.settings(f),
                         f.templates().stream().map(RepositoryTemplate::name).toList()))
                 .toList();
     }

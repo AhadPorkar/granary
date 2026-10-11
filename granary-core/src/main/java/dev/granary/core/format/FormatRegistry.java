@@ -1,6 +1,9 @@
 package dev.granary.core.format;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.model.RepositoryType;
+import dev.granary.core.proxy.UpstreamCredentials;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -40,5 +43,19 @@ public class FormatRegistry {
 
     public Collection<FormatHandler> all() {
         return Collections.unmodifiableCollection(handlers.values());
+    }
+
+    /**
+     * The settings a repository of this format offers: the format's own ({@link FormatHandler#settings()}) followed
+     * by the settings core implements once for every format, such as {@value UpstreamCredentials#HOSTS_SETTING}
+     * for proxies.
+     */
+    public List<SettingDescriptor> settings(FormatHandler handler) {
+        List<SettingDescriptor> all = new ArrayList<>(handler.settings());
+        if (handler.supportedTypes().contains(RepositoryType.PROXY)
+                && all.stream().noneMatch(s -> s.key().equals(UpstreamCredentials.HOSTS_SETTING))) {
+            all.add(UpstreamCredentials.HOSTS_DESCRIPTOR);
+        }
+        return List.copyOf(all);
     }
 }

@@ -362,6 +362,13 @@ root (see [ADR 0012](docs/adr/0012-root-routing.md)).
 * Snippets in the *Connect* panel never contain a real secret; tokens are created and shown once
   on the account page.
 * Passwords are stored with bcrypt, tokens as SHA-256 hashes; neither is recoverable from the database.
+* A proxy's upstream credentials go only to the origin (scheme, host and port) of its remote URL,
+  in every format and across redirects; download hosts the upstream links to (GitHub, CDNs,
+  `files.pythonhosted.org`, …) are asked without them, and plain HTTP never receives the
+  credentials of an HTTPS upstream. The proxy setting `upstream.credentialHosts` lists further
+  hosts that may receive them; a container registry's token service gets them because the
+  registry protocol names it. See
+  [docs/configuration.md](docs/configuration.md#upstream-credentials).
 
 ## Architecture
 

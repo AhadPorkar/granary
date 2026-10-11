@@ -139,8 +139,10 @@ chart's archive. Deleting a version never removes files that belong to another v
 * An uncached index or chart while the upstream is down, or while the repository (or the whole
   server) is offline, is a `503` (`upstream.unavailable` / `upstream.offline`), which helm reports
   as a failed download rather than as a missing chart.
-* Upstream credentials (*remote username/password* or *remote token*) are sent with every upstream
-  request of the repository.
+* Upstream credentials (*remote username/password* or *remote token*) are sent only to the origin
+  (scheme, host and port) of the remote URL. Chart archives the index links on other hosts (a
+  GitHub release download, say) are fetched without them, as are redirects to another host,
+  unless the host is listed in [`upstream.credentialHosts`](../configuration.md#upstream-credentials).
 * Proxies are read-only: uploads and deletes answer `405`.
 
 ## Group
@@ -252,10 +254,6 @@ credentials, `health` stays open).
 * Granary does not check provenance signatures; it stores and serves `.prov` files, checks that they
   belong to their archive, and leaves signature verification to `helm pull --verify`.
 * A proxy uses the first URL of each index entry; mirrors listed after it are not tried.
-* A proxy sends its upstream credentials to every host its index links archives to (for example a
-  release download host). The CocoaPods, Composer, Go and pub proxies limit them to the upstream's
-  own origin; the Helm proxy does not yet, so configure credentials only for upstreams whose
-  archives stay on hosts you trust with them.
 * `helm cm-push` needs helm 3: helm 4 installs the helm-push plugin (0.10.4, with `--verify=false`)
   as a getter plugin and offers no `cm-push` command, so upload with curl or `PUT` from helm 4.
 * ChartMuseum's `api/charts/<name>/<version>/templates` and `…/values` endpoints and its

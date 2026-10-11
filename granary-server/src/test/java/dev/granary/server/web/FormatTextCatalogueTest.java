@@ -100,9 +100,10 @@ class FormatTextCatalogueTest extends IntegrationTest {
         assertThat(problems).isEmpty();
     }
 
+    /** Every setting the UI is offered: each format's own and those core adds to every format (FormatRegistry#settings). */
     private Map<String, SettingDescriptor> settings() {
         Map<String, SettingDescriptor> all = new TreeMap<>();
-        formats.all().forEach(handler -> handler.settings().forEach(setting -> all.put(setting.key(), setting)));
+        formats.all().forEach(handler -> formats.settings(handler).forEach(setting -> all.put(setting.key(), setting)));
         return all;
     }
 

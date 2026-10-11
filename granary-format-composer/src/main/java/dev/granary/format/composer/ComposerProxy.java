@@ -90,7 +90,7 @@ public class ComposerProxy {
     /** The upstream's {@code packages.json}, from the cache when fresh or the upstream is unreachable. */
     public Optional<ObjectNode> upstreamRoot(Repository repo) {
         URI uri = rootUri(repo);
-        return proxy.fetch(UpstreamScope.credentialsFor(repo, uri), ROOT_CACHE, uri, FetchOptions.index(), ACCEPT_JSON)
+        return proxy.fetch(repo, ROOT_CACHE, uri, FetchOptions.index(), ACCEPT_JSON)
                 .flatMap(this::object);
     }
 
@@ -165,7 +165,7 @@ public class ComposerProxy {
     public Lookup metadata(Repository repo, String name, boolean dev) {
         String path = ComposerPath.metadataPath(name, dev);
         URI uri = metadataUri(repo, name + (dev ? ComposerPath.DEV_SUFFIX : ""));
-        Optional<StoredContent> content = proxy.fetch(UpstreamScope.credentialsFor(repo, uri), path, uri,
+        Optional<StoredContent> content = proxy.fetch(repo, path, uri,
                 FetchOptions.index(), ACCEPT_JSON);
         if (content.isPresent()) {
             Optional<P2Document> doc = parseDocument(content.get(), name);
@@ -320,8 +320,9 @@ public class ComposerProxy {
     }
 
     /**
-     * Downloads an archive from a host other than the upstream's: without the repository's upstream credentials and
-     * behind a circuit breaker of its own, so a rate-limited GitHub cannot take the metadata upstream down with it.
+     * Downloads an archive from a host other than the upstream's: without the repository's upstream credentials
+     * (unless that host is listed in {@code upstream.credentialHosts}) and behind a circuit breaker of its own, so a
+     * rate-limited GitHub cannot take the metadata upstream down with it.
      */
     private Dist fetchForeign(Repository repo, String path, URI uri, StorageService.ComponentCoordinates coordinates) {
         if (proxy.isOffline(repo) || negativeCache.contains(repo.getId(), path)) {
@@ -451,7 +452,7 @@ public class ComposerProxy {
             log.warn("{}: upstream URL {} is invalid", repo.getName(), url);
             return Optional.empty();
         }
-        return proxy.fetch(UpstreamScope.credentialsFor(repo, uri), cachePath, uri, FetchOptions.index(), ACCEPT_JSON)
+        return proxy.fetch(repo, cachePath, uri, FetchOptions.index(), ACCEPT_JSON)
                 .flatMap(this::object);
     }
 

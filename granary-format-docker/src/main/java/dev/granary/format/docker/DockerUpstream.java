@@ -5,7 +5,9 @@ import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.NegativeCache;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.proxy.UpstreamClient;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.proxy.UpstreamHealth;
+import dev.granary.core.storage.Checksums;
 import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
 import java.io.IOException;
@@ -37,7 +39,14 @@ import tools.jackson.databind.ObjectMapper;
  * exchange: the first request answers 401 with {@code WWW-Authenticate: Bearer realm=...,service=...}, the client
  * fetches a short-lived token from the realm (anonymously, or with the repository's remote credentials) and retries
  * with {@code Authorization: Bearer}. The challenge is probed once per repository and the tokens are cached per
- * image until shortly before they expire.
+ * image until shortly before they expire, and only for the remote URL, realm and credentials they were issued for.
+ *
+ * <p>The realm is usually on another host than the registry (auth.docker.io for registry-1.docker.io), so the
+ * token request is the one place where the repository's credentials deliberately leave the remote URL's origin:
+ * the registry itself names that host as the place to authenticate (a challenge answered by a host the registry's
+ * {@code /v2/} redirected to is not the registry's and is ignored). Everything else follows the rule of
+ * {@link UpstreamClient}: the probe goes without credentials, and a request with a bearer token carries that token
+ * instead of the credentials, only on the registry's origin (blob redirects to a CDN or object store get neither).
  */
 @Component
 public class DockerUpstream {
@@ -62,10 +71,15 @@ public class DockerUpstream {
         public static final Challenge NONE = new Challenge(Scheme.NONE, null, null);
     }
 
-    private record CachedChallenge(Challenge challenge, String remoteUrl, Instant expires) {
+    /** A probed challenge, with the URL that answered it (after the probe's redirects) when it was a 401. */
+    private record CachedChallenge(Challenge challenge, URI answeredBy, String remoteUrl, Instant expires) {
     }
 
-    private record CachedToken(String token, Instant expires) {
+    /**
+     * A pull token and what it was issued for ({@link #issuer}): it is only ever sent back to the registry whose
+     * realm issued it, for the credentials it was issued against.
+     */
+    private record CachedToken(String token, String issuer, Instant expires) {
     }
 
     private final UpstreamClient client;
@@ -149,16 +163,15 @@ public class DockerUpstream {
         }
         Challenge challenge = challenge(repo);
         boolean bearer = false;
-        Repository requester = repo;
         if (challenge.scheme() == Scheme.BEARER && !hasRemoteToken(repo)) {
             Optional<String> token = token(repo, challenge, name);
             if (token.isPresent()) {
+                // replaces the repository's credentials in UpstreamClient, which keeps it on the registry's origin
                 headers.put("Authorization", "Bearer " + token.get());
-                requester = withoutCredentials(repo);
                 bearer = true;
             }
         }
-        Optional<StoredContent> result = proxyFetch(requester, cachePath, target, options, headers);
+        Optional<StoredContent> result = proxyFetch(repo, cachePath, target, options, headers);
         if (result.isEmpty()) {
             denied(repo, cachePath, name, bearer, before.consecutiveFailures());
         }
@@ -232,14 +245,21 @@ public class DockerUpstream {
         CachedChallenge cached = challenges.get(repo.getId());
         Instant now = clock.instant();
         if (cached != null && cached.expires().isAfter(now) && cached.remoteUrl().equals(repo.getRemoteUrl())) {
-            return cached.challenge();
+            return usable(repo, cached);
         }
         Challenge probed;
+        URI answeredBy = null;
         Duration ttl;
-        try (UpstreamClient.Response response = client.getAbsolute(withoutCredentials(repo), v2Base(repo), Map.of(), Map.of())) {
+        // anonymous on purpose: the answer to a request without credentials is the challenge this probe is after
+        try (UpstreamClient.Response response = client.getAnonymous(repo, v2Base(repo), Map.of(), Map.of())) {
             if (response.status() == 401) {
                 probed = parseChallenge(response.header("WWW-Authenticate").orElse(""));
+                answeredBy = response.uri();
                 ttl = CHALLENGE_TTL;
+                if (probed.scheme() == Scheme.BEARER && !challengeTrusted(repo, answeredBy)) {
+                    log.warn("upstream of {} redirected /v2/ to {}, which may not receive its credentials; ignoring the "
+                            + "realm that host names", repo.getName(), answeredBy);
+                }
             } else if (response.status() == 200) {
                 probed = Challenge.NONE;
                 ttl = CHALLENGE_TTL;
@@ -256,8 +276,28 @@ public class DockerUpstream {
             Thread.currentThread().interrupt();
             return Challenge.NONE;
         }
-        challenges.put(repo.getId(), new CachedChallenge(probed, repo.getRemoteUrl(), now.plus(ttl)));
-        return probed;
+        CachedChallenge fresh = new CachedChallenge(probed, answeredBy, repo.getRemoteUrl(), now.plus(ttl));
+        challenges.put(repo.getId(), fresh);
+        return usable(repo, fresh);
+    }
+
+    /**
+     * The cached challenge as the repository may use it now: a realm named by a host the credentials may not go to
+     * is ignored. Decided on every use, not only when probing, because credentials or {@code upstream.credentialHosts}
+     * may have changed since (a proxy that had no credentials when it was probed may have some now).
+     */
+    private static Challenge usable(Repository repo, CachedChallenge cached) {
+        Challenge challenge = cached.challenge();
+        return challenge.scheme() == Scheme.BEARER && !challengeTrusted(repo, cached.answeredBy()) ? Challenge.NONE : challenge;
+    }
+
+    /**
+     * Whether the challenge in a probe's answer is the registry's own. The registry's {@code /v2/} may redirect, and
+     * the probe follows; a host it was sent to that may not receive the repository's credentials (another origin,
+     * not listed in {@code upstream.credentialHosts}) does not get to name the realm they are sent to either.
+     */
+    static boolean challengeTrusted(Repository repo, URI answeredBy) {
+        return answeredBy == null || !UpstreamCredentials.present(repo) || UpstreamCredentials.permitted(repo, answeredBy);
     }
 
     /** Parses a {@code WWW-Authenticate} value such as {@code Bearer realm="https://auth.docker.io/token",service="registry.docker.io"}. */
@@ -297,16 +337,23 @@ public class DockerUpstream {
     public Optional<String> token(Repository repo, Challenge challenge, String name) {
         String scope = "repository:" + name + ":pull";
         String key = repo.getId() + "|" + scope;
+        String issuer = issuer(repo, challenge);
         CachedToken cached = tokens.get(key);
         Instant now = clock.instant();
-        if (cached != null && cached.expires().isAfter(now)) {
+        // a token issued for another remote URL (the repository was pointed at another registry), another realm or
+        // other credentials is never sent: it would hand one registry's token to another
+        if (cached != null && cached.issuer().equals(issuer) && cached.expires().isAfter(now)) {
             return Optional.of(cached.token());
         }
         URI realm = tokenUri(challenge, scope);
         if (realm == null) {
             return Optional.empty();
         }
-        try (UpstreamClient.Response response = client.getAbsolute(repo, realm, Map.of(), Map.of("Accept", MediaTypes.JSON))) {
+        // The registry's WWW-Authenticate challenge names this realm as its token service, usually on another host
+        // (auth.docker.io for registry-1.docker.io, a GitLab instance for its registry): the protocol itself sends
+        // the repository's credentials there, so they go to the realm's origin deliberately. A repository without
+        // credentials asks for an anonymous token.
+        try (UpstreamClient.Response response = client.getWithCredentials(repo, realm, Map.of(), Map.of("Accept", MediaTypes.JSON))) {
             if (response.status() != 200) {
                 log.warn("token endpoint {} of {} answered {} for scope {}", challenge.realm(), repo.getName(),
                         response.status(), scope);
@@ -333,7 +380,7 @@ public class DockerUpstream {
             if (keep.compareTo(TOKEN_MIN_TTL) < 0) {
                 keep = TOKEN_MIN_TTL;
             }
-            tokens.put(key, new CachedToken(token, now.plus(keep)));
+            tokens.put(key, new CachedToken(token, issuer, now.plus(keep)));
             return Optional.of(token);
         } catch (IOException | RuntimeException e) {
             log.warn("could not obtain a token from {} for {}: {}", challenge.realm(), repo.getName(), e.getMessage());
@@ -342,6 +389,17 @@ public class DockerUpstream {
             Thread.currentThread().interrupt();
             return Optional.empty();
         }
+    }
+
+    /**
+     * What a token is issued for: the registry (remote URL), the realm and service of its challenge and the
+     * credentials it was asked with, as a digest so the cache holds no password.
+     */
+    static String issuer(Repository repo, Challenge challenge) {
+        String raw = String.join("\n", String.valueOf(repo.getRemoteUrl()), String.valueOf(challenge.realm()),
+                String.valueOf(challenge.service()), String.valueOf(repo.getRemoteUsername()),
+                String.valueOf(repo.getRemotePassword()));
+        return Checksums.hex("SHA-256", raw.getBytes(StandardCharsets.UTF_8));
     }
 
     static URI tokenUri(Challenge challenge, String scope) {
@@ -369,33 +427,6 @@ public class DockerUpstream {
 
     static boolean hasRemoteToken(Repository repo) {
         return repo.getRemoteToken() != null && !repo.getRemoteToken().isBlank();
-    }
-
-    /**
-     * A copy of the repository without remote credentials. {@link UpstreamClient} adds the repository's credentials
-     * to every request; when a bearer token is sent instead, the copy keeps it from adding a second
-     * {@code Authorization} header.
-     */
-    static Repository withoutCredentials(Repository repo) {
-        Repository copy = new Repository();
-        copy.setId(repo.getId());
-        copy.setName(repo.getName());
-        copy.setFormat(repo.getFormat());
-        copy.setType(repo.getType());
-        copy.setOnline(repo.isOnline());
-        copy.setBlobStore(repo.getBlobStore());
-        copy.setDescription(repo.getDescription());
-        copy.setAllowRedeploy(repo.isAllowRedeploy());
-        copy.setVersionPolicy(repo.getVersionPolicy());
-        copy.setRemoteUrl(repo.getRemoteUrl());
-        copy.setConnectTimeoutSeconds(repo.getConnectTimeoutSeconds());
-        copy.setReadTimeoutSeconds(repo.getReadTimeoutSeconds());
-        copy.setMetadataMaxAgeMinutes(repo.getMetadataMaxAgeMinutes());
-        copy.setNegativeCacheMinutes(repo.getNegativeCacheMinutes());
-        copy.setOfflineMode(repo.isOfflineMode());
-        copy.setMembers(repo.getMembers());
-        copy.setFormatSettings(repo.getFormatSettings());
-        return copy;
     }
 
     private static String text(JsonNode node, String field) {

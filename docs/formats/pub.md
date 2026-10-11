@@ -86,8 +86,9 @@ from pub.dev.
 * Archives are downloaded from the `archive_url` the upstream listing names (pub.dev:
   `https://pub.dev/api/archives/<name>-<version>.tar.gz`), checked against its `archive_sha256` (a
   mismatch is a `502` and nothing is cached) and then cached forever. With upstream credentials
-  configured, archives are only fetched from the upstream's own host, because the credentials go with
-  every request.
+  configured, an `archive_url` on another origin is not followed (the credentials would not go
+  with it); the archive is asked from the upstream itself under its conventional path instead,
+  unless that host is listed in [`upstream.credentialHosts`](../configuration.md#upstream-credentials).
 * Advisories are passed through. While an advisories document cannot be served (offline and never
   fetched) the listing leaves out `advisoriesUpdated`, so the client does not ask for it.
 * The upstream's `latest`, `retracted`, `isDiscontinued` and `replacedBy` are kept.

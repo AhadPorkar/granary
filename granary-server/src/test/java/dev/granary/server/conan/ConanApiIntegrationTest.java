@@ -47,7 +47,7 @@ class ConanApiIntegrationTest extends IntegrationTest {
         assertThat(conan.path("templates").valueStream().map(JsonNode::asString))
                 .containsExactly("conancenter", "conan-hosted", "conan-group");
         assertThat(conan.path("settings").valueStream().map(s -> s.path("key").asString()))
-                .containsExactly("conan.tokenTtlHours", "conan.upstreamAuth");
+                .containsExactly("conan.tokenTtlHours", "conan.upstreamAuth", "upstream.credentialHosts");
     }
 
     @Test

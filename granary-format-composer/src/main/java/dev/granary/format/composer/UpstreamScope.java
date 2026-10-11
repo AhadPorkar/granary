@@ -1,18 +1,22 @@
 package dev.granary.format.composer;
 
 import dev.granary.core.model.Repository;
+import dev.granary.core.proxy.UpstreamCredentials;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Composer repositories hand out URLs on other hosts: Packagist's search and advisory APIs live on
  * {@code packagist.org} while its metadata comes from {@code repo.packagist.org}, and nearly every dist URL
  * points at GitHub, GitLab or Bitbucket. Like Composer itself, the proxy sends the repository's upstream
- * credentials only to the upstream's own origin, and it keeps a separate circuit breaker per foreign host so that
- * GitHub rate limiting a download does not make the metadata upstream look down.
+ * credentials only to the upstream's own origin (and to the hosts an administrator listed in
+ * {@code upstream.credentialHosts}); {@link dev.granary.core.proxy.UpstreamClient} enforces that for every request.
+ * This class keeps a separate circuit breaker per foreign host so that GitHub rate limiting a download does not
+ * make the metadata upstream look down.
  */
 public final class UpstreamScope {
 
@@ -40,23 +44,15 @@ public final class UpstreamScope {
 
     /** Whether {@code uri} is on the same origin as the repository's remote URL. */
     public static boolean sameOrigin(Repository repo, URI uri) {
-        String remote = repo.getRemoteUrl() == null ? null : origin(repo.getRemoteUrl());
-        String target = origin(uri);
-        return remote != null && remote.equals(target);
+        Optional<UpstreamCredentials.Origin> remote = UpstreamCredentials.Origin.of(repo.getRemoteUrl());
+        return remote.isPresent() && remote.equals(UpstreamCredentials.Origin.of(uri));
     }
 
     /**
-     * The repository itself for its own origin, otherwise a copy without upstream credentials that shares the
-     * repository's identity (cache, negative cache and circuit breaker). For {@code ProxyService} fetches.
-     */
-    public static Repository credentialsFor(Repository repo, URI uri) {
-        return sameOrigin(repo, uri) ? repo : copy(repo, repo.getId(), repo.getName());
-    }
-
-    /**
-     * The repository itself for its own origin, otherwise a stand-in without credentials whose identity is derived
-     * from the foreign origin, so that the stand-in's failures open a circuit breaker of its own. Only for talking to
-     * the network; never store content under the stand-in.
+     * The repository itself for its own origin, otherwise a stand-in whose identity is derived from the foreign
+     * origin, so that the stand-in's failures open a circuit breaker of its own. The stand-in keeps the remote URL,
+     * the credentials and the settings, so the client applies the same credential rule as for the repository. Only
+     * for talking to the network; never store content under the stand-in.
      */
     public static Repository hostScope(Repository repo, URI uri) {
         if (sameOrigin(repo, uri)) {
@@ -67,7 +63,6 @@ public final class UpstreamScope {
         return copy(repo, id, repo.getName() + " via " + origin);
     }
 
-    /** A copy without upstream credentials. */
     private static Repository copy(Repository repo, UUID id, String name) {
         Repository copy = new Repository();
         copy.setId(id);
@@ -80,6 +75,9 @@ public final class UpstreamScope {
         copy.setAllowRedeploy(repo.isAllowRedeploy());
         copy.setVersionPolicy(repo.getVersionPolicy());
         copy.setRemoteUrl(repo.getRemoteUrl());
+        copy.setRemoteUsername(repo.getRemoteUsername());
+        copy.setRemotePassword(repo.getRemotePassword());
+        copy.setRemoteToken(repo.getRemoteToken());
         copy.setConnectTimeoutSeconds(repo.getConnectTimeoutSeconds());
         copy.setReadTimeoutSeconds(repo.getReadTimeoutSeconds());
         copy.setMetadataMaxAgeMinutes(repo.getMetadataMaxAgeMinutes());

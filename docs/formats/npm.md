@@ -51,6 +51,10 @@ the legacy login and treats the audit as "no data".
   stale while upstream is unreachable. Tarballs are immutable and cached forever.
 * Tarball URLs inside packuments are rewritten to the Granary repository (or the group the
   client asked through), so a lockfile never points at the public registry.
+* A `dist.tarball` URL is followed only on the registry's own origin (or a host listed in
+  [`upstream.credentialHosts`](../configuration.md#upstream-credentials)); anything else, such as
+  the `http://` links of a registry behind a TLS proxy, is asked from `remoteUrl` under the
+  conventional `<name>/-/<file>.tgz` path, which carries the proxy's upstream credentials.
 * `npm search` is forwarded to the upstream and not cached (results are short-lived).
 * `remoteUrl` is the registry root, e.g. `https://registry.npmjs.org/`.
 

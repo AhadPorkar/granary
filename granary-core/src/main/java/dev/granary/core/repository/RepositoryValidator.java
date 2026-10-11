@@ -7,6 +7,7 @@ import dev.granary.core.dao.RepositoryDao;
 import dev.granary.core.format.FormatRegistry;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
+import dev.granary.core.proxy.UpstreamCredentials;
 import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -110,6 +111,7 @@ public class RepositoryValidator {
         checkPositive(repo.getReadTimeoutSeconds(), "readTimeoutSeconds");
         checkNonNegative(repo.getMetadataMaxAgeMinutes(), "metadataMaxAgeMinutes");
         checkNonNegative(repo.getNegativeCacheMinutes(), "negativeCacheMinutes");
+        UpstreamCredentials.validate(repo);
     }
 
     private void validateGroup(Repository repo) {

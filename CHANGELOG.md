@@ -159,13 +159,19 @@ its real clients, on a core hardened for concurrent writes and long-running oper
 
 ### Security
 
-- Proxies that follow download links to other hosts send the repository's upstream credentials
-  only to the upstream's own origin (CocoaPods source archives, Composer dist archives, the Go
-  checksum database, pub archives). The Helm, Terraform, Cargo, PyPI, Elm and NuGet proxies do
-  not yet: they send them to every host their index, service index or download documents point at
-  (and to the configured `cargo.downloadUrl`, `cargo.apiUrl` and `pypi.filesUrl` hosts, and
-  `github.com` for Elm packages), so configure upstream credentials there only for upstreams whose
-  download hosts you trust with them.
+- A proxy's upstream credentials (`remoteUsername`/`remotePassword` or `remoteToken`) are sent
+  only to the origin (scheme, host and port) of its `remoteUrl`, for every format: download hosts
+  named by an index, a service index or a download document (Helm chart and Terraform download
+  hosts, `cargo.downloadUrl`/`cargo.apiUrl`, `pypi.filesUrl`, `github.com` for Elm, NuGet resources
+  on other hosts, CocoaPods and Composer archives, the Go checksum database) are asked without
+  them. Redirects are followed by Granary itself and drop the credentials (and any token a format
+  added) when they leave that origin; plain HTTP never receives the credentials of an HTTPS
+  upstream, and `https` to `http` redirects are not followed. The new proxy setting
+  `upstream.credentialHosts`, offered for every format, names further hosts (`host`, `host:port`,
+  `*.example.com`) that may receive them. The Docker proxy still sends its credentials to the token
+  realm a registry names in its `WWW-Authenticate` challenge, as the registry protocol requires, but
+  not to a realm named by a host the registry redirected to, and a token goes back only to the
+  registry it was issued for.
 - HTML, SVG and XML files in raw repositories are served with a sandboxing
   `Content-Security-Policy`, so an uploaded page cannot act with the Granary UI's session.
 - Every new format checks its own path grammar before storage is touched, on top of the

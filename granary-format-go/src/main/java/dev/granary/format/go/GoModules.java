@@ -259,7 +259,9 @@ public class GoModules {
                     yield Optional.empty();
                 }
                 URI upstream = sumdbUri(repo, path);
-                yield proxy.fetch(withoutForeignCredentials(repo, upstream), path.raw(), upstream,
+                // UpstreamClient sends the proxy's credentials only if the database shares the remote URL's origin (or
+                // its host is listed in upstream.credentialHosts), never to sum.golang.org or a mirror elsewhere
+                yield proxy.fetch(repo, path.raw(), upstream,
                         path.isMetadata() ? FetchOptions.index() : FetchOptions.artifact(), Map.of());
             }
             case GROUP -> {
@@ -275,62 +277,6 @@ public class GoModules {
                 yield Optional.empty();
             }
         };
-    }
-
-    /**
-     * The repository as the checksum-database request should see it: the upstream credentials of a proxy (a private
-     * GOPROXY's token or password) are only sent when the database lives on the same origin as {@code remoteUrl},
-     * never to sum.golang.org or a mirror on another host. Cache, negative cache and health stay the proxy's own.
-     */
-    static Repository withoutForeignCredentials(Repository proxyRepo, URI sumdb) {
-        boolean credentials = notBlank(proxyRepo.getRemoteToken()) || notBlank(proxyRepo.getRemoteUsername());
-        if (!credentials || sameOrigin(proxyRepo.getRemoteUrl(), sumdb)) {
-            return proxyRepo;
-        }
-        Repository view = new Repository();
-        view.setId(proxyRepo.getId());
-        view.setName(proxyRepo.getName());
-        view.setFormat(proxyRepo.getFormat());
-        view.setType(proxyRepo.getType());
-        view.setOnline(proxyRepo.isOnline());
-        view.setOfflineMode(proxyRepo.isOfflineMode());
-        view.setBlobStore(proxyRepo.getBlobStore());
-        view.setRemoteUrl(proxyRepo.getRemoteUrl());
-        view.setConnectTimeoutSeconds(proxyRepo.getConnectTimeoutSeconds());
-        view.setReadTimeoutSeconds(proxyRepo.getReadTimeoutSeconds());
-        view.setMetadataMaxAgeMinutes(proxyRepo.getMetadataMaxAgeMinutes());
-        view.setNegativeCacheMinutes(proxyRepo.getNegativeCacheMinutes());
-        if (proxyRepo.getFormatSettings() != null) {
-            view.setFormatSettings(new LinkedHashMap<>(proxyRepo.getFormatSettings()));
-        }
-        return view;
-    }
-
-    static boolean sameOrigin(String remoteUrl, URI other) {
-        if (remoteUrl == null || remoteUrl.isBlank()) {
-            return false;
-        }
-        URI remote;
-        try {
-            remote = URI.create(remoteUrl.trim());
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-        return remote.getScheme() != null && remote.getHost() != null && other.getHost() != null
-                && remote.getScheme().equalsIgnoreCase(other.getScheme())
-                && remote.getHost().equalsIgnoreCase(other.getHost())
-                && port(remote) == port(other);
-    }
-
-    private static int port(URI uri) {
-        if (uri.getPort() >= 0) {
-            return uri.getPort();
-        }
-        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
-    }
-
-    private static boolean notBlank(String s) {
-        return s != null && !s.isBlank();
     }
 
     /** Where a proxy fetches the database from: the {@code go.sumdbUrl} setting, else {@code https://<name>}. */

@@ -409,7 +409,7 @@ while a proxy member's upstream is unreachable); R falls back to `PACKAGES.gz` i
   repositories; `cpanm --mirror-only` does not need them (`cpanm --verify` would).
 * cdn: credentials cannot be sent by browsers; keep anonymous read on or use a hosted copy.
 * Elm: the zip route follows the package site's convention and needs `github.com` reachable from
-  the server; `search.json` is proxied as is. The proxy's upstream credentials are sent to
-  `github.com` with those downloads.
+  the server; `search.json` is proxied as is. The proxy's upstream credentials go to the package
+  server only, never to `github.com` (unless it is listed in [`upstream.credentialHosts`](../configuration.md#upstream-credentials)).
 * Identical-overwrite detection (vcpkg) spools the upload to `<data-dir>/tmp/vcpkg` to compare
   digests before deciding.

@@ -98,7 +98,7 @@ Repositories are created and changed in the UI or with `POST /api/v1/repositorie
 | `allowRedeploy` | hosted | Allow replacing an existing version or file (otherwise `409` or the protocol's own refusal) |
 | `versionPolicy` | Maven | `RELEASE`, `SNAPSHOT` or `MIXED` |
 | `remoteUrl` | proxy | Upstream URL (absolute `http(s)`), at most 1,000 characters |
-| `remoteUsername` / `remotePassword` / `remoteToken` | proxy | Upstream credentials: Basic, or a token sent as `Bearer` (at most 200 / 500 / 1,000 characters) |
+| `remoteUsername` / `remotePassword` / `remoteToken` | proxy | Upstream credentials: Basic, or a token sent as `Bearer` (at most 200 / 500 / 1,000 characters); sent only to the origin of `remoteUrl`, see [Upstream credentials](#upstream-credentials) |
 | `connectTimeoutSeconds`, `readTimeoutSeconds`, `metadataMaxAgeMinutes`, `negativeCacheMinutes` | proxy | Override the [proxy defaults](#proxy-defaults) |
 | `offlineMode` | proxy | Serve this proxy from its cache only |
 | `members` | group | Member names in resolution order; same format, nested groups allowed, no cycles |
@@ -154,9 +154,63 @@ repository is saved. The format guides explain each one in context.
 | `swift.maxArchiveSizeMb` | [swift](formats/swift.md#settings) | hosted | no limit | Largest source archive `swift package-registry publish` may upload, in MiB |
 | `terraform.rootRepository` | [terraform](formats/terraform.md#settings) | all | `false` | Answer `/.well-known/terraform.json` of the server (see [Root routing](#root-routing)) |
 | `terraform.providerProtocols` | [terraform](formats/terraform.md#settings) | hosted | `5.0,6.0` | Provider protocol versions announced for hosted providers |
+| `upstream.credentialHosts` | every format | proxy | empty | Further hosts that receive the proxy's upstream credentials (see [Upstream credentials](#upstream-credentials)) |
 
 The `raw.*` settings apply to all eight formats of the raw module (`raw`, `cdn`, `cpan`, `cran`,
-`hackage`, `vcpkg`, `bower`, `elm`). Maven, npm and NuGet have no format settings.
+`hackage`, `vcpkg`, `bower`, `elm`). `upstream.credentialHosts` is not a format's own setting: Granary
+adds it to the proxy repositories of every format. Maven, npm and NuGet have no other format settings.
+
+### Upstream credentials
+
+A proxy's upstream credentials (`remoteUsername`/`remotePassword` or `remoteToken`) are sent only to
+the *origin* of its `remoteUrl`: the same scheme, host and port. Upstream documents often name files
+on other hosts (chart and provider downloads on GitHub or `releases.hashicorp.com`, crates on
+`static.crates.io`, wheels on `files.pythonhosted.org`, nuget.org's search service, Elm zips on
+`github.com`); those requests go without credentials. The rule is enforced for every format and every
+upstream request:
+
+* Origins are compared in a normalised form: scheme and host ignore case, an omitted port is the
+  scheme's default (`https://host` and `https://host:443` are one origin, `http://host` is another),
+  internationalised host names are compared in their punycode form, the trailing dot of a fully
+  qualified name is ignored, user information in a URL plays no part, and IPv6 addresses are compared
+  in canonical form. An IPv4 address only matches in its dotted-quad form, and a URL whose host
+  cannot be read that way never receives credentials.
+* Granary follows redirects itself (at most five) and decides again for every hop: a redirect to
+  another origin is followed without the credentials (unless that host is listed below), and
+  without any `Authorization` header a format added for the first request (a registry token, say).
+  A redirect from `https` to `http` is not followed.
+* A plain-`http` request never carries the credentials of a proxy whose `remoteUrl` is `https`, not
+  even to a host listed below.
+
+Some deployments need more: an internal mirror whose downloads live on a second internal host. The
+repository setting `upstream.credentialHosts`, offered for the proxy repositories of every format, lists
+further hosts that receive the credentials, separated by commas:
+
+| Entry | Receives the credentials |
+|-------|--------------------------|
+| `files.example.com` | that host on the default port of the request's scheme (443, or 80 for `http`) |
+| `files.example.com:8443` | that host on that port |
+| `*.example.com` | every subdomain of `example.com` (`a.example.com`, `a.b.example.com`) on the default port, not `example.com` itself |
+| `*.example.com:8443` | every subdomain on that port |
+| `[fd00::5]`, `[fd00::5]:8443`, `10.0.0.5` | an IP address, on the default or the given port |
+
+Entries name hosts only: a scheme, a path, user information or a `*` anywhere but the first label is
+refused with `400 repository.upstream.credentialHosts.invalid` when the repository is saved. An
+internationalised name may be written in Unicode only when it has one unambiguous ASCII form; a name
+that the older and the current IDNA rules read as different hosts (with `ß`, a final `ς` or a
+zero-width joiner, for example `faß.de`, which would otherwise mean `fass.de`) is refused and must be
+written in its `xn--` form. Leave
+the setting empty unless the upstream really needs it; the public registries never do.
+
+The one deliberate exception is the token service of a container registry: when a registry answers
+with a `WWW-Authenticate: Bearer realm="…"` challenge, the Docker proxy sends its credentials to that
+realm, because that is how the registry protocol logs in (Docker Hub's realm is `auth.docker.io`, not
+`registry-1.docker.io`). The registry itself then only sees the token, and a CDN its blob downloads
+redirect to sees neither. A token is only sent back to the registry whose realm issued it: when the
+remote URL or the credentials change, a new one is requested. Only the registry itself names the
+realm: when its `/v2/` redirects to a host that may not receive the credentials, the challenge that
+host answers is ignored. The Conan proxy's login (`v2/users/authenticate`) is an ordinary request to
+the upstream's own origin, and the token it obtains follows the same rule as the credentials.
 
 ### Root routing
 

@@ -241,7 +241,7 @@ class GoGroupIntegrationTest extends IntegrationTest {
         mvc.perform(get("/api/v1/formats").header("Authorization", adminBearer()))
                 .andExpect(jsonPath("$[?(@.id == 'go')].displayName").value("Go modules"))
                 .andExpect(jsonPath("$[?(@.id == 'go')].templates[*]").value(org.hamcrest.Matchers.contains("go-proxy", "go-hosted", "go-group")))
-                .andExpect(jsonPath("$[?(@.id == 'go')].settings[*].key").value(org.hamcrest.Matchers.contains("go.sumdbName", "go.sumdbUrl")));
+                .andExpect(jsonPath("$[?(@.id == 'go')].settings[*].key").value(org.hamcrest.Matchers.contains("go.sumdbName", "go.sumdbUrl", "upstream.credentialHosts")));
 
         String snippets = text(mvc.perform(get("/api/v1/repositories/go-group/connect").header("Authorization", adminBearer()))
                 .andExpect(status().isOk())

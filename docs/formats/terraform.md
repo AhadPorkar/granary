@@ -265,11 +265,11 @@ all of these snippets with the right host filled in.
 * Hosted providers need the full HashiCorp-style set (zip, `SHA256SUMS`, `SHA256SUMS.sig`, key);
   Granary does not sign anything itself.
 * `TF_TOKEN_<host>` variables cannot name a port; use a `credentials` block for `host:port`.
-* A proxy sends its upstream credentials (*remote username/password* or *remote token*) with every
-  request it makes for the repository, including the provider and module downloads on other hosts
-  that the upstream's download documents name (`releases.hashicorp.com`, GitHub, …). Configure
-  credentials only for upstreams whose download hosts you trust with them; the public registries
-  need none.
+* A proxy sends its upstream credentials (*remote username/password* or *remote token*) only to
+  the registry's own origin. Provider and module downloads that the upstream's download documents
+  place on other hosts (`releases.hashicorp.com`, GitHub, …) are fetched without them, so a private
+  registry whose downloads need the same credentials on another host needs that host in
+  [`upstream.credentialHosts`](../configuration.md#upstream-credentials). The public registries need no credentials.
 
 ## Verification
 

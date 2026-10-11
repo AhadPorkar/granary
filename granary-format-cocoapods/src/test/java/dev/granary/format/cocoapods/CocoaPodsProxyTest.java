@@ -143,7 +143,7 @@ class CocoaPodsProxyTest {
     }
 
     @Test
-    void sourcesOnOtherHostsAreDownloadedWithoutTheUpstreamCredentials() throws Exception {
+    void sourcesOnOtherHostsAreDownloadedDirectlyAndTheClientKeepsTheCredentialsAtHome() throws Exception {
         repo.setRemoteUsername("mirror");
         repo.setRemotePassword("secret");
         repo.setReadTimeoutSeconds(7);
@@ -158,11 +158,11 @@ class CocoaPodsProxyTest {
         assertThat(archive.contentType()).isEqualTo("application/zip");
         assertThat(archive.asset().getComponentId()).isNotNull();
         assertThat(archive.asset().getUpstreamEtag()).isEqualTo("\"gh\"");
+        // the repository itself: UpstreamClient sends its credentials to the upstream's origin only (and to hosts
+        // listed in upstream.credentialHosts), which CocoaPodsArchiveHostIntegrationTest checks on the wire
         ArgumentCaptor<Repository> asked = ArgumentCaptor.forClass(Repository.class);
         verify(client).getAbsolute(asked.capture(), eq(URI.create(url)), eq(Map.of()), eq(Map.of("Accept", "application/octet-stream")));
-        assertThat(asked.getValue().getRemoteUsername()).isNull();
-        assertThat(asked.getValue().getRemotePassword()).isNull();
-        assertThat(asked.getValue().getRemoteToken()).isNull();
+        assertThat(asked.getValue()).isSameAs(repo);
         assertThat(asked.getValue().getReadTimeoutSeconds()).isEqualTo(7);
         verify(proxyService, never()).fetch(any(), any(String.class), any(URI.class), any(), any());
         verify(ok).close();
@@ -243,9 +243,11 @@ class CocoaPodsProxyTest {
             "https://cdn.cocoapods.org/, https://cdn.cocoapods.org:8443/x.zip, false",
             "https://cdn.cocoapods.org/, https://github.com/x.zip, false",
             "https://cdn.cocoapods.org/, https://cdn.cocoapods.org.evil.example/x.zip, false",
+            "https://cdn.cocoapods.org/, https://cdn.cocoapods.org@github.com/x.zip, false",
+            "https://cdn.cocoapods.org/, https://cdn.cocoapods.org./x.zip, true",
             "'', https://cdn.cocoapods.org/x.zip, false"
     })
-    void credentialsOnlyGoToTheUpstreamsOwnOrigin(String remote, String url, boolean same) {
+    void onlyTheUpstreamsOwnOriginGoesThroughTheProxyCache(String remote, String url, boolean same) {
         assertThat(CocoaPodsProxy.sameOrigin(remote, URI.create(url))).isEqualTo(same);
     }
 

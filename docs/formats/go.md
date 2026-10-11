@@ -141,7 +141,8 @@ keep verifying, and so does an offline Granary for everything that was looked up
   those requests go, for example the mirror `https://sum.golang.google.cn`.
 * The proxy's upstream credentials (remote token, user name and password of a private GOPROXY) are
   sent to the checksum database only when it is on the same origin (scheme, host and port) as the
-  remote URL; sum.golang.org or a mirror on another host never sees them.
+  remote URL or its host is listed in [`upstream.credentialHosts`](../configuration.md#upstream-credentials); sum.golang.org or a
+  mirror on another host never sees them.
 * A hosted repository answers `404` for `sumdb/…/supported`, so the go command talks to
   sum.golang.org itself.
 

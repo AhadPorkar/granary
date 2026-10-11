@@ -185,6 +185,7 @@ literal user `__token__` with an API token as the password.
 * The hosted `pypi/<project>/json` document carries SHA-256 digests only (no MD5 or BLAKE2).
 * The upload API accepts distribution files; `:action=submit` (registering a project without a
   file) is not supported, which no current client uses.
-* A proxy sends its upstream credentials (*remote username/password* or *remote token*) to the
-  `pypi.filesUrl` host and to any other host a project page links files to, not only to the
-  index origin.
+* A proxy sends its upstream credentials (*remote username/password* or *remote token*) only to
+  the index origin. The `pypi.filesUrl` host and any other host a project page links files to are
+  asked without them, so a private index whose files live on a second host that wants the same
+  credentials needs that host in [`upstream.credentialHosts`](../configuration.md#upstream-credentials).

@@ -49,7 +49,7 @@ class PubApiIntegrationTest extends IntegrationTest {
         assertThat(str(pub, "displayName")).isEqualTo("pub (Dart / Flutter)");
         assertThat(pub.path("types").valueStream().map(JsonNode::asString)).containsExactlyInAnyOrder("HOSTED", "PROXY", "GROUP");
         assertThat(pub.path("templates").valueStream().map(JsonNode::asString)).containsExactly("pub-dev", "pub-hosted", "pub-group");
-        assertThat(pub.path("settings").valueStream().map(s -> str(s, "key"))).containsExactly("pub.maxArchiveSizeMb", "pub.advisories");
+        assertThat(pub.path("settings").valueStream().map(s -> str(s, "key"))).containsExactly("pub.maxArchiveSizeMb", "pub.advisories", "upstream.credentialHosts");
         assertThat(str(pub.path("settings").get(0), "defaultValue")).isEqualTo("100");
         assertThat(str(pub.path("settings").get(1), "defaultValue")).isEqualTo("true");
     }

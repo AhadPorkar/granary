@@ -788,6 +788,12 @@
           "label": "Servir /.well-known/terraform.json",
           "description": "Répond au document de découverte de services du serveur depuis ce dépôt, afin que le nom d’hôte de Granary fonctionne dans les adresses de providers et de modules. Un seul dépôt par serveur, en général le groupe."
         }
+      },
+      "upstream": {
+        "credentialHosts": {
+          "label": "Hôtes supplémentaires pour les identifiants de la source distante",
+          "description": "Hôtes séparés par des virgules qui reçoivent les identifiants de la source distante de ce proxy en plus du schéma, de l’hôte et du port de l’URL distante elle-même : host, host:port (un hôte sans port désigne le port par défaut) ou *.example.com pour ses sous-domaines. Aucun autre hôte ne les reçoit jamais, et le HTTP en clair jamais lorsque l’URL distante utilise HTTPS."
+        }
       }
     }
   }

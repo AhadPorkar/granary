@@ -50,7 +50,7 @@ class SwiftApiIntegrationTest extends IntegrationTest {
         assertThat(swift.path("types").valueStream().map(JsonNode::asString)).containsExactlyInAnyOrder("HOSTED", "PROXY", "GROUP");
         assertThat(swift.path("templates").valueStream().map(JsonNode::asString)).containsExactly("swift-hosted", "swift-group");
         assertThat(swift.path("settings").valueStream().map(s -> str(s, "key")))
-                .containsExactly("swift.requireSignature", "swift.maxArchiveSizeMb");
+                .containsExactly("swift.requireSignature", "swift.maxArchiveSizeMb", "upstream.credentialHosts");
     }
 
     @Test

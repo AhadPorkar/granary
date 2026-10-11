@@ -5,6 +5,7 @@ import dev.granary.core.model.Repository;
 import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.proxy.UpstreamClient;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.proxy.UpstreamHealth;
 import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
@@ -113,7 +114,12 @@ public class PubProxy {
         return Optional.of(linkComponent(repo, fetched.get(), name, entry.map(e -> e.version().text()).orElse(version)));
     }
 
-    /** Where upstream keeps an archive: the listing's {@code archive_url} when it is safe to follow. */
+    /**
+     * Where upstream keeps an archive: the listing's {@code archive_url} when it is safe to follow. A repository
+     * without upstream credentials follows it anywhere (signed CDN URLs). One with credentials follows it only where
+     * {@link UpstreamClient} would send them (the remote URL's origin and {@code upstream.credentialHosts}), and
+     * otherwise asks for the conventional URL on the upstream itself, which a private server can authorise.
+     */
     URI upstreamArchiveUri(Repository repo, String name, String version, String archiveUrl) {
         URI conventional = upstream.upstreamUri(repo, PubPath.archivePath(name, version));
         if (archiveUrl == null || archiveUrl.isBlank()) {
@@ -130,26 +136,10 @@ public class PubProxy {
         if (!scheme.equals("http") && !scheme.equals("https") || candidate.getHost() == null) {
             return conventional;
         }
-        if (sameHost(candidate, conventional) || !hasCredentials(repo)) {
+        if (!UpstreamCredentials.present(repo) || UpstreamCredentials.permitted(repo, candidate)) {
             return candidate;
         }
         return conventional;
-    }
-
-    private static boolean sameHost(URI a, URI b) {
-        return a.getHost() != null && a.getHost().equalsIgnoreCase(b.getHost()) && port(a) == port(b);
-    }
-
-    private static int port(URI uri) {
-        if (uri.getPort() >= 0) {
-            return uri.getPort();
-        }
-        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
-    }
-
-    private static boolean hasCredentials(Repository repo) {
-        return repo.getRemoteToken() != null && !repo.getRemoteToken().isBlank()
-                || repo.getRemoteUsername() != null && !repo.getRemoteUsername().isBlank();
     }
 
     /** Cached archives belong to their component, so the UI lists cached package versions too. */

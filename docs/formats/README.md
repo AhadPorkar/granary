@@ -43,5 +43,8 @@ answers at the server root (`/v2/`) and Terraform's service discovery at
 
 Format-specific settings are stored in a repository's `formatSettings` object; each guide's
 *Settings* section lists its keys, and [configuration.md](../configuration.md#format-settings)
-has the complete index. How a format plugs into the server is described in
-[architecture.md](../architecture.md#the-format-spi) and [ADR 0011](../adr/0011-format-spi-v2.md).
+has the complete index. Proxy repositories of every format also take `upstream.credentialHosts`,
+the hosts besides the upstream's own origin that may receive its credentials (see
+[Upstream credentials](../configuration.md#upstream-credentials)); the guides do not repeat it, so
+"no format settings" in a guide means none of the format's own. How a format plugs into the server
+is described in [architecture.md](../architecture.md#the-format-spi) and [ADR 0011](../adr/0011-format-spi-v2.md).

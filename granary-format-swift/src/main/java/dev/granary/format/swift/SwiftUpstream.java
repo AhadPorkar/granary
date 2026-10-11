@@ -7,6 +7,7 @@ import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.NegativeCache;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.proxy.UpstreamClient;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.proxy.UpstreamHealth;
 import dev.granary.core.proxy.UrlPaths;
 import dev.granary.core.storage.StorageService;
@@ -152,7 +153,7 @@ final class SwiftUpstream {
         String path = SwiftLayout.manifestPath(id, version, alternate.filename());
         URI conventional = uri(repo, id.scope() + "/" + id.name() + "/" + version + "/" + SwiftManifests.MANIFEST,
                 "swift-version=" + URLEncoder.encode(alternate.swiftVersion(), StandardCharsets.UTF_8));
-        URI uri = sameHost(repo, alternate.url()).orElse(conventional);
+        URI uri = trustedUrl(repo, alternate.url()).orElse(conventional);
         return proxy.fetch(repo, path, uri, FetchOptions.artifact(), ACCEPT_SWIFT);
     }
 
@@ -193,18 +194,17 @@ final class SwiftUpstream {
     }
 
     /**
-     * An absolute URL the upstream handed out, when it points at the upstream's own host: requests carry the
-     * repository's upstream credentials, so no other host is ever contacted.
+     * An absolute URL the upstream handed out, when the repository's upstream credentials may go there: the remote
+     * URL's own origin, or a host listed in {@code upstream.credentialHosts}. Other URLs are not followed, the
+     * conventional URL on the upstream is asked instead.
      */
-    static Optional<URI> sameHost(Repository repo, String url) {
+    static Optional<URI> trustedUrl(Repository repo, String url) {
         if (url == null || url.isBlank()) {
             return Optional.empty();
         }
         try {
             URI candidate = URI.create(url.trim());
-            URI remote = URI.create(repo.getRemoteUrl().trim());
-            if (candidate.isAbsolute() && candidate.getHost() != null && candidate.getHost().equalsIgnoreCase(remote.getHost())
-                    && candidate.getPort() == remote.getPort() && candidate.getScheme().equalsIgnoreCase(remote.getScheme())) {
+            if (candidate.isAbsolute() && UpstreamCredentials.permitted(repo, candidate)) {
                 return Optional.of(candidate);
             }
         } catch (IllegalArgumentException e) {

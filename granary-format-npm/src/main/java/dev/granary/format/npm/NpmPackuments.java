@@ -5,6 +5,7 @@ import dev.granary.core.model.Repository;
 import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.proxy.UpstreamClient;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.repository.GroupResolver;
 import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
@@ -109,8 +110,9 @@ public class NpmPackuments {
     /**
      * Where upstream keeps a tarball. Normally {@code {remote}/{name}/-/{file}}, but some registries
      * (GitHub Packages, for one) hand out other shapes in {@code dist.tarball}, so the cached packument is
-     * consulted first. Only URLs on the upstream's own host are followed, because the request carries the
-     * repository's upstream credentials.
+     * consulted first. Only URLs the repository's upstream credentials may go to are followed (the remote URL's
+     * origin and the hosts of {@code upstream.credentialHosts}): a tarball URL on another origin, such as the
+     * {@code http://} links of a registry behind a TLS proxy, would be asked without them.
      */
     URI upstreamTarballUri(Repository repo, NpmPath path) {
         URI conventional = upstream.upstreamUri(repo, path.tarballPath());
@@ -118,7 +120,6 @@ public class NpmPackuments {
         if (doc.isEmpty()) {
             return conventional;
         }
-        String remoteHost = hostOf(repo.getRemoteUrl());
         for (Map.Entry<String, JsonNode> e : NpmPackument.entries(doc.get(), NpmPackument.VERSIONS)) {
             String url = NpmPackument.string(e.getValue().path(NpmPackument.DIST), NpmPackument.TARBALL);
             if (url == null || !path.fileName().equals(NpmPackument.fileNameOf(url))) {
@@ -126,7 +127,7 @@ public class NpmPackuments {
             }
             try {
                 URI candidate = new URI(url);
-                if (candidate.getHost() != null && candidate.getHost().equalsIgnoreCase(remoteHost)) {
+                if (UpstreamCredentials.permitted(repo, candidate)) {
                     return candidate;
                 }
             } catch (URISyntaxException ignored) {
@@ -166,13 +167,5 @@ public class NpmPackuments {
 
     public byte[] toBytes(JsonNode node) {
         return mapper.writeValueAsBytes(node);
-    }
-
-    private static String hostOf(String url) {
-        try {
-            return url == null ? null : new URI(url.trim()).getHost();
-        } catch (URISyntaxException e) {
-            return null;
-        }
     }
 }

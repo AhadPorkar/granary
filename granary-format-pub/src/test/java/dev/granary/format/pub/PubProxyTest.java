@@ -190,8 +190,14 @@ class PubProxyTest {
         assertThat(proxy.upstreamArchiveUri(repo, "path", "1.9.1", "https://pub.dev:8443/a.tar.gz")).isEqualTo(conventional);
         assertThat(proxy.upstreamArchiveUri(repo, "path", "1.9.1", "https://PUB.DEV/a.tar.gz"))
                 .isEqualTo(URI.create("https://PUB.DEV/a.tar.gz"));
+        // nor down to plain HTTP on the same host
+        assertThat(proxy.upstreamArchiveUri(repo, "path", "1.9.1", "http://pub.dev/a.tar.gz")).isEqualTo(conventional);
         repo.setRemoteToken(null);
         repo.setRemoteUsername("user");
         assertThat(proxy.upstreamArchiveUri(repo, "path", "1.9.1", "https://cdn.example.com/a.tar.gz")).isEqualTo(conventional);
+        // unless the administrator listed that host for the credentials
+        repo.setFormatSettings(java.util.Map.of("upstream.credentialHosts", "cdn.example.com"));
+        assertThat(proxy.upstreamArchiveUri(repo, "path", "1.9.1", "https://cdn.example.com/a.tar.gz"))
+                .isEqualTo(URI.create("https://cdn.example.com/a.tar.gz"));
     }
 }

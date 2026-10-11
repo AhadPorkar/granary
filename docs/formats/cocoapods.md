@@ -104,8 +104,8 @@ Hosted repositories also take writes: `PUT Specs/…/<Name>.podspec.json`, `POST
   `cocoapods.rewriteHttpSources` switches the rewrite off.
 * Archives usually live on other hosts than the spec repository (GitHub releases, S3, a vendor's
   site). The proxy's upstream credentials are sent only when the archive is on the upstream's own
-  origin (same scheme, host and port as `remoteUrl`); everywhere else the archive is requested
-  without them. A failing archive host is answered with `502 upstream.unavailable` naming the URL,
+  origin (same scheme, host and port as `remoteUrl`) or on a host listed in
+  [`upstream.credentialHosts`](../configuration.md#upstream-credentials); everywhere else the archive is requested without them. A failing archive host is answered with `502 upstream.unavailable` naming the URL,
   and does not count against the health of the proxy's upstream, so a dead archive link never
   makes the spec repository look down; an archive host answering `404` gives a `404`, remembered
   in the negative cache. An archive that does not match the podspec's `source.sha256` is not

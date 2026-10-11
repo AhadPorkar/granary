@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.granary.core.model.Asset;
@@ -71,14 +72,21 @@ class DockerUpstreamTest {
     }
     private final Repository hub = proxy("docker-hub", HUB);
 
-    private OngoingStubbing<UpstreamClient.Response> stubGet(URI uri, UpstreamClient.Response first, UpstreamClient.Response... rest)
+    /** The anonymous {@code GET /v2/} probe. */
+    private OngoingStubbing<UpstreamClient.Response> stubProbe(URI uri, UpstreamClient.Response first, UpstreamClient.Response... rest)
             throws Exception {
-        return when(client.getAbsolute(any(), eq(uri), anyMap(), anyMap())).thenReturn(first, rest);
+        return when(client.getAnonymous(any(), eq(uri), anyMap(), anyMap())).thenReturn(first, rest);
     }
 
-    private OngoingStubbing<UpstreamClient.Response> stubAny(UpstreamClient.Response first, UpstreamClient.Response... rest)
+    /** The token request at the realm, the one request that carries the credentials to another origin. */
+    private OngoingStubbing<UpstreamClient.Response> stubToken(URI uri, UpstreamClient.Response first, UpstreamClient.Response... rest)
             throws Exception {
-        return when(client.getAbsolute(any(), any(), anyMap(), anyMap())).thenReturn(first, rest);
+        return when(client.getWithCredentials(any(), eq(uri), anyMap(), anyMap())).thenReturn(first, rest);
+    }
+
+    private OngoingStubbing<UpstreamClient.Response> stubAnyProbe(UpstreamClient.Response first, UpstreamClient.Response... rest)
+            throws Exception {
+        return when(client.getAnonymous(any(), any(), anyMap(), anyMap())).thenReturn(first, rest);
     }
 
     private static UpstreamClient.Response response(int status, String body, Map<String, String> headers) {
@@ -154,8 +162,8 @@ class DockerUpstreamTest {
 
     @Test
     void bearerFlowProbesExchangesAndCachesTheToken() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull"), response(200, "{\"token\":\"tok-1\",\"expires_in\":300}", Map.of()));
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull"), response(200, "{\"token\":\"tok-1\",\"expires_in\":300}", Map.of()));
         StoredContent cached = mock(StoredContent.class);
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.of(cached));
 
@@ -175,44 +183,41 @@ class DockerUpstreamTest {
 
         // second fetch for the same image: no new probe, no new token request
         upstream.fetch(hub, "blobs/sha256/abc", "library/alpine/blobs/sha256:abc", "library/alpine", FetchOptions.artifact(), "*/*");
-        verify(client, times(1)).getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
-        verify(client, times(1)).getAbsolute(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull")), anyMap(), anyMap());
+        verify(client, times(1)).getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        verify(client, times(1)).getWithCredentials(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull")), anyMap(), anyMap());
 
         // after the token expired a fresh one is requested
         now.set(now.get().plus(Duration.ofSeconds(300)));
         upstream.fetch(hub, "blobs/sha256/abc", "library/alpine/blobs/sha256:abc", "library/alpine", FetchOptions.artifact(), "*/*");
-        verify(client, times(2)).getAbsolute(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull")), anyMap(), anyMap());
-        verify(client, times(1)).getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        verify(client, times(2)).getWithCredentials(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull")), anyMap(), anyMap());
+        verify(client, times(1)).getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
 
         // and after the challenge TTL the upstream is probed again
         now.set(now.get().plus(DockerUpstream.CHALLENGE_TTL));
         upstream.fetch(hub, "blobs/sha256/abc", "library/alpine/blobs/sha256:abc", "library/alpine", FetchOptions.artifact(), "*/*");
-        verify(client, times(2)).getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        verify(client, times(2)).getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
     }
 
     @Test
-    void credentialsAreStrippedWhenABearerTokenIsSent() throws Exception {
+    void onlyTheTokenRequestCarriesTheCredentialsToTheRealm() throws Exception {
         hub.setRemoteUsername("user");
         hub.setRemotePassword("secret");
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Aacme%2Fapp%3Apull"), response(200, "{\"access_token\":\"tok-2\"}", Map.of()));
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Aacme%2Fapp%3Apull"), response(200, "{\"access_token\":\"tok-2\"}", Map.of()));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
 
         upstream.fetch(hub, "p", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
 
-        ArgumentCaptor<Repository> probeRepo = ArgumentCaptor.forClass(Repository.class);
-        verify(client).getAbsolute(probeRepo.capture(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
-        assertThat(probeRepo.getValue().getRemoteUsername()).isNull(); // the probe must not leak Basic credentials
-        ArgumentCaptor<Repository> tokenRepo = ArgumentCaptor.forClass(Repository.class);
-        verify(client).getAbsolute(tokenRepo.capture(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Aacme%2Fapp%3Apull")), anyMap(), anyMap());
-        assertThat(tokenRepo.getValue().getRemoteUsername()).isEqualTo("user"); // the token request carries them
-        ArgumentCaptor<Repository> fetchRepo = ArgumentCaptor.forClass(Repository.class);
+        // the probe must not leak Basic credentials: it is anonymous
+        verify(client).getAnonymous(eq(hub), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        // the realm the registry named gets them deliberately
+        verify(client).getWithCredentials(eq(hub), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Aacme%2Fapp%3Apull")), anyMap(), anyMap());
+        // the registry gets the token, which replaces the credentials in UpstreamClient
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
-        verify(proxy).fetch(fetchRepo.capture(), eq("p"), any(), any(), headers.capture());
-        assertThat(fetchRepo.getValue().getRemoteUsername()).isNull();
-        assertThat(fetchRepo.getValue().getRemotePassword()).isNull();
+        verify(proxy).fetch(eq(hub), eq("p"), any(), any(), headers.capture());
         assertThat(headers.getValue()).containsEntry("Authorization", "Bearer tok-2").containsEntry("Accept", "*/*");
+        verify(client, never()).getAbsolute(any(), any(), anyMap(), anyMap());
     }
 
     @Test
@@ -220,7 +225,7 @@ class DockerUpstreamTest {
         Repository internal = proxy("internal", "http://registry.test:5000");
         internal.setRemoteUsername("u");
         internal.setRemotePassword("p");
-        stubGet(URI.create("http://registry.test:5000/v2/"), response(200, "{}", Map.of()));
+        stubProbe(URI.create("http://registry.test:5000/v2/"), response(200, "{}", Map.of()));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
 
         upstream.fetch(internal, "p", "app/manifests/1", "app", FetchOptions.index(), null);
@@ -229,35 +234,37 @@ class DockerUpstreamTest {
         ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
         verify(proxy).fetch(eq(internal), eq("p"), eq(URI.create("http://registry.test:5000/v2/app/manifests/1")), any(), headers.capture());
         assertThat(headers.getValue()).doesNotContainKey("Authorization");
-        verify(client, times(1)).getAbsolute(any(), any(), anyMap(), anyMap());
+        verify(client, times(1)).getAnonymous(any(), any(), anyMap(), anyMap());
+        verify(client, never()).getWithCredentials(any(), any(), anyMap(), anyMap());
     }
 
     @Test
     void basicChallengeLeavesAuthorisationToTheClient() throws Exception {
-        stubAny(response(401, "", Map.of("WWW-Authenticate", "Basic realm=\"Registry\"")));
+        stubAnyProbe(response(401, "", Map.of("WWW-Authenticate", "Basic realm=\"Registry\"")));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
         upstream.fetch(hub, "p", "x/manifests/1", "x", FetchOptions.index(), null);
         verify(proxy).fetch(eq(hub), eq("p"), any(), any(), anyMap());
-        verify(client, times(1)).getAbsolute(any(), any(), anyMap(), anyMap());
+        verify(client, times(1)).getAnonymous(any(), any(), anyMap(), anyMap());
+        verify(client, never()).getWithCredentials(any(), any(), anyMap(), anyMap());
     }
 
     @Test
     void preIssuedRemoteTokenSkipsTheExchange() throws Exception {
         hub.setRemoteToken("pre-issued");
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
         upstream.fetch(hub, "p", "x/manifests/1", "x", FetchOptions.index(), null);
         verify(proxy).fetch(eq(hub), eq("p"), any(), any(), anyMap());
-        verify(client, never()).getAbsolute(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
+        verify(client, never()).getWithCredentials(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
     }
 
     @Test
     void tokenFailuresFallBackToAnAnonymousFetch() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
         UpstreamClient.Response serverError = response(500, "boom", Map.of());
         UpstreamClient.Response noToken = response(200, "{\"nope\":true}", Map.of());
         UpstreamClient.Response notJson = response(200, "not json", Map.of());
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull"),
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull"),
                 serverError, noToken, notJson).thenThrow(new IOException("down"));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
         for (int i = 0; i < 4; i++) {
@@ -273,7 +280,7 @@ class DockerUpstreamTest {
     void unreachableUpstreamIsRetriedSoon() throws Exception {
         UpstreamClient.Response unavailable = response(503, "", Map.of());
         UpstreamClient.Response challenge = response(401, "", Map.of("WWW-Authenticate", BEARER));
-        when(client.getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap()))
+        when(client.getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap()))
                 .thenThrow(new IOException("connect refused"))
                 .thenReturn(unavailable, challenge);
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
@@ -284,19 +291,104 @@ class DockerUpstreamTest {
         assertThat(upstream.challenge(hub)).isEqualTo(DockerUpstream.Challenge.NONE); // 503 -> retry soon too
         now.set(now.get().plus(DockerUpstream.CHALLENGE_RETRY));
         assertThat(upstream.challenge(hub).scheme()).isEqualTo(DockerUpstream.Scheme.BEARER);
-        verify(client, times(3)).getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        verify(client, times(3)).getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
     }
 
     @Test
     void changedRemoteUrlAndForgetDropTheCache() throws Exception {
-        stubAny(response(200, "{}", Map.of()));
+        stubAnyProbe(response(200, "{}", Map.of()));
         upstream.challenge(hub);
         hub.setRemoteUrl("https://ghcr.io");
         upstream.challenge(hub);
-        verify(client, times(2)).getAbsolute(any(), any(), anyMap(), anyMap());
+        verify(client, times(2)).getAnonymous(any(), any(), anyMap(), anyMap());
         upstream.forget(hub);
         upstream.challenge(hub);
-        verify(client, times(3)).getAbsolute(any(), any(), anyMap(), anyMap());
+        verify(client, times(3)).getAnonymous(any(), any(), anyMap(), anyMap());
+    }
+
+    @Test
+    void aTokenNeverGoesToAnotherRegistryOrOutlivesTheCredentialsItWasIssuedFor() throws Exception {
+        hub.setRemoteUsername("user");
+        hub.setRemotePassword("secret");
+        URI hubToken = URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Aacme%2Fapp%3Apull");
+        URI ghcrToken = URI.create("https://ghcr.io/token?service=ghcr.io&scope=repository%3Aacme%2Fapp%3Apull");
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubProbe(URI.create("https://ghcr.io/v2/"),
+                response(401, "", Map.of("WWW-Authenticate", "Bearer realm=\"https://ghcr.io/token\",service=\"ghcr.io\"")));
+        stubToken(hubToken, response(200, "{\"token\":\"hub-1\",\"expires_in\":3600}", Map.of()),
+                response(200, "{\"token\":\"hub-2\",\"expires_in\":3600}", Map.of()));
+        stubToken(ghcrToken, response(200, "{\"token\":\"ghcr-1\",\"expires_in\":3600}", Map.of()));
+        when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
+
+        upstream.fetch(hub, "p1", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
+        // the administrator points the repository at another registry while Docker Hub's token is still valid
+        hub.setRemoteUrl("https://ghcr.io");
+        upstream.fetch(hub, "p2", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
+        verify(proxy).fetch(eq(hub), eq("p1"), eq(URI.create(HUB + "/v2/acme/app/manifests/1")), any(), headers.capture());
+        verify(proxy).fetch(eq(hub), eq("p2"), eq(URI.create("https://ghcr.io/v2/acme/app/manifests/1")), any(), headers.capture());
+        assertThat(headers.getAllValues()).extracting(h -> h.get("Authorization"))
+                .containsExactly("Bearer hub-1", "Bearer ghcr-1");
+
+        // back on Docker Hub with a new password: a token the old password obtained is not used again
+        hub.setRemoteUrl(HUB);
+        hub.setRemotePassword("rotated");
+        upstream.fetch(hub, "p3", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
+        verify(proxy).fetch(eq(hub), eq("p3"), any(), any(), headers.capture());
+        assertThat(headers.getValue()).containsEntry("Authorization", "Bearer hub-2");
+        verify(client, times(2)).getWithCredentials(any(), eq(hubToken), anyMap(), anyMap());
+        verify(client, times(1)).getWithCredentials(any(), eq(ghcrToken), anyMap(), anyMap());
+    }
+
+    @Test
+    void aChallengeFromAHostTheProbeWasRedirectedToDoesNotNameTheRealm() throws Exception {
+        hub.setRemoteUsername("user");
+        hub.setRemotePassword("secret");
+        UpstreamClient.Response foreign = response(401, "",
+                Map.of("WWW-Authenticate", "Bearer realm=\"https://elsewhere.test/token\",service=\"x\""));
+        when(foreign.uri()).thenReturn(URI.create("https://elsewhere.test/v2/"));
+        stubProbe(URI.create(HUB + "/v2/"), foreign);
+        when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
+
+        upstream.fetch(hub, "p", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
+
+        assertThat(upstream.challenge(hub)).isEqualTo(DockerUpstream.Challenge.NONE);
+        verify(client, never()).getWithCredentials(any(), any(), anyMap(), anyMap());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
+        verify(proxy).fetch(eq(hub), eq("p"), any(), any(), headers.capture());
+        assertThat(headers.getValue()).doesNotContainKey("Authorization");
+
+        // the registry's own origin, a host the administrator listed, and any host for a proxy without credentials
+        URI registry = URI.create(HUB + "/v2/");
+        URI listed = URI.create("https://elsewhere.test/v2/");
+        assertThat(DockerUpstream.challengeTrusted(hub, registry)).isTrue();
+        assertThat(DockerUpstream.challengeTrusted(hub, listed)).isFalse();
+        hub.setFormatSettings(Map.of("upstream.credentialHosts", "elsewhere.test"));
+        assertThat(DockerUpstream.challengeTrusted(hub, listed)).isTrue();
+        Repository anonymous = proxy("anonymous", HUB);
+        assertThat(DockerUpstream.challengeTrusted(anonymous, URI.create("https://other.test/v2/"))).isTrue();
+    }
+
+    @Test
+    void aRedirectedChallengeProbedWithoutCredentialsIsNotUsedOnceCredentialsAreAdded() throws Exception {
+        UpstreamClient.Response foreign = response(401, "",
+                Map.of("WWW-Authenticate", "Bearer realm=\"https://elsewhere.test/token\",service=\"x\""));
+        when(foreign.uri()).thenReturn(URI.create("https://elsewhere.test/v2/"));
+        stubProbe(URI.create(HUB + "/v2/"), foreign);
+        when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
+
+        // without credentials an anonymous token from wherever the registry sent the probe is harmless
+        assertThat(upstream.challenge(hub).scheme()).isEqualTo(DockerUpstream.Scheme.BEARER);
+
+        // the cached challenge must not send credentials added afterwards to that realm
+        hub.setRemoteUsername("user");
+        hub.setRemotePassword("secret");
+        upstream.fetch(hub, "p", "acme/app/manifests/1", "acme/app", FetchOptions.index(), null);
+        assertThat(upstream.challenge(hub)).isEqualTo(DockerUpstream.Challenge.NONE);
+        verify(client, times(1)).getAnonymous(any(), any(), anyMap(), anyMap());
+        verify(client, never()).getWithCredentials(any(), any(), anyMap(), anyMap());
     }
 
     @Test
@@ -304,52 +396,28 @@ class DockerUpstreamTest {
         when(proxy.isOffline(hub)).thenReturn(true);
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
         upstream.fetch(hub, "p", "x/manifests/1", "x", FetchOptions.index(), null);
-        verify(client, never()).getAbsolute(any(), any(), anyMap(), anyMap());
+        verifyNoInteractions(client);
         verify(proxy).fetch(eq(hub), eq("p"), any(), any(), anyMap());
     }
 
     @Test
     void shortLivedTokensAreKeptForAMinimum() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull"), response(200, "{\"token\":\"t\",\"expires_in\":5}", Map.of()));
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull"), response(200, "{\"token\":\"t\",\"expires_in\":5}", Map.of()));
         DockerUpstream.Challenge challenge = upstream.challenge(hub);
         assertThat(upstream.token(hub, challenge, "x")).contains("t");
         now.set(now.get().plus(Duration.ofSeconds(9)));
         assertThat(upstream.token(hub, challenge, "x")).contains("t");
-        verify(client, times(1)).getAbsolute(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
+        verify(client, times(1)).getWithCredentials(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
         now.set(now.get().plus(Duration.ofSeconds(2)));
         assertThat(upstream.token(hub, challenge, "x")).contains("t");
-        verify(client, times(2)).getAbsolute(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
-    }
-
-    @Test
-    void copyWithoutCredentialsKeepsEverythingElse() {
-        hub.setRemoteUsername("u");
-        hub.setRemotePassword("p");
-        hub.setRemoteToken("t");
-        hub.setOfflineMode(true);
-        hub.setReadTimeoutSeconds(7);
-        hub.setMetadataMaxAgeMinutes(3);
-        hub.setFormatSettings(Map.of("docker.libraryPrefix", "false"));
-        Repository copy = DockerUpstream.withoutCredentials(hub);
-        assertThat(copy.getId()).isEqualTo(hub.getId());
-        assertThat(copy.getName()).isEqualTo(hub.getName());
-        assertThat(copy.getType()).isEqualTo(hub.getType());
-        assertThat(copy.getBlobStore()).isEqualTo(hub.getBlobStore());
-        assertThat(copy.getRemoteUrl()).isEqualTo(HUB);
-        assertThat(copy.isOfflineMode()).isTrue();
-        assertThat(copy.getReadTimeoutSeconds()).isEqualTo(7);
-        assertThat(copy.getMetadataMaxAgeMinutes()).isEqualTo(3);
-        assertThat(copy.getFormatSettings()).containsEntry("docker.libraryPrefix", "false");
-        assertThat(copy.getRemoteUsername()).isNull();
-        assertThat(copy.getRemotePassword()).isNull();
-        assertThat(copy.getRemoteToken()).isNull();
+        verify(client, times(2)).getWithCredentials(any(), eq(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Ax%3Apull")), anyMap(), anyMap());
     }
 
     @Test
     void deniedImagesAreMissesNotOutages() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Fghost%3Apull"),
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Fghost%3Apull"),
                 response(200, "{\"token\":\"t\"}", Map.of()));
         when(proxy.negativeTtl(hub)).thenReturn(Duration.ofMinutes(5));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
@@ -364,12 +432,12 @@ class DockerUpstreamTest {
         verify(negativeCache).put(hub.getId(), "tags/library/ghost/latest", Duration.ofMinutes(5));
         // the challenge and the token are forgotten so the next request negotiates afresh
         upstream.fetch(hub, "tags/library/ghost/latest", "library/ghost/manifests/latest", "library/ghost", FetchOptions.index(), null);
-        verify(client, times(2)).getAbsolute(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
+        verify(client, times(2)).getAnonymous(any(), eq(URI.create(HUB + "/v2/")), anyMap(), anyMap());
     }
 
     @Test
     void realOutagesStayOutages() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(200, "{}", Map.of()));
+        stubProbe(URI.create(HUB + "/v2/"), response(200, "{}", Map.of()));
         when(proxy.fetch(any(), any(), any(), any(), anyMap())).thenReturn(Optional.empty());
         when(health.status(hub))
                 .thenReturn(new UpstreamHealth.Status(true, 0, null, null, null, null))
@@ -403,7 +471,8 @@ class DockerUpstreamTest {
     @Test
     void cachedContentNeedsNeitherProbeNorToken() throws Exception {
         // the registry and its token service are unreachable: the cache must not wait for either of them
-        when(client.getAbsolute(any(), any(), anyMap(), anyMap())).thenThrow(new IOException("connect timed out"));
+        when(client.getAnonymous(any(), any(), anyMap(), anyMap())).thenThrow(new IOException("connect timed out"));
+        when(client.getWithCredentials(any(), any(), anyMap(), anyMap())).thenThrow(new IOException("connect timed out"));
         when(proxy.metadataMaxAge(hub)).thenReturn(Duration.ofMinutes(60));
         StoredContent blob = cachedAsset("blobs/sha256/abc", now.get().minus(Duration.ofDays(400)));
         StoredContent manifest = cachedAsset("manifests/library/alpine/sha256/def", now.get().minus(Duration.ofDays(400)));
@@ -418,7 +487,7 @@ class DockerUpstreamTest {
                 "library/alpine", FetchOptions.artifact(), MediaTypes.DEFAULT_ACCEPT)).contains(manifest);
         assertThat(upstream.fetch(hub, "tags/library/alpine/3.20", "library/alpine/manifests/3.20", "library/alpine",
                 FetchOptions.index(), MediaTypes.DEFAULT_ACCEPT)).contains(freshTag);
-        verify(client, never()).getAbsolute(any(), any(), anyMap(), anyMap());
+        verifyNoInteractions(client);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
         verify(proxy, times(3)).fetch(eq(hub), anyString(), any(), any(), headers.capture());
@@ -427,8 +496,8 @@ class DockerUpstreamTest {
 
     @Test
     void staleMetadataIsRevalidatedWithAToken() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
-        stubGet(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull"),
+        stubProbe(URI.create(HUB + "/v2/"), response(401, "", Map.of("WWW-Authenticate", BEARER)));
+        stubToken(URI.create("https://auth.docker.io/token?service=registry.docker.io&scope=repository%3Alibrary%2Falpine%3Apull"),
                 response(200, "{\"token\":\"tok-1\",\"expires_in\":300}", Map.of()));
         when(proxy.metadataMaxAge(hub)).thenReturn(Duration.ofMinutes(60));
         StoredContent staleTag = cachedAsset("tags/library/alpine/3.20", now.get().minus(Duration.ofMinutes(61)));
@@ -453,14 +522,14 @@ class DockerUpstreamTest {
                 Instant.now().plus(Duration.ofMinutes(5))));
         assertThat(upstream.fetch(hub, "tags/library/alpine/3.21", "library/alpine/manifests/3.21", "library/alpine",
                 FetchOptions.index(), null)).isEmpty();
-        verify(client, never()).getAbsolute(any(), any(), anyMap(), anyMap());
+        verifyNoInteractions(client);
         verify(health, never()).recordSuccess(any());
         verify(proxy, times(2)).fetch(eq(hub), anyString(), any(), any(), anyMap());
     }
 
     @Test
     void aConcurrentlyCachedPathIsReadBackInsteadOfFailing() throws Exception {
-        stubGet(URI.create(HUB + "/v2/"), response(200, "{}", Map.of()));
+        stubProbe(URI.create(HUB + "/v2/"), response(200, "{}", Map.of()));
         StoredContent cached = mock(StoredContent.class);
         when(proxy.fetch(any(), any(), any(), any(), anyMap()))
                 .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_asset_path"))

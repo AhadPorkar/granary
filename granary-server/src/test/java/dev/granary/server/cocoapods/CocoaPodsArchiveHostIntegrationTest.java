@@ -136,6 +136,39 @@ class CocoaPodsArchiveHostIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void anArchiveHostListedInTheSettingReceivesTheCredentials() throws Exception {
+        Repository trusting = new Repository();
+        trusting.setName("cocoapods-trusting");
+        trusting.setFormat("cocoapods");
+        trusting.setType(RepositoryType.PROXY);
+        trusting.setRemoteUrl(cdn.baseUrl() + "/");
+        trusting.setRemoteUsername("mirror");
+        trusting.setRemotePassword("s3cret");
+        trusting.setFormatSettings(java.util.Map.of("upstream.credentialHosts", "localhost:" + archives.port()));
+        proxyService.invalidate(repositories.create(trusting));
+
+        assertThat(mvc.perform(get("/repository/cocoapods-trusting/" + sourcePath("Vendor", "2.0.0"))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray()).isEqualTo(ARCHIVE);
+        archives.verify(1, WireMock.getRequestedFor(WireMock.urlEqualTo("/releases/Vendor-2.0.0.zip"))
+                .withBasicAuth(new com.github.tomakehurst.wiremock.client.BasicCredentials("mirror", "s3cret")));
+    }
+
+    @Test
+    void aSpecRepositoryRedirectToTheArchiveHostDropsTheCredentials() throws Exception {
+        // an archive on the spec repository's own host that moved to the archive host
+        podOnCdn("Moved", "1.0.0", cdn.baseUrl() + "/files/Moved-1.0.0.zip", "\"sha256\": \"" + sha256(ARCHIVE) + "\"");
+        cdn.stubFor(WireMock.get(WireMock.urlEqualTo("/files/Moved-1.0.0.zip")).atPriority(1)
+                .withBasicAuth("mirror", "s3cret")
+                .willReturn(WireMock.aResponse().withStatus(302).withHeader("Location", archives.baseUrl() + "/releases/Vendor-2.0.0.zip")));
+
+        assertThat(mvc.perform(get(URL + "/" + sourcePath("Moved", "1.0.0"))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray()).isEqualTo(ARCHIVE);
+        cdn.verify(1, WireMock.getRequestedFor(WireMock.urlEqualTo("/files/Moved-1.0.0.zip"))
+                .withBasicAuth(new com.github.tomakehurst.wiremock.client.BasicCredentials("mirror", "s3cret")));
+        archives.verify(1, WireMock.getRequestedFor(WireMock.urlEqualTo("/releases/Vendor-2.0.0.zip")).withoutHeader("Authorization"));
+    }
+
+    @Test
     void aBrokenArchiveHostIsABadGatewayAndLeavesTheSpecRepositoryHealthy() throws Exception {
         for (int i = 0; i < 5; i++) {
             mvc.perform(get(URL + "/" + sourcePath("Broken", "1.0.0"))).andExpect(status().isBadGateway())

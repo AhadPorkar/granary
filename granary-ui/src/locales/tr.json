@@ -788,6 +788,12 @@
           "label": "/.well-known/terraform.json sun",
           "description": "Sunucu genelindeki hizmet keşif belgesini bu depodan yanıtlar; böylece Granary ana makine adı sağlayıcı ve modül adreslerinde çalışır. Sunucu başına bir depo, genellikle grup."
         }
+      },
+      "upstream": {
+        "credentialHosts": {
+          "label": "Uzak kaynak kimlik bilgileri için ek sunucular",
+          "description": "Uzak URL’nin kendi şeması, sunucusu ve portu dışında bu vekilin uzak kaynak kimlik bilgilerini alan, virgülle ayrılmış sunucular: host, host:port (portsuz bir sunucu varsayılan portu belirtir) ya da alt alan adları için *.example.com. Başka hiçbir sunucu bunları hiçbir zaman almaz; uzak URL HTTPS kullanıyorsa şifresiz HTTP de asla almaz."
+        }
       }
     }
   }

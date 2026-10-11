@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.granary.core.format.RepositoryRequest;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.security.GranaryPrincipal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -44,30 +45,32 @@ class ComposerUpstreamTest {
     }
 
     @Test
-    void credentialsStayWithTheUpstreamOrigin() {
+    void foreignHostsGetACircuitBreakerOfTheirOwnAndTheClientDecidesAboutCredentials() {
         Repository repo = remote("https://repo.example.com/php/");
         repo.setRemoteUsername("user");
         repo.setRemotePassword("secret");
         repo.setRemoteToken("token");
-        repo.setFormatSettings(Map.of("composer.distRewrite", "true"));
+        repo.setFormatSettings(Map.of("composer.distRewrite", "true", "upstream.credentialHosts", "dist.example.com"));
 
-        assertThat(UpstreamScope.credentialsFor(repo, URI.create("https://repo.example.com/p2/a/b.json"))).isSameAs(repo);
-        assertThat(UpstreamScope.credentialsFor(repo, URI.create("https://REPO.example.com:443/x"))).isSameAs(repo);
-
-        Repository foreign = UpstreamScope.credentialsFor(repo, URI.create("https://api.github.com/repos/a/b/zipball/c"));
-        assertThat(foreign.getId()).isEqualTo(repo.getId());
-        assertThat(foreign.getRemoteUsername()).isNull();
-        assertThat(foreign.getRemotePassword()).isNull();
-        assertThat(foreign.getRemoteToken()).isNull();
-        assertThat(foreign.getFormatSettings()).containsEntry("composer.distRewrite", "true");
+        assertThat(UpstreamScope.sameOrigin(repo, URI.create("https://repo.example.com/p2/a/b.json"))).isTrue();
+        assertThat(UpstreamScope.sameOrigin(repo, URI.create("https://REPO.example.com:443/x"))).isTrue();
+        assertThat(UpstreamScope.sameOrigin(repo, URI.create("https://repo.example.com@api.github.com/x"))).isFalse();
+        assertThat(UpstreamScope.sameOrigin(repo, URI.create("http://repo.example.com/x"))).isFalse();
 
         Repository scoped = UpstreamScope.hostScope(repo, URI.create("https://api.github.com/repos/a/b/zipball/c"));
         assertThat(scoped.getId()).isNotEqualTo(repo.getId());
         assertThat(scoped.getId()).isEqualTo(UpstreamScope.hostScope(repo, URI.create("https://api.github.com/other")).getId());
         assertThat(scoped.getId()).isNotEqualTo(UpstreamScope.hostScope(repo, URI.create("https://gitlab.com/x")).getId());
-        assertThat(scoped.getRemotePassword()).isNull();
         assertThat(scoped.getName()).contains("https://api.github.com");
         assertThat(UpstreamScope.hostScope(repo, URI.create("https://repo.example.com/dist/x.zip"))).isSameAs(repo);
+        // the stand-in carries what UpstreamClient needs to apply the credential rule: the remote URL, the
+        // credentials and upstream.credentialHosts; GitHub never receives them, the listed host does
+        assertThat(scoped.getRemoteUrl()).isEqualTo(repo.getRemoteUrl());
+        assertThat(scoped.getRemoteToken()).isEqualTo("token");
+        assertThat(scoped.getFormatSettings()).containsEntry("composer.distRewrite", "true");
+        assertThat(UpstreamCredentials.permitted(scoped, URI.create("https://api.github.com/repos/a/b/zipball/c"))).isFalse();
+        assertThat(UpstreamCredentials.permitted(scoped, URI.create("https://dist.example.com/a.zip"))).isTrue();
+        assertThat(UpstreamCredentials.permitted(scoped, URI.create("https://repo.example.com/dist/a.zip"))).isTrue();
     }
 
     @Test

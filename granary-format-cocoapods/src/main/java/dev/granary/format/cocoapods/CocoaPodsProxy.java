@@ -6,6 +6,7 @@ import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.NegativeCache;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.proxy.UpstreamClient;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
 import java.io.IOException;
@@ -112,10 +113,11 @@ public class CocoaPodsProxy {
      *
      * <p>Source archives live on any host the pod's author chose (GitHub releases, S3, a vendor's site). Only an
      * archive on the proxy's own upstream (same scheme, host and port as the remote URL) goes through
-     * {@link ProxyService} with the repository's upstream credentials; every other host is asked without them, and
-     * its failures do not count against the health of the proxy's upstream, so a dead archive link cannot open the
-     * circuit breaker for the whole spec repository. Either way, an archive that does not match the podspec's
-     * {@code sha256} is not cached.
+     * {@link ProxyService}; every other host is asked directly, and its failures do not count against the health of
+     * the proxy's upstream, so a dead archive link cannot open the circuit breaker for the whole spec repository.
+     * {@link UpstreamClient} decides which of these requests carry the repository's upstream credentials: only the
+     * upstream's own origin and the hosts of {@code upstream.credentialHosts} receive them. Either way, an archive
+     * that does not match the podspec's {@code sha256} is not cached.
      *
      * @throws CocoaPodsError {@code 502} when the archive's host fails or serves an archive with the wrong digest
      */
@@ -154,39 +156,21 @@ public class CocoaPodsProxy {
 
     /** Whether {@code uri} is on the origin (scheme, host, port) of the repository's remote URL. */
     static boolean sameOrigin(String remoteUrl, URI uri) {
-        if (remoteUrl == null || remoteUrl.isBlank()) {
-            return false;
-        }
-        URI remote;
-        try {
-            remote = new URI(remoteUrl.strip());
-        } catch (URISyntaxException e) {
-            return false;
-        }
-        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-        String remoteScheme = remote.getScheme() == null ? "" : remote.getScheme().toLowerCase(Locale.ROOT);
-        return scheme.equals(remoteScheme)
-                && uri.getHost() != null && uri.getHost().equalsIgnoreCase(remote.getHost())
-                && effectivePort(uri) == effectivePort(remote);
-    }
-
-    private static int effectivePort(URI uri) {
-        if (uri.getPort() != -1) {
-            return uri.getPort();
-        }
-        return "http".equalsIgnoreCase(uri.getScheme()) ? 80 : 443;
+        Optional<UpstreamCredentials.Origin> remote = UpstreamCredentials.Origin.of(remoteUrl);
+        return remote.isPresent() && remote.equals(UpstreamCredentials.Origin.of(uri));
     }
 
     /**
-     * Downloads an archive from another host than the proxy's upstream: no repository credentials, no circuit
-     * breaker, the shared negative cache for 404s, offline mode honoured.
+     * Downloads an archive from another host than the proxy's upstream: no circuit breaker, the shared negative
+     * cache for 404s, offline mode honoured, the repository's credentials only if that host is listed in
+     * {@code upstream.credentialHosts}.
      */
     private Optional<StoredContent> download(Repository repo, String path, URI uri, Map<String, String> headers,
                                              StorageService.ComponentCoordinates coordinates) {
         if (proxy.isOffline(repo) || negativeCache.contains(repo.getId(), path)) {
             return Optional.empty();
         }
-        try (UpstreamClient.Response response = client.getAbsolute(withoutCredentials(repo), uri, Map.of(), headers)) {
+        try (UpstreamClient.Response response = client.getAbsolute(repo, uri, Map.of(), headers)) {
             int status = response.status();
             if (status == 200) {
                 String contentType = response.header("Content-Type")
@@ -215,16 +199,6 @@ public class CocoaPodsProxy {
             Thread.currentThread().interrupt();
             throw sourceUnavailable(uri, "interrupted");
         }
-    }
-
-    /** The repository's timeouts without its upstream credentials, which belong to the upstream alone. */
-    private static Repository withoutCredentials(Repository repo) {
-        Repository anonymous = new Repository();
-        anonymous.setId(repo.getId());
-        anonymous.setName(repo.getName());
-        anonymous.setConnectTimeoutSeconds(repo.getConnectTimeoutSeconds());
-        anonymous.setReadTimeoutSeconds(repo.getReadTimeoutSeconds());
-        return anonymous;
     }
 
     /** An archive whose bytes are not what the podspec's {@code sha256} promises is dropped, not cached forever. */

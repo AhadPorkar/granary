@@ -316,15 +316,20 @@ class SwiftFormatHandlerTest {
     }
 
     @Test
-    void sameHostAcceptsOnlyTheUpstreamItself() {
+    void onlyUrlsTheCredentialsMayGoToAreFollowed() {
         Repository proxy = SwiftTestSupport.proxy("p", "https://registry.example.com/swift/");
-        assertThat(SwiftUpstream.sameHost(proxy, "https://registry.example.com/swift/a/b/1.0.0/Package.swift?swift-version=6")).isPresent();
-        assertThat(SwiftUpstream.sameHost(proxy, "https://REGISTRY.example.com/x")).isPresent();
-        assertThat(SwiftUpstream.sameHost(proxy, "http://registry.example.com/x")).isEmpty();
-        assertThat(SwiftUpstream.sameHost(proxy, "https://registry.example.com:8443/x")).isEmpty();
-        assertThat(SwiftUpstream.sameHost(proxy, "https://evil.example.com/x")).isEmpty();
-        assertThat(SwiftUpstream.sameHost(proxy, "/relative")).isEmpty();
-        assertThat(SwiftUpstream.sameHost(proxy, "not a url")).isEmpty();
-        assertThat(SwiftUpstream.sameHost(proxy, null)).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://registry.example.com/swift/a/b/1.0.0/Package.swift?swift-version=6")).isPresent();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://REGISTRY.example.com/x")).isPresent();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "http://registry.example.com/x")).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://registry.example.com:8443/x")).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://evil.example.com/x")).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "/relative")).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "not a url")).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, null)).isEmpty();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://registry.example.com:443/x")).isPresent();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://registry.example.com@evil.example.com/x")).isEmpty();
+        proxy.setFormatSettings(java.util.Map.of("upstream.credentialHosts", "files.example.com"));
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://files.example.com/a/b/1.0.0/Package.swift")).isPresent();
+        assertThat(SwiftUpstream.trustedUrl(proxy, "https://evil.example.com/x")).isEmpty();
     }
 }

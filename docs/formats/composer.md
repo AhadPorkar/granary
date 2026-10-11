@@ -102,7 +102,7 @@ Composer POSTs them; uploads and deletes need write access.
   for a lock-file install, freshly fetched) metadata, and kept forever. GitHub's zipball
   redirect to codeload is followed. Archives on hosts other than the upstream (GitHub, GitLab,
   Bitbucket) are fetched without the repository's upstream credentials, like Composer itself
-  does, and behind a circuit breaker per host, so a rate-limited GitHub cannot make the
+  does (a host listed in [`upstream.credentialHosts`](../configuration.md#upstream-credentials) gets them), and behind a circuit breaker per host, so a rate-limited GitHub cannot make the
   metadata upstream look down. Archives on the upstream's own host (another Granary, a private
   Packagist) are fetched with the credentials. Every cached archive is linked to a component.
 * `composer.distRewrite` (default `true`) can be turned off to leave the upstream's dist URLs in

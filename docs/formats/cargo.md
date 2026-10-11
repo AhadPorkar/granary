@@ -285,6 +285,8 @@ the group. A run leaves offline mode off and anonymous reads on, also when a ste
 * A proxy authenticates to its upstream with the repository's remote token (sent as `Bearer`) or
   user name and password; a private upstream that only accepts cargo's bare token header cannot be
   proxied.
-* Those credentials are also sent to the `cargo.downloadUrl` and `cargo.apiUrl` hosts
-  (`static.crates.io` and `crates.io` by default), not only to the index origin.
+* Those credentials go only to the index origin. The `cargo.downloadUrl` and `cargo.apiUrl` hosts
+  (`static.crates.io` and `crates.io` by default) are asked without them, so a private upstream
+  whose crate files or web API live on another host that wants the same credentials needs that
+  host in [`upstream.credentialHosts`](../configuration.md#upstream-credentials).
 * Index responses are not compressed.

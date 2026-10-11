@@ -15,6 +15,7 @@ import dev.granary.core.format.ContentResolver;
 import dev.granary.core.model.Repository;
 import dev.granary.core.proxy.FetchOptions;
 import dev.granary.core.proxy.ProxyService;
+import dev.granary.core.proxy.UpstreamCredentials;
 import dev.granary.core.repository.GroupResolver;
 import dev.granary.core.storage.StoredContent;
 import java.io.IOException;
@@ -230,51 +231,27 @@ class GoModulesTest {
     }
 
     @Test
-    void upstreamCredentialsOnlyGoToAChecksumDatabaseOnTheSameOrigin() {
+    void checksumDatabaseRequestsLeaveTheCredentialsToTheClientsOriginRule() {
         GoPath lookup = GoPath.parse("sumdb/sum.golang.org/lookup/rsc.io/quote@v1.5.2");
         Repository privateProxy = GoTestSupport.proxy("go-private", "https://goproxy.corp.example/");
         privateProxy.setRemoteToken("secret-token");
-        privateProxy.setMetadataMaxAgeMinutes(7);
-        privateProxy.setNegativeCacheMinutes(3);
-        privateProxy.setOfflineMode(true);
 
-        Repository view = GoModules.withoutForeignCredentials(privateProxy, GoModules.sumdbUri(privateProxy, lookup));
-        assertThat(view).isNotSameAs(privateProxy);
-        assertThat(view.getRemoteToken()).isNull();
-        assertThat(view.getRemoteUsername()).isNull();
-        assertThat(view.getRemotePassword()).isNull();
-        // the cache, offline switch and timeouts stay those of the proxy
-        assertThat(view.getId()).isEqualTo(privateProxy.getId());
-        assertThat(view.getName()).isEqualTo("go-private");
-        assertThat(view.getBlobStore()).isEqualTo(privateProxy.getBlobStore());
-        assertThat(view.getMetadataMaxAgeMinutes()).isEqualTo(7);
-        assertThat(view.getNegativeCacheMinutes()).isEqualTo(3);
-        assertThat(view.isOfflineMode()).isTrue();
-        assertThat(privateProxy.getRemoteToken()).isEqualTo("secret-token");
-
-        Repository basic = GoTestSupport.proxy("go-basic", "https://goproxy.corp.example/");
-        basic.setRemoteUsername("ci");
-        basic.setRemotePassword("pw");
-        assertThat(GoModules.withoutForeignCredentials(basic, URI.create("https://sum.golang.org/latest")).getRemotePassword()).isNull();
-
-        // a checksum database served by the same upstream gets the credentials, so does one without any
-        assertThat(GoModules.withoutForeignCredentials(privateProxy, URI.create("https://goproxy.corp.example/sumdb/sum.golang.org/latest")))
-                .isSameAs(privateProxy);
-        assertThat(GoModules.withoutForeignCredentials(privateProxy, URI.create("https://GOPROXY.corp.example:443/sumdb/latest")))
-                .isSameAs(privateProxy);
-        assertThat(GoModules.withoutForeignCredentials(proxyRepo, URI.create("https://sum.golang.org/latest"))).isSameAs(proxyRepo);
-        // another port or scheme is another origin
-        assertThat(GoModules.sameOrigin("https://goproxy.corp.example/", URI.create("https://goproxy.corp.example:8443/x"))).isFalse();
-        assertThat(GoModules.sameOrigin("https://goproxy.corp.example/", URI.create("http://goproxy.corp.example/x"))).isFalse();
-        assertThat(GoModules.sameOrigin("http://localhost:8081/", URI.create("http://127.0.0.1:8081/x"))).isFalse();
-        assertThat(GoModules.sameOrigin(null, URI.create("http://localhost/x"))).isFalse();
-        assertThat(GoModules.sameOrigin("not a url", URI.create("http://localhost/x"))).isFalse();
-
+        // the proxy itself: its cache, negative cache and health; UpstreamClient decides about the token
         when(proxy.fetch(any(Repository.class), eq(lookup.raw()), any(URI.class), eq(FetchOptions.artifact()), anyMap()))
                 .thenReturn(Optional.empty());
         modules.sumdb(privateProxy, lookup);
-        verify(proxy).fetch(org.mockito.ArgumentMatchers.argThat(r -> r.getRemoteToken() == null && r.getId().equals(privateProxy.getId())),
-                eq(lookup.raw()), eq(URI.create("https://sum.golang.org/lookup/rsc.io/quote@v1.5.2")), eq(FetchOptions.artifact()), anyMap());
+        verify(proxy).fetch(eq(privateProxy), eq(lookup.raw()), eq(URI.create("https://sum.golang.org/lookup/rsc.io/quote@v1.5.2")),
+                eq(FetchOptions.artifact()), anyMap());
+
+        // sum.golang.org or a mirror elsewhere never sees the private GOPROXY's token, one served by it does
+        assertThat(UpstreamCredentials.permitted(privateProxy, GoModules.sumdbUri(privateProxy, lookup))).isFalse();
+        privateProxy.setFormatSettings(Map.of(GoModules.SUMDB_URL, "https://goproxy.corp.example/sumdb/sum.golang.org"));
+        assertThat(UpstreamCredentials.permitted(privateProxy, GoModules.sumdbUri(privateProxy, lookup))).isTrue();
+        privateProxy.setFormatSettings(Map.of(GoModules.SUMDB_URL, "https://goproxy.corp.example:8443/sumdb/sum.golang.org"));
+        assertThat(UpstreamCredentials.permitted(privateProxy, GoModules.sumdbUri(privateProxy, lookup))).isFalse();
+        privateProxy.setFormatSettings(Map.of(GoModules.SUMDB_URL, "https://sumdb.corp.example/",
+                UpstreamCredentials.HOSTS_SETTING, "sumdb.corp.example"));
+        assertThat(UpstreamCredentials.permitted(privateProxy, GoModules.sumdbUri(privateProxy, lookup))).isTrue();
     }
 
     @Test

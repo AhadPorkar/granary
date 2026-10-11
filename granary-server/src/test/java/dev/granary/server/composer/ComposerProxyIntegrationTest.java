@@ -487,6 +487,24 @@ class ComposerProxyIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void anArchiveHostListedInTheSettingReceivesTheCredentials() throws Exception {
+        Repository r = new Repository();
+        r.setName("packagist-trusting");
+        r.setFormat("composer");
+        r.setType(RepositoryType.PROXY);
+        r.setRemoteUrl(packagist.baseUrl() + "/");
+        r.setRemoteUsername("mirror");
+        r.setRemotePassword("s3cret");
+        r.setFormatSettings(Map.of("upstream.credentialHosts", "localhost:" + github.port()));
+        proxyService.invalidate(repositories.create(r));
+
+        composerGet("/repository/packagist-trusting/p2/psr/log.json").andExpect(status().isOk());
+        composerGet("/repository/packagist-trusting" + distPath("3.0.2", REF_302)).andExpect(status().isOk());
+        github.verify(1, WireMock.getRequestedFor(WireMock.urlPathEqualTo("/repos/php-fig/log/zipball/" + REF_302))
+                .withHeader("Authorization", WireMock.equalTo(basic("mirror", "s3cret"))));
+    }
+
+    @Test
     void archivesOnTheUpstreamItselfAreFetchedWithItsCredentials() throws Exception {
         // another Granary or a private Packagist: the archives live next to the metadata
         packagist.stubFor(WireMock.get(WireMock.urlPathEqualTo("/p2/acme/lib.json")).atPriority(1)

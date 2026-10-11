@@ -85,8 +85,11 @@ is a member of the root group.
   `/v2/` ping: anonymous, Basic, or Bearer token exchange (the `realm`/`service` challenge of
   Docker Hub, ghcr.io, quay.io, Harbor, Artifactory and friends). Tokens are requested with
   `scope=repository:<name>:pull` and cached until shortly before they expire. Repository
-  credentials, when configured, are sent to the token endpoint, so private upstream images
-  work with a Docker Hub account or a GitHub token.
+  credentials, when configured, are sent to the token endpoint the challenge names (on Docker
+  Hub `auth.docker.io`, another host than the registry: that is how the protocol logs in), so
+  private upstream images work with a Docker Hub account or a GitHub token. The registry itself
+  only sees the token, and a blob download it redirects to a CDN carries neither (see
+  [Upstream credentials](../configuration.md#upstream-credentials)).
 * `docker.libraryPrefix` (on by default for Docker Hub hosts) requests single-segment names
   upstream as `library/<name>`: `host:8081/alpine:3.20` and `host:8081/library/alpine:3.20`
   are the same image and share one cache entry.

@@ -109,5 +109,6 @@ NuGet has no format settings.
 * Symbol packages are stored and downloadable, but there is no symbol server endpoint for
   debuggers.
 * No unlist-only operation: a delete removes the version.
-* A proxy sends its upstream credentials to every resource URL the upstream's service index
-  names, including resources on other hosts (nuget.org's search service, for one).
+* A proxy sends its upstream credentials only to the origin of its service index. A private feed
+  whose service index names resources on another host that wants the same credentials needs that
+  host in [`upstream.credentialHosts`](../configuration.md#upstream-credentials).

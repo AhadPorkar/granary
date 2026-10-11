@@ -58,6 +58,12 @@ public class GranaryProperties {
     public static class Storage {
         /** Additional named blob stores; the {@code default} store always exists. */
         private Map<String, BlobStoreProperties> blobStores = new LinkedHashMap<>();
+        /**
+         * How long a write waits for a concurrent write of the same path or component before it gives up with
+         * {@code 409 storage.conflict}.
+         */
+        private Duration writeLockTimeout = Duration.ofSeconds(30);
+        private final Compaction compaction = new Compaction();
 
         public Map<String, BlobStoreProperties> getBlobStores() {
             return blobStores;
@@ -65,6 +71,59 @@ public class GranaryProperties {
 
         public void setBlobStores(Map<String, BlobStoreProperties> blobStores) {
             this.blobStores = blobStores;
+        }
+
+        public Duration getWriteLockTimeout() {
+            return writeLockTimeout;
+        }
+
+        public void setWriteLockTimeout(Duration writeLockTimeout) {
+            this.writeLockTimeout = writeLockTimeout;
+        }
+
+        public Compaction getCompaction() {
+            return compaction;
+        }
+    }
+
+    /** Blob store compaction: deleting blobs that no asset references any more. */
+    public static class Compaction {
+        /** Whether the scheduled compaction runs. Compaction on demand through the API is always possible. */
+        private boolean enabled = true;
+        /** Spring cron expression (second minute hour day month weekday) of the scheduled compaction. */
+        private String schedule = "0 30 3 * * *";
+        /**
+         * Unreferenced blobs younger than this are kept, so a blob written by an upload whose asset row is not
+         * committed yet is never deleted.
+         */
+        private Duration gracePeriod = Duration.ofHours(24);
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getSchedule() {
+            return schedule;
+        }
+
+        public void setSchedule(String schedule) {
+            this.schedule = schedule;
+        }
+
+        public Duration getGracePeriod() {
+            return gracePeriod;
+        }
+
+        public void setGracePeriod(Duration gracePeriod) {
+            if (gracePeriod == null || gracePeriod.isNegative()) {
+                throw new IllegalArgumentException(
+                        "granary.storage.compaction.grace-period must be zero or positive, not " + gracePeriod);
+            }
+            this.gracePeriod = gracePeriod;
         }
     }
 
@@ -138,6 +197,11 @@ public class GranaryProperties {
         private Duration circuitOpenMin = Duration.ofSeconds(30);
         /** Maximum back-off between probes of a down upstream. */
         private Duration circuitOpenMax = Duration.ofMinutes(10);
+        /**
+         * How long concurrent requests for the same uncached file wait for the one request that is already fetching
+         * it from upstream before they fetch it themselves.
+         */
+        private Duration singleFlightTimeout = Duration.ofMinutes(5);
         /** Value sent as {@code User-Agent} to upstream registries. */
         private String userAgent = "Granary/0.1 (+https://github.com/AhadPorkar/granary)";
 
@@ -195,6 +259,14 @@ public class GranaryProperties {
 
         public void setCircuitOpenMax(Duration circuitOpenMax) {
             this.circuitOpenMax = circuitOpenMax;
+        }
+
+        public Duration getSingleFlightTimeout() {
+            return singleFlightTimeout;
+        }
+
+        public void setSingleFlightTimeout(Duration singleFlightTimeout) {
+            this.singleFlightTimeout = singleFlightTimeout;
         }
 
         public String getUserAgent() {

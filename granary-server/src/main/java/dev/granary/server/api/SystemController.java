@@ -9,6 +9,7 @@ import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.repository.RepositoryService;
 import dev.granary.core.security.UserService;
 import dev.granary.core.settings.SettingsService;
+import dev.granary.core.storage.BlobCompactionService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,6 +19,8 @@ import org.springframework.boot.info.BuildProperties;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,11 +38,13 @@ public class SystemController {
     private final ProxyService proxy;
     private final UserService users;
     private final ComponentDao components;
+    private final BlobCompactionService compaction;
     private final String version;
 
     public SystemController(SettingsService settings, FormatRegistry formats, BlobStoreRegistry blobStores,
                             RepositoryService repositories, ProxyService proxy, UserService users,
-                            ComponentDao components, java.util.Optional<BuildProperties> build) {
+                            ComponentDao components, BlobCompactionService compaction,
+                            java.util.Optional<BuildProperties> build) {
         this.settings = settings;
         this.formats = formats;
         this.blobStores = blobStores;
@@ -47,6 +52,7 @@ public class SystemController {
         this.proxy = proxy;
         this.users = users;
         this.components = components;
+        this.compaction = compaction;
         this.version = build.map(BuildProperties::getVersion).orElse("dev");
     }
 
@@ -114,6 +120,16 @@ public class SystemController {
             settings.setBaseUrl(request.baseUrl());
         }
         return settings.snapshot();
+    }
+
+    /**
+     * Deletes the blobs of a store that no asset references any more and that are older than the grace period.
+     * Same privileges as changing the global settings. 404 for an unknown store, 409 while it is being compacted.
+     */
+    @PostMapping("/blob-stores/{name}/compact")
+    @PreAuthorize("hasAnyAuthority('system:admin','settings:manage')")
+    public BlobCompactionService.Report compact(@PathVariable String name) {
+        return compaction.compact(name);
     }
 
     /** Component search across every repository the caller may read. */

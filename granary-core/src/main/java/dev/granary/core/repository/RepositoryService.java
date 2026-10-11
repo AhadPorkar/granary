@@ -77,7 +77,14 @@ public class RepositoryService {
         }
         existing.setOnline(changes.isOnline());
         existing.setDescription(changes.getDescription());
-        if (changes.getBlobStore() != null && !changes.getBlobStore().isBlank()) {
+        if (changes.getBlobStore() != null && !changes.getBlobStore().isBlank()
+                && !changes.getBlobStore().equals(existing.getBlobStore())) {
+            // the existing assets' bytes live in the current store: moving the repository would orphan them, and
+            // compaction of the old store would then reclaim them
+            if (assets.countByRepositoryId(existing.getId()) > 0) {
+                throw GranaryException.badRequest("repository.blobstore.immutable",
+                        "The blob store of a repository that already holds files cannot change");
+            }
             existing.setBlobStore(changes.getBlobStore());
         }
         existing.setAllowRedeploy(changes.isAllowRedeploy());

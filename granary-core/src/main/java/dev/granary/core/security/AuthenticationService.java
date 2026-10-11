@@ -28,7 +28,12 @@ public class AuthenticationService {
         this.settings = settings;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Deliberately not transactional, like {@link #authenticateToken}: the user lookup and the token lookup run in
+     * transactions of their own, so a request never holds one pooled connection while it waits for a second one
+     * (with every connection held that way, concurrent requests would block each other until the pool time-out),
+     * and the password hash is checked without holding a connection at all.
+     */
     public Optional<GranaryPrincipal> authenticate(String username, String password) {
         if (ApiTokenService.looksLikeToken(password)) {
             return authenticateToken(password);
@@ -39,7 +44,7 @@ public class AuthenticationService {
                 .map(user -> GranaryPrincipal.of(user, GranaryPrincipal.AuthMethod.PASSWORD));
     }
 
-    @Transactional(readOnly = true)
+    /** Not transactional: {@link ApiTokenService#authenticate} records the use of the token in its own transaction. */
     public Optional<GranaryPrincipal> authenticateToken(String secret) {
         return tokenService.authenticate(secret)
                 .map(user -> GranaryPrincipal.of(user, GranaryPrincipal.AuthMethod.API_TOKEN));

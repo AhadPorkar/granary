@@ -5,12 +5,37 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.granary.core.CoreServiceTest;
 import dev.granary.core.GranaryException;
+import dev.granary.core.model.Asset;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
+import dev.granary.core.storage.StorageService;
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 class RepositoryServiceTest extends CoreServiceTest {
+
+    @Autowired
+    StorageService storage;
+
+    @Test
+    void theBlobStoreCanChangeOnlyWhileTheRepositoryIsEmpty() {
+        Repository repo = hosted("movable");
+        repo.setBlobStore("secondary");
+        assertThat(repositories.update("movable", repo).getBlobStore()).isEqualTo("secondary");
+
+        storage.store(repo, "f", new ByteArrayInputStream(new byte[] {1}), null, Asset.Origin.UPLOADED, false);
+        Repository back = repositories.require("movable");
+        back.setBlobStore("default");
+        assertThatThrownBy(() -> repositories.update("movable", back))
+                .isInstanceOf(GranaryException.class)
+                .extracting("code").isEqualTo("repository.blobstore.immutable");
+        // sending the current store again is not a change
+        Repository same = repositories.require("movable");
+        same.setDescription("still here");
+        assertThat(repositories.update("movable", same).getBlobStore()).isEqualTo("secondary");
+    }
 
     @Test
     void createsAndListsRepositoriesSortedByName() {

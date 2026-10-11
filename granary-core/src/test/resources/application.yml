@@ -14,6 +14,14 @@ granary:
   data-dir: ${java.io.tmpdir}/granary-core-test-${random.uuid}
   security:
     admin-password: admin123
+  storage:
+    blob-stores:
+      # a store of its own for the compaction tests, so their numbers do not depend on other tests' blobs
+      secondary:
+        path: ${granary.data-dir}/blobs-secondary
+    compaction:
+      # tests compact on demand; the nightly run must never race them
+      enabled: false
   proxy:
     connect-timeout: 2s
     read-timeout: 5s

@@ -265,6 +265,60 @@ class ProxyServiceTest extends CoreServiceTest {
         assertThat(proxy.isOffline(repo)).isTrue();
     }
 
+    @Test
+    void oversizedUpstreamHeadersStillLetTheArtifactBeCached() throws IOException {
+        String contentType = "application/java-archive; x-meta=\"" + "m".repeat(300) + "\"";
+        String bareContentType = "application/x-" + "k".repeat(300);
+        String etag = "\"" + "e".repeat(700) + "\"";
+        String lastModified = "Wed, 01 Jan 2026 00:00:00 GMT" + " ".repeat(10) + "x".repeat(100);
+        upstream.stubFor(get(urlEqualTo("/remote/big/lib-1.0.jar")).willReturn(aResponse().withStatus(200)
+                .withHeader("Content-Type", contentType)
+                .withHeader("ETag", etag)
+                .withHeader("Last-Modified", lastModified)
+                .withBody("JAR")));
+        upstream.stubFor(get(urlEqualTo("/remote/big/lib-1.0.tgz")).willReturn(aResponse().withStatus(200)
+                .withHeader("Content-Type", bareContentType)
+                .withBody("TGZ")));
+
+        StoredContent jar = proxy.fetch(repo, "big/lib-1.0.jar", FetchOptions.artifact()).orElseThrow();
+        StoredContent tgz = proxy.fetch(repo, "big/lib-1.0.tgz", FetchOptions.artifact()).orElseThrow();
+
+        assertThat(jar.readUtf8()).isEqualTo("JAR");
+        assertThat(jar.asset().getContentType()).isEqualTo("application/java-archive");
+        assertThat(jar.asset().getUpstreamEtag()).isNull();
+        assertThat(jar.asset().getUpstreamLastModified()).isNull();
+        assertThat(tgz.asset().getContentType()).isEqualTo("application/gzip");
+        Asset stored = assets.findById(jar.asset().getId()).orElseThrow();
+        assertThat(stored.getUpstreamEtag()).isNull();
+
+        // cached once, served from the cache afterwards
+        assertThat(proxy.fetch(repo, "big/lib-1.0.jar", FetchOptions.artifact()).orElseThrow().readUtf8()).isEqualTo("JAR");
+        upstream.verify(1, getRequestedFor(urlEqualTo("/remote/big/lib-1.0.jar")));
+    }
+
+    @Test
+    void droppedValidatorsMakeTheNextRevalidationUnconditional() throws IOException {
+        upstream.stubFor(get(urlEqualTo("/remote/index.json")).willReturn(aResponse().withStatus(200)
+                .withHeader("ETag", "\"short\"").withBody("{\"v\":1}")));
+        StoredContent first = proxy.fetch(repo, "index.json", FetchOptions.index()).orElseThrow();
+        assertThat(first.asset().getUpstreamEtag()).isEqualTo("\"short\"");
+        age(first.asset(), Duration.ofHours(2));
+        upstream.resetAll();
+        upstream.stubFor(get(urlEqualTo("/remote/index.json")).willReturn(aResponse().withStatus(200)
+                .withHeader("ETag", "\"" + "l".repeat(600) + "\"").withBody("{\"v\":2}")));
+
+        StoredContent second = proxy.fetch(repo, "index.json", FetchOptions.index()).orElseThrow();
+        assertThat(second.readUtf8()).isEqualTo("{\"v\":2}");
+        // the old validator described the old bytes, so it must not survive the replacement either
+        assertThat(second.asset().getUpstreamEtag()).isNull();
+        age(second.asset(), Duration.ofHours(2));
+
+        proxy.fetch(repo, "index.json", FetchOptions.index()).orElseThrow();
+        upstream.verify(2, getRequestedFor(urlEqualTo("/remote/index.json")));
+        upstream.verify(1, getRequestedFor(urlEqualTo("/remote/index.json")).withHeader("If-None-Match", equalTo("\"short\"")));
+        upstream.verify(1, getRequestedFor(urlEqualTo("/remote/index.json")).withoutHeader("If-None-Match"));
+    }
+
     private void age(Asset asset, Duration by) {
         Asset a = assets.findById(asset.getId()).orElseThrow();
         a.setLastVerifiedAt(Instant.now().minus(by));

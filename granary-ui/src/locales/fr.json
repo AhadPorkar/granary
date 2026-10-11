@@ -102,6 +102,12 @@
     "blobStoreUsed": "{used} utilisés",
     "blobStoreAvailable": "{available} disponibles",
     "blobStoreBlobs": "{count} blobs",
+    "compact": "Compacter",
+    "compactStore": "Compacter l’espace de stockage {name}",
+    "compacting": "Compactage…",
+    "compactHint": "Le compactage supprime les blobs qu’aucun dépôt ne référence plus et qui sont plus anciens que le délai de grâce.",
+    "compactDone": "Espace de stockage {name} compacté.",
+    "compactReport": "{deleted} blobs supprimés sur {scanned}, {reclaimed} libérés en {duration}.",
     "upstreams": "État des sources distantes",
     "upstreamsEmpty": "Aucun dépôt proxy pour le moment.",
     "reachable": "Joignable",
@@ -497,6 +503,12 @@
     "request": {
       "malformed": "La requête est mal formée."
     },
+    "path": {
+      "invalid": "Le chemin n’est pas valide : il est trop long ou sort du dépôt."
+    },
+    "storage": {
+      "conflict": "Une autre requête a modifié le même contenu au même moment. Veuillez réessayer."
+    },
     "auth": {
       "required": "Veuillez vous connecter.",
       "forbidden": "Vous n’avez pas la permission d’effectuer cette action.",
@@ -522,7 +534,8 @@
         "immutable": "Le type d’un dépôt ne peut pas être modifié."
       },
       "blobstore": {
-        "unknown": "Espace de stockage inconnu."
+        "unknown": "Espace de stockage inconnu.",
+        "immutable": "L’espace de stockage d’un dépôt qui contient déjà des données ne peut pas être modifié."
       },
       "remoteUrl": {
         "missing": "Un dépôt proxy a besoin d’une URL distante.",
@@ -543,10 +556,18 @@
       }
     },
     "component": {
-      "notFound": "Le composant n’existe pas."
+      "notFound": "Le composant n’existe pas.",
+      "invalid": "Les coordonnées du composant ne sont pas valides : une valeur manque ou est trop longue."
     },
     "asset": {
       "notFound": "Le fichier n’existe pas."
+    },
+    "blobStore": {
+      "notFound": "L’espace de stockage n’existe pas.",
+      "compaction": {
+        "running": "Cet espace de stockage est déjà en cours de compactage. Réessayez lorsque l’opération en cours sera terminée.",
+        "unsupported": "Cet espace de stockage ne peut pas être compacté."
+      }
     },
     "user": {
       "notFound": "L’utilisateur n’existe pas.",

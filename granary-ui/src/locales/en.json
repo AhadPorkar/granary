@@ -102,6 +102,12 @@
     "blobStoreUsed": "{used} used",
     "blobStoreAvailable": "{available} available",
     "blobStoreBlobs": "{count} blobs",
+    "compact": "Compact",
+    "compactStore": "Compact blob store {name}",
+    "compacting": "Compacting…",
+    "compactHint": "Compacting deletes the blobs that no repository references any more and that are older than the grace period.",
+    "compactDone": "Blob store {name} compacted.",
+    "compactReport": "{deleted} of {scanned} blobs deleted, {reclaimed} reclaimed in {duration}.",
     "upstreams": "Upstream health",
     "upstreamsEmpty": "No proxy repositories yet.",
     "reachable": "Reachable",
@@ -497,6 +503,12 @@
     "request": {
       "malformed": "The request was malformed."
     },
+    "path": {
+      "invalid": "The path is not valid: it is too long or points outside the repository."
+    },
+    "storage": {
+      "conflict": "Another request changed the same content at the same time. Please try again."
+    },
     "auth": {
       "required": "Please sign in.",
       "forbidden": "You do not have permission to do this.",
@@ -522,7 +534,8 @@
         "immutable": "The type of a repository cannot be changed."
       },
       "blobstore": {
-        "unknown": "Unknown blob store."
+        "unknown": "Unknown blob store.",
+        "immutable": "The blob store of a repository that already holds content cannot be changed."
       },
       "remoteUrl": {
         "missing": "A proxy repository needs a remote URL.",
@@ -543,10 +556,18 @@
       }
     },
     "component": {
-      "notFound": "The component does not exist."
+      "notFound": "The component does not exist.",
+      "invalid": "The component coordinates are not valid: a value is missing or too long."
     },
     "asset": {
       "notFound": "The asset does not exist."
+    },
+    "blobStore": {
+      "notFound": "The blob store does not exist.",
+      "compaction": {
+        "running": "This blob store is already being compacted. Try again when the current run has finished.",
+        "unsupported": "This blob store cannot be compacted."
+      }
     },
     "user": {
       "notFound": "The user does not exist.",

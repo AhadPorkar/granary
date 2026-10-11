@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface RepositoryDao extends JpaRepository<Repository, UUID> {
 
@@ -15,4 +16,8 @@ public interface RepositoryDao extends JpaRepository<Repository, UUID> {
     List<Repository> findAllByOrderByNameAsc();
 
     List<Repository> findByFormatOrderByNameAsc(String format);
+
+    /** Every blob store name some repository uses. */
+    @Query("select distinct r.blobStore from Repository r")
+    List<String> findBlobStoreNames();
 }

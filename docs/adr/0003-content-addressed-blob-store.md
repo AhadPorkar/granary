@@ -1,6 +1,6 @@
 # 3. Content-addressed blob store
 
-Date: 2026-10-08 · Status: accepted
+Date: 2026-10-08 · Status: accepted, amended by [ADR 0010](0010-single-node-write-coordination.md)
 
 ## Context
 
@@ -13,7 +13,8 @@ matters more than write speed.
 Store every blob under its SHA-256 (`content/ab/cd/<hash>`), writing to a temporary file in
 the same directory and renaming into place. Rows in the `assets` table reference blobs by hash
 and hold the repository path, content type, size, timestamps and origin. Deleting an asset
-removes the blob only when no other asset references it.
+removes its row only; blobs that no asset references any more are reclaimed later by blob store
+compaction (ADR 0010), because deleting them immediately would race uploads of the same bytes.
 
 ## Consequences
 

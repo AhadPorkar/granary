@@ -85,9 +85,33 @@ the security model, the UI's repository screens and the REST API pick it up thro
   file.
 * **Assets** (one row per path in a repository) and **components** (the logical package a
   group of assets belongs to, e.g. `org.x:x:1.0` or `@scope/pkg@1.2.3`) live in the relational
-  database and reference blobs by hash. Deleting the last reference deletes the blob lazily.
+  database and reference blobs by hash. Deleting assets, components or repositories removes
+  rows only; `BlobCompactionService` later deletes the blobs nothing references any more and
+  that are older than a grace period, on a schedule or on demand
+  (`POST /api/v1/blob-stores/{name}/compact`). A write keeps its blob pinned from the moment
+  it is placed until its asset row is committed, and storing bytes that already exist refreshes
+  the blob's modification time, both under a per-blob lock that compaction's final checks and
+  delete take too, so compaction never deletes a blob that an upload in progress is about to
+  reference, whatever the grace period.
 * Multiple named blob stores can be configured (`granary.storage.blob-stores`) and assigned per
-  repository, for example to put large Docker layers on a different disk later.
+  repository, for example to put large Docker layers on a different disk later. A repository's
+  blob store is fixed once it holds content.
+* **Concurrent writes** of the same path or the same component are serialised by
+  `StorageLocks`: one in-JVM lock per asset path and per component coordinates, taken path
+  first, held until the transaction that wrote the row has committed (released in
+  `TransactionSynchronization.afterCompletion`) and waited for at most
+  `granary.storage.write-lock-timeout`. For an asset the last writer wins; concurrent creators
+  of a component all end up linked to the same row. `StorageService.store` writes the blob and
+  waits for the lock before it opens its transaction, so no database connection is held during
+  an upload. Every write waits for its path lock before it opens its transaction and for a
+  component lock only inside it, so a thread holding a pooled connection never waits for a
+  thread that waits for one. The unique constraints stay as the last line of defence: a constraint violation,
+  optimistic-locking failure or lock time-out that still escapes is answered with
+  `409 storage.conflict` instead of `500`.
+* Values from upstream responses are sanitised before they are stored (`AssetSanitiser`):
+  `Content-Type` is cleaned or guessed from the path, over-long or malformed `ETag` and
+  `Last-Modified` values are dropped, and paths longer than 2,000 characters (or 2,600 bytes in
+  UTF-8, the most PostgreSQL can put in the unique index) are refused with `400 path.invalid`.
 
 ## Offline-first proxying
 
@@ -107,6 +131,13 @@ the security model, the UI's repository screens and the REST API pick it up thro
    artifact asked for by a hundred builds costs one upstream request.
 5. A repository's own **offline switch** and the global **offline mode** short-circuit all of
    the above: cached or nothing.
+6. **Single flight**: concurrent requests for the same uncached or stale file of one repository
+   cause one upstream request. The first caller fetches and stores; the others wait (at most
+   `granary.proxy.single-flight-timeout`, interruptibly) until its write has committed and
+   then read the cached copy. If the fetch fails they retry once, and a waiter that times out
+   fetches on its own. Nothing is kept per path once its fetch is over. A fetch made inside a
+   caller's own transaction does not take part: its write is invisible until that transaction
+   commits, and waiting would hold the transaction's connection.
 
 ## Security
 
@@ -115,8 +146,9 @@ a token, `Authorization: Bearer` with a token or a web session JWT, `X-NuGet-Api
 `GranaryPrincipal` holding the flattened set of privileges. The filter chain only decides what
 anonymous callers may reach; fine-grained checks happen in the dispatcher (per repository and
 per read/write, as reported by the format handler) and with `@PreAuthorize` on the API. There is
-no HTTP session: every request is authenticated on its own, which makes the server trivially
-horizontally scalable behind a load balancer when sharing a database and blob store.
+no HTTP session: every request is authenticated on its own. Write coordination (per-path and
+per-component locks, proxy single flight, compaction) lives in the JVM, however, so Granary runs
+as a single node; see [ADR 0010](adr/0010-single-node-write-coordination.md).
 
 ## Database
 

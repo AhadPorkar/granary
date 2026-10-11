@@ -45,6 +45,34 @@ export function formatPercent(fraction: number, locale: string): string {
   }
 }
 
+const DURATION_STEPS: Array<[string, number]> = [
+  ['hour', 3_600_000],
+  ['minute', 60_000],
+  ['second', 1000],
+  ['millisecond', 1],
+];
+
+/** A duration in milliseconds as "850 ms", "4.2 sec" or "3.5 min", in the unit that keeps the number short. */
+export function formatDuration(millis: number | null | undefined, locale: string): string {
+  if (millis === null || millis === undefined || Number.isNaN(millis)) {
+    return '';
+  }
+  const ms = Math.max(0, millis);
+  const [unit, size] = DURATION_STEPS.find(([, stepSize]) => ms >= stepSize) ?? ['millisecond', 1];
+  const value = ms / size;
+  const digits = unit === 'millisecond' ? 0 : 1;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'unit',
+      unit,
+      unitDisplay: 'short',
+      maximumFractionDigits: digits,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(digits)} ${unit}`;
+  }
+}
+
 export function formatDateTime(iso: string | null | undefined, locale: string): string {
   if (!iso) {
     return '';

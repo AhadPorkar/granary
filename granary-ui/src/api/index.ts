@@ -1,6 +1,7 @@
 import { http } from './client';
 import type {
   AssetView,
+  CompactionReport,
   ComponentView,
   ConnectSnippet,
   CreateUserRequest,
@@ -39,6 +40,10 @@ export const api = {
     status: () => http.get<SystemStatus>('/system/status'),
     settings: () => http.get<Settings>('/system/settings'),
     updateSettings: (body: SettingsRequest) => http.put<Settings>('/system/settings', body),
+  },
+
+  blobStores: {
+    compact: (name: string) => http.post<CompactionReport>(`/blob-stores/${enc(name)}/compact`),
   },
 
   search: (q: string, repository: string | undefined, page = 0, size = 50) =>

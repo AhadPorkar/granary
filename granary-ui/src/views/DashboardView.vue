@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from '@/api';
-import type { FormatView, RepositoryView, SystemStatus } from '@/api/types';
+import type { CompactionReport, FormatView, RepositoryView, SystemStatus } from '@/api/types';
 import { REPOSITORIES_MANAGE, SETTINGS_MANAGE, useAuthStore } from '@/stores/auth';
 import { useSystemStore } from '@/stores/system';
 import { useToastStore } from '@/stores/toast';
@@ -29,9 +29,14 @@ const status = ref<SystemStatus | null>(null);
 const repositories = ref<RepositoryView[]>([]);
 const formats = ref<FormatView[]>([]);
 const togglingOffline = ref(false);
+/** Name of the blob store being compacted right now, if any. */
+const compacting = ref<string | null>(null);
+/** The latest compaction report per blob store, shown until the page is left. */
+const reports = ref<Record<string, CompactionReport>>({});
 
 const seesStatus = computed(() => auth.can(SETTINGS_MANAGE) || auth.can(REPOSITORIES_MANAGE));
 const canToggleOffline = computed(() => auth.can(SETTINGS_MANAGE));
+const canCompact = computed(() => auth.can(SETTINGS_MANAGE));
 
 const repositoryCount = computed(() => status.value?.repositories ?? repositories.value.length);
 const byFormat = computed(() => countByFormat(repositories.value, formats.value));
@@ -76,6 +81,30 @@ async function setOffline(value: boolean): Promise<void> {
   } finally {
     togglingOffline.value = false;
   }
+}
+
+async function compact(name: string): Promise<void> {
+  compacting.value = name;
+  try {
+    const report = await api.blobStores.compact(name);
+    reports.value = { ...reports.value, [name]: report };
+    toast.success(t('dashboard.compactDone', { name }));
+    // the blob count and the used space just changed
+    status.value = await api.system.status();
+  } catch (e) {
+    toast.error(apiError.message(e));
+  } finally {
+    compacting.value = null;
+  }
+}
+
+function reportText(report: CompactionReport): string {
+  return t('dashboard.compactReport', {
+    deleted: fmt.number(report.blobsDeleted),
+    scanned: fmt.number(report.blobsScanned),
+    reclaimed: fmt.bytes(report.bytesReclaimed),
+    duration: fmt.duration(report.durationMillis),
+  });
 }
 
 onMounted(load);
@@ -146,10 +175,24 @@ onMounted(load);
         <section class="card">
           <div class="card__header"><h2>{{ t('dashboard.blobStores') }}</h2></div>
           <div class="card__body stack">
-            <div v-for="store in status.blobStores" :key="store.name" class="stack stack--tight">
+            <p v-if="canCompact" class="field__hint" style="margin: 0">{{ t('dashboard.compactHint') }}</p>
+            <div v-for="store in status.blobStores" :key="store.name" class="stack stack--tight" :data-blob-store="store.name">
               <div class="cluster" style="justify-content: space-between">
                 <strong>{{ store.name }}</strong>
-                <span class="muted small">{{ t('dashboard.blobStoreBlobs', { count: fmt.number(store.blobCount) }) }}</span>
+                <div class="cluster">
+                  <span class="muted small">{{ t('dashboard.blobStoreBlobs', { count: fmt.number(store.blobCount) }) }}</span>
+                  <button
+                    v-if="canCompact"
+                    type="button"
+                    class="btn btn--sm"
+                    :data-testid="`compact-${store.name}`"
+                    :disabled="compacting !== null"
+                    :aria-label="t('dashboard.compactStore', { name: store.name })"
+                    @click="compact(store.name)"
+                  >
+                    {{ compacting === store.name ? t('dashboard.compacting') : t('dashboard.compact') }}
+                  </button>
+                </div>
               </div>
               <div class="meter" role="meter" :aria-valuenow="Math.round(usage(store) * 100)" aria-valuemin="0" aria-valuemax="100" :aria-label="store.name">
                 <div class="meter__fill" :style="{ width: `${Math.max(1, Math.round(usage(store) * 100))}%` }"></div>
@@ -158,6 +201,9 @@ onMounted(load);
                 <span>{{ t('dashboard.blobStoreUsed', { used: fmt.bytes(store.totalBytes) }) }}</span>
                 <span>{{ t('dashboard.blobStoreAvailable', { available: fmt.bytes(store.availableBytes) }) }}</span>
               </div>
+              <p v-if="reports[store.name]" class="small" role="status" :data-testid="`compact-report-${store.name}`" style="margin: 0">
+                {{ reportText(reports[store.name]!) }}
+              </p>
             </div>
           </div>
         </section>

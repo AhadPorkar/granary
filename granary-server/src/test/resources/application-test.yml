@@ -11,6 +11,10 @@ granary:
   data-dir: ${java.io.tmpdir}/granary-test-${random.uuid}
   security:
     admin-password: admin123
+  storage:
+    compaction:
+      # tests compact on demand; the nightly run must never race them
+      enabled: false
   proxy:
     connect-timeout: 2s
     read-timeout: 5s

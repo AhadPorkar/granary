@@ -102,6 +102,12 @@
     "blobStoreUsed": "{used} kullanılıyor",
     "blobStoreAvailable": "{available} boş",
     "blobStoreBlobs": "{count} blob",
+    "compact": "Sıkıştır",
+    "compactStore": "{name} blob deposunu sıkıştır",
+    "compacting": "Sıkıştırılıyor…",
+    "compactHint": "Sıkıştırma, hiçbir deponun artık başvurmadığı ve bekleme süresinden daha eski olan blob dosyalarını siler.",
+    "compactDone": "{name} blob deposu sıkıştırıldı.",
+    "compactReport": "Taranan {scanned} blob içinden {deleted} tanesi silindi; {duration} içinde {reclaimed} geri kazanıldı.",
     "upstreams": "Uzak kaynak durumu",
     "upstreamsEmpty": "Henüz vekil depo yok.",
     "reachable": "Erişilebilir",
@@ -497,6 +503,12 @@
     "request": {
       "malformed": "İstek hatalı biçimlendirilmiş."
     },
+    "path": {
+      "invalid": "Yol geçersiz: çok uzun veya deponun dışını gösteriyor."
+    },
+    "storage": {
+      "conflict": "Başka bir istek aynı içeriği aynı anda değiştirdi. Lütfen tekrar deneyin."
+    },
     "auth": {
       "required": "Lütfen oturum açın.",
       "forbidden": "Bunu yapmak için izniniz yok.",
@@ -522,7 +534,8 @@
         "immutable": "Bir deponun türü değiştirilemez."
       },
       "blobstore": {
-        "unknown": "Bilinmeyen blob deposu."
+        "unknown": "Bilinmeyen blob deposu.",
+        "immutable": "İçerik barındıran bir deponun blob deposu değiştirilemez."
       },
       "remoteUrl": {
         "missing": "Vekil depo için uzak URL gereklidir.",
@@ -543,10 +556,18 @@
       }
     },
     "component": {
-      "notFound": "Bileşen mevcut değil."
+      "notFound": "Bileşen mevcut değil.",
+      "invalid": "Bileşen koordinatları geçersiz: bir değer eksik veya çok uzun."
     },
     "asset": {
       "notFound": "Dosya mevcut değil."
+    },
+    "blobStore": {
+      "notFound": "Blob deposu mevcut değil.",
+      "compaction": {
+        "running": "Bu blob deposu zaten sıkıştırılıyor. Devam eden işlem bittiğinde tekrar deneyin.",
+        "unsupported": "Bu blob deposu sıkıştırılamaz."
+      }
     },
     "user": {
       "notFound": "Kullanıcı mevcut değil.",

@@ -11,3 +11,4 @@
 | [0007](0007-stateless-authentication.md) | Stateless authentication with privilege strings |
 | [0008](0008-vue-spa-with-i18n.md) | Vue single-page UI with five locales |
 | [0009](0009-business-source-license.md) | Business Source License 1.1 |
+| [0010](0010-single-node-write-coordination.md) | Single-node write coordination and blob compaction |

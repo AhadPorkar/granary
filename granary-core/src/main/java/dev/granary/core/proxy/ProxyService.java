@@ -1,5 +1,6 @@
 package dev.granary.core.proxy;
 
+import dev.granary.core.concurrent.SingleFlight;
 import dev.granary.core.config.GranaryProperties;
 import dev.granary.core.model.Asset;
 import dev.granary.core.model.Repository;
@@ -15,9 +16,14 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * The offline-first proxy cache.
@@ -32,11 +38,22 @@ import org.springframework.stereotype.Service;
  *       it, a 404 is remembered in the negative cache, and any failure falls back to the cached copy.</li>
  * </ol>
  * The result is that once an artifact has been fetched, an internet outage never breaks a build.
+ *
+ * <p>Concurrent requests for the same file that all need the upstream are coalesced (single flight): the first one
+ * fetches and caches it, the others wait for that and then serve what it cached, or its outcome when nothing could
+ * be cached. A waiter gives up after {@code granary.proxy.single-flight-timeout} and fetches on its own.
+ * Coordination is per JVM, which matches Granary's single-node deployment. A fetch inside a caller's transaction
+ * does not take part: it could not publish what it cached before that transaction commits, and as a waiter it would
+ * hold the transaction's connection, and maybe write keys the leader needs, for as long as it waits.
  */
 @Service
 public class ProxyService {
 
     private static final Logger log = LoggerFactory.getLogger(ProxyService.class);
+
+    /** One upstream fetch in progress, identified by the repository and the local cache path. */
+    private record FlightKey(UUID repositoryId, String path) {
+    }
 
     private final StorageService storage;
     private final UpstreamClient upstream;
@@ -44,6 +61,7 @@ public class ProxyService {
     private final NegativeCache negativeCache;
     private final SettingsService settings;
     private final GranaryProperties.Proxy defaults;
+    private final SingleFlight<FlightKey, Optional<StoredContent>> flights = new SingleFlight<>();
 
     public ProxyService(StorageService storage, UpstreamClient upstream, UpstreamHealth health,
                         NegativeCache negativeCache, SettingsService settings, GranaryProperties properties) {
@@ -76,10 +94,7 @@ public class ProxyService {
                                          Map<String, String> extraHeaders) {
         String path = cachePath;
         Optional<StoredContent> cached = storage.find(repo, path);
-        if (cached.isPresent() && !options.metadata()) {
-            return cached;
-        }
-        if (cached.isPresent() && isFresh(cached.get().asset(), repo, options)) {
+        if (servable(cached, repo, options)) {
             return cached;
         }
         if (isOffline(repo)) {
@@ -91,7 +106,92 @@ public class ProxyService {
         if (!health.allowRequest(repo)) {
             return cached;
         }
-        return fetchFromUpstream(repo, path, upstreamUri, options, cached, extraHeaders);
+        return fetchOnce(repo, path, upstreamUri, options, cached, extraHeaders);
+    }
+
+    /** Number of upstream fetches currently coalescing concurrent requests (for tests and diagnostics). */
+    public int inFlightFetches() {
+        return flights.size();
+    }
+
+    /**
+     * Makes sure only one of the concurrent requests for {@code path} talks to the upstream. The others wait for it
+     * (bounded) and then read what it left in the cache.
+     */
+    private Optional<StoredContent> fetchOnce(Repository repo, String path, URI upstreamUri, FetchOptions options,
+                                              Optional<StoredContent> cached, Map<String, String> extraHeaders) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            // inside a caller's transaction: what this fetch caches is invisible to others until that commits, and a
+            // second fetch of the same file in the same transaction would wait for its own flight
+            return fetchFromUpstream(repo, path, upstreamUri, options, cached, extraHeaders);
+        }
+        FlightKey key = new FlightKey(repo.getId(), StorageService.normalise(path));
+        Duration wait = defaults.getSingleFlightTimeout();
+        for (int round = 0; round < 2; round++) {
+            SingleFlight<FlightKey, Optional<StoredContent>>.Flight flight = flights.join(key);
+            if (flight.leader()) {
+                return lead(flight, repo, path, upstreamUri, options, extraHeaders);
+            }
+            try {
+                flight.outcome().get(wait.toNanos(), TimeUnit.NANOSECONDS);
+                // the leader's cache write is committed by now: serve it, or the leader's empty outcome
+                return storage.find(repo, path);
+            } catch (TimeoutException e) {
+                log.info("waited {} for the concurrent upstream request for {} in {}; fetching it directly",
+                        wait, path, repo.getName());
+                break;
+            } catch (ExecutionException e) {
+                // the leader failed: try once more as (or behind) a new leader, then on our own
+                log.debug("concurrent upstream request for {} in {} failed: {}", path, repo.getName(), e.getCause().toString());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return cached;
+            }
+        }
+        Optional<StoredContent> current = storage.find(repo, path);
+        if (servable(current, repo, options)) {
+            return current;
+        }
+        return fetchFromUpstream(repo, path, upstreamUri, options, current, extraHeaders);
+    }
+
+    private Optional<StoredContent> lead(SingleFlight<FlightKey, Optional<StoredContent>>.Flight flight, Repository repo,
+                                         String path, URI upstreamUri, FetchOptions options,
+                                         Map<String, String> extraHeaders) {
+        Optional<StoredContent> result;
+        try {
+            // a flight that ended just before this one began may have done the work already
+            Optional<StoredContent> current = storage.find(repo, path);
+            if (servable(current, repo, options)) {
+                result = current;
+            } else if (current.isEmpty() && negativeCache.contains(repo.getId(), path)) {
+                result = Optional.empty();
+            } else {
+                result = fetchFromUpstream(repo, path, upstreamUri, options, current, extraHeaders);
+            }
+        } catch (RuntimeException | Error e) {
+            endFlight(flight, null, e);
+            throw e;
+        }
+        endFlight(flight, result, null);
+        return result;
+    }
+
+    /**
+     * Releases the waiters. A leader never runs inside a caller's transaction ({@link #fetchOnce}), so whatever it
+     * cached is committed by now and visible to them.
+     */
+    private static void endFlight(SingleFlight<FlightKey, Optional<StoredContent>>.Flight flight,
+                                  Optional<StoredContent> result, Throwable failure) {
+        if (failure == null) {
+            flight.complete(result);
+        } else {
+            flight.fail(failure);
+        }
+    }
+
+    private boolean servable(Optional<StoredContent> cached, Repository repo, FetchOptions options) {
+        return cached.isPresent() && (!options.metadata() || isFresh(cached.get().asset(), repo, options));
     }
 
     public boolean isOffline(Repository repo) {
@@ -123,7 +223,8 @@ public class ProxyService {
                 try (InputStream body = response.body()) {
                     stored = storage.store(repo, path, body, contentType, Asset.Origin.CACHED, options.metadata());
                 }
-                Asset asset = storage.touchVerified(stored.asset(),
+                // StorageService sanitises the header values: oversized validators are dropped, never truncated
+                Asset asset = storage.recordUpstreamValidators(stored.asset(),
                         response.header("ETag").orElse(null),
                         response.header("Last-Modified").orElse(null));
                 return Optional.of(new StoredContent(asset, stored.blobStore()));

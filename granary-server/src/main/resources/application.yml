@@ -70,6 +70,14 @@ granary:
   data-dir: ${GRANARY_DATA_DIR:./data}
   # External URL developers use (behind a reverse proxy); can also be set at runtime in the UI.
   base-url: ${GRANARY_BASE_URL:}
+  storage:
+    # how long a write waits for a concurrent write of the same path or component (then 409 storage.conflict)
+    write-lock-timeout: 30s
+    compaction:
+      # delete blobs no asset references any more: daily at 03:30, keeping anything younger than the grace period
+      enabled: ${GRANARY_COMPACTION_ENABLED:true}
+      schedule: ${GRANARY_COMPACTION_SCHEDULE:0 30 3 * * *}
+      grace-period: ${GRANARY_COMPACTION_GRACE_PERIOD:24h}
   security:
     admin-password: ${GRANARY_ADMIN_PASSWORD:admin123}
     jwt-secret: ${GRANARY_JWT_SECRET:}
@@ -83,6 +91,8 @@ granary:
     failure-threshold: 3
     circuit-open-min: 30s
     circuit-open-max: 10m
+    # concurrent requests for the same uncached file wait this long for the one fetching it, then fetch themselves
+    single-flight-timeout: 5m
 
 management:
   endpoints:

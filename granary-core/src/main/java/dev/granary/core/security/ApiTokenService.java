@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -77,8 +76,13 @@ public class ApiTokenService {
         tokens.delete(token);
     }
 
-    /** Resolves a presented secret to its enabled owner, or empty if unknown, expired or disabled. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /**
+     * Resolves a presented secret to its enabled owner, or empty if unknown, expired or disabled, and records when
+     * the token was last used. Callers invoke it outside a transaction (it starts its own): it used to start a new
+     * transaction from inside a read-only one, which needed a second pooled connection while the first stayed held,
+     * so enough concurrent token-authenticated requests exhausted the pool and failed after its time-out.
+     */
+    @Transactional
     public Optional<User> authenticate(String secret) {
         if (secret == null || !secret.startsWith(PREFIX)) {
             return Optional.empty();

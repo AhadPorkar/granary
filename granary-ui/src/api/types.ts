@@ -220,6 +220,18 @@ export interface BlobStoreStatus {
   availableBytes: number;
 }
 
+/** Outcome of compacting one blob store ({@code POST /blob-stores/{name}/compact}). */
+export interface CompactionReport {
+  blobStore: string;
+  startedAt: string;
+  durationMillis: number;
+  /** ISO-8601 duration: blobs written more recently than this were kept regardless of references. */
+  gracePeriod: string;
+  blobsScanned: number;
+  blobsDeleted: number;
+  bytesReclaimed: number;
+}
+
 export interface UpstreamStatus {
   repository: string;
   remoteUrl: string;

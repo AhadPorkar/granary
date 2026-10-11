@@ -219,7 +219,7 @@ Every setting is an environment variable, a JVM flag (`--granary.data-dir=…`) 
 | `GRANARY_ADMIN_PASSWORD` | `admin123` | Password of the built-in `admin` on first start |
 | `GRANARY_ANONYMOUS_READ` | `true` | Whether unauthenticated clients may download |
 | `GRANARY_BASE_URL` | request-derived | Public URL when behind a reverse proxy (affects npm tarball and NuGet links) |
-| `GRANARY_JWT_SECRET` | generated | HMAC secret for web sessions; set it when running more than one instance |
+| `GRANARY_JWT_SECRET` | generated | HMAC secret for web sessions; set it when the data directory is not kept across restarts |
 | `SPRING_PROFILES_ACTIVE` | | `postgres` to use PostgreSQL |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | | JDBC settings for PostgreSQL |
 | `SERVER_PORT` | `8081` | HTTP port |
@@ -310,7 +310,8 @@ follow [Conventional Commits](https://www.conventionalcommits.org/).
 ## Roadmap
 
 1. More formats: raw, PyPI, Docker/OCI, Helm, Go, APT, Conda, Composer, RubyGems, Cargo.
-2. Cleanup policies and blob-store compaction.
+2. Cleanup policies (deleting old snapshots and unused cached artifacts by rule); blob-store
+   compaction is available.
 3. Full-text search across formats and a browse tree with download statistics.
 4. REST API parity with the UI for every setting, plus an OpenAPI document.
 5. Scheduled backup/restore and S3-compatible blob stores.

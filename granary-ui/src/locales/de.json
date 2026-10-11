@@ -102,6 +102,12 @@
     "blobStoreUsed": "{used} belegt",
     "blobStoreAvailable": "{available} frei",
     "blobStoreBlobs": "{count} Blobs",
+    "compact": "Bereinigen",
+    "compactStore": "Blob-Speicher {name} bereinigen",
+    "compacting": "Wird bereinigt…",
+    "compactHint": "Das Bereinigen löscht Blobs, auf die kein Repository mehr verweist und die älter als die Schonfrist sind.",
+    "compactDone": "Blob-Speicher {name} bereinigt.",
+    "compactReport": "{deleted} von {scanned} Blobs gelöscht, {reclaimed} in {duration} freigegeben.",
     "upstreams": "Upstream-Status",
     "upstreamsEmpty": "Noch keine Proxy-Repositories.",
     "reachable": "Erreichbar",
@@ -497,6 +503,12 @@
     "request": {
       "malformed": "Die Anfrage war fehlerhaft."
     },
+    "path": {
+      "invalid": "Der Pfad ist ungültig: Er ist zu lang oder zeigt aus dem Repository heraus."
+    },
+    "storage": {
+      "conflict": "Eine andere Anfrage hat gleichzeitig denselben Inhalt geändert. Bitte versuchen Sie es erneut."
+    },
     "auth": {
       "required": "Bitte melden Sie sich an.",
       "forbidden": "Sie haben dafür keine Berechtigung.",
@@ -522,7 +534,8 @@
         "immutable": "Der Typ eines Repositories kann nicht geändert werden."
       },
       "blobstore": {
-        "unknown": "Unbekannter Blob-Speicher."
+        "unknown": "Unbekannter Blob-Speicher.",
+        "immutable": "Der Blob-Speicher eines Repositorys, das bereits Inhalte enthält, kann nicht geändert werden."
       },
       "remoteUrl": {
         "missing": "Ein Proxy-Repository benötigt eine Remote-URL.",
@@ -543,10 +556,18 @@
       }
     },
     "component": {
-      "notFound": "Die Komponente existiert nicht."
+      "notFound": "Die Komponente existiert nicht.",
+      "invalid": "Die Koordinaten der Komponente sind ungültig: Ein Wert fehlt oder ist zu lang."
     },
     "asset": {
       "notFound": "Das Asset existiert nicht."
+    },
+    "blobStore": {
+      "notFound": "Der Blob-Speicher existiert nicht.",
+      "compaction": {
+        "running": "Dieser Blob-Speicher wird bereits bereinigt. Versuchen Sie es nach Abschluss des laufenden Vorgangs erneut.",
+        "unsupported": "Dieser Blob-Speicher kann nicht bereinigt werden."
+      }
     },
     "user": {
       "notFound": "Der Benutzer existiert nicht.",

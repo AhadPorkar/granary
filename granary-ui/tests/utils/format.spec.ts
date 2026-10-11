@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDateTime, formatNumber, formatRelative, fromDateTimeLocal, toDateTimeLocal } from '@/utils/format';
+import { formatBytes, formatDateTime, formatDuration, formatNumber, formatRelative, fromDateTimeLocal, toDateTimeLocal } from '@/utils/format';
 
 describe('formatting through Intl', () => {
   it('formats byte sizes with locale-specific separators and units', () => {
@@ -14,6 +14,16 @@ describe('formatting through Intl', () => {
     expect(formatNumber(1234567, 'en')).toBe('1,234,567');
     expect(formatNumber(1234567, 'de')).toBe('1.234.567');
     expect(formatNumber(42, 'fa')).toBe('۴۲');
+  });
+
+  it('formats durations in the unit that keeps the number short', () => {
+    expect(formatDuration(0, 'en')).toBe('0 ms');
+    expect(formatDuration(850, 'en')).toBe('850 ms');
+    expect(formatDuration(4200, 'en')).toBe('4.2 sec');
+    expect(formatDuration(4200, 'de')).toBe('4,2 Sek.');
+    expect(formatDuration(210_000, 'en')).toBe('3.5 min');
+    expect(formatDuration(2 * 3_600_000, 'en')).toBe('2 hr');
+    expect(formatDuration(undefined, 'en')).toBe('');
   });
 
   it('formats dates and relative times, tolerating missing values', () => {

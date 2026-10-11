@@ -152,6 +152,170 @@ class StorageServiceTest extends CoreServiceTest {
         assertThatThrownBy(() -> StorageService.normalise("..")).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void normalisationRejectsPathsLongerThanTheColumn() {
+        String max = "a/" + "b".repeat(AssetSanitiser.MAX_PATH_LENGTH - 2);
+        assertThat(StorageService.normalise("/" + max)).isEqualTo(max);
+        assertThatThrownBy(() -> StorageService.normalise(max + "c"))
+                .isInstanceOf(InvalidStorageInputException.class)
+                .isInstanceOf(IllegalArgumentException.class)
+                .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("path.invalid"))
+                .satisfies(e -> assertThat(e.getMessage()).hasSizeLessThan(300));
+        assertThatThrownBy(() -> StorageService.normalise("a/../b")).isInstanceOf(InvalidStorageInputException.class);
+    }
+
+    /**
+     * 2,000 characters fit the column, but a PostgreSQL index entry holds at most 2704 bytes, so a path of mostly
+     * multi-byte characters is limited by its UTF-8 length as well.
+     */
+    @Test
+    void normalisationRejectsMultiBytePathsTooLongForTheIndex() {
+        String max = "ab" + "中".repeat((AssetSanitiser.MAX_INDEXED_BYTES - 2) / 3);
+        assertThat(max.getBytes(java.nio.charset.StandardCharsets.UTF_8)).hasSize(AssetSanitiser.MAX_INDEXED_BYTES);
+        assertThat(StorageService.normalise(max)).isEqualTo(max);
+        assertThatThrownBy(() -> StorageService.normalise(max + "x"))
+                .isInstanceOf(InvalidStorageInputException.class)
+                .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("path.invalid"))
+                .hasMessageContaining("bytes in UTF-8");
+        // four-byte characters count as two chars and four bytes
+        String emoji = "\uD83D\uDE00".repeat(AssetSanitiser.MAX_INDEXED_BYTES / 4);
+        assertThat(StorageService.normalise(emoji)).isEqualTo(emoji);
+        assertThatThrownBy(() -> StorageService.normalise(emoji + "é")).isInstanceOf(InvalidStorageInputException.class);
+        // ASCII paths are limited by the column alone
+        String ascii = "a".repeat(AssetSanitiser.MAX_PATH_LENGTH);
+        assertThat(StorageService.normalise(ascii)).isEqualTo(ascii);
+    }
+
+    @Test
+    void pathOfExactlyTheColumnSizeIsStoredAndOneMoreIsRefused() throws IOException {
+        Repository repo = hosted("h");
+        String max = "d/" + "p".repeat(AssetSanitiser.MAX_PATH_LENGTH - 2);
+
+        storage.store(repo, max, in("fits"), null, Asset.Origin.UPLOADED, false);
+
+        assertThat(storage.find(repo, max).orElseThrow().readUtf8()).isEqualTo("fits");
+        assertThatThrownBy(() -> storage.store(repo, max + "x", in("too long"), null, Asset.Origin.UPLOADED, false))
+                .isInstanceOf(InvalidStorageInputException.class);
+        assertThat(assets.countByRepositoryId(repo.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void oversizedContentTypeIsReplacedByTheGuessInsteadOfFailingTheWrite() {
+        Repository repo = hosted("h");
+        String huge = "application/" + "z".repeat(400);
+
+        StoredContent stored = storage.store(repo, "lib/x-1.0.jar", in("jar"), huge, Asset.Origin.CACHED, false);
+
+        assertThat(stored.asset().getContentType()).isEqualTo("application/java-archive");
+        assertThat(assets.findById(stored.asset().getId()).orElseThrow().getContentType()).isEqualTo("application/java-archive");
+    }
+
+    @Test
+    void contentTypeWithOversizedParametersKeepsItsType() {
+        Repository repo = hosted("h");
+        String value = "text/plain; note=\"" + "n".repeat(400) + "\"";
+
+        StoredContent stored = storage.store(repo, "notes", in("n"), value, Asset.Origin.UPLOADED, false);
+
+        assertThat(stored.asset().getContentType()).isEqualTo("text/plain");
+    }
+
+    @Test
+    void oversizedValidatorsAreDroppedAndShortOnesReplaceThem() {
+        Repository repo = hosted("h");
+        StoredContent stored = storage.store(repo, "f.json", in("{}"), null, Asset.Origin.CACHED, true);
+
+        Asset withValidators = storage.touchVerified(stored.asset(), "\"v1\"", "Wed, 01 Jan 2026 00:00:00 GMT");
+        assertThat(withValidators.getUpstreamEtag()).isEqualTo("\"v1\"");
+
+        Asset oversized = storage.touchVerified(withValidators, "\"" + "e".repeat(600) + "\"", "L".repeat(150));
+        assertThat(oversized.getUpstreamEtag()).isNull();
+        assertThat(oversized.getUpstreamLastModified()).isNull();
+        Asset reloaded = assets.findById(stored.asset().getId()).orElseThrow();
+        assertThat(reloaded.getUpstreamEtag()).isNull();
+        assertThat(reloaded.getUpstreamLastModified()).isNull();
+
+        Asset renewed = storage.touchVerified(reloaded, null, null);
+        assertThat(renewed.getUpstreamEtag()).isNull();
+    }
+
+    @Test
+    void recordingUpstreamValidatorsReplacesBothValues() {
+        Repository repo = hosted("h");
+        StoredContent stored = storage.store(repo, "g.json", in("{}"), null, Asset.Origin.CACHED, true);
+        Asset first = storage.recordUpstreamValidators(stored.asset(), "\"a\"", "Thu, 01 Jan 2026 00:00:00 GMT");
+
+        Asset second = storage.recordUpstreamValidators(first, null, "x".repeat(101));
+
+        assertThat(second.getUpstreamEtag()).isNull();
+        assertThat(second.getUpstreamLastModified()).isNull();
+        assertThat(second.getLastVerifiedAt()).isNotNull();
+    }
+
+    @Test
+    void saveSanitisesWhatACallerPutIntoTheAsset() {
+        Repository repo = hosted("h");
+        Asset asset = storage.store(repo, "s.zip", in("z"), null, Asset.Origin.UPLOADED, false).asset();
+        asset.setContentType("application/" + "q".repeat(250));
+        asset.setUpstreamEtag("e".repeat(501));
+        asset.setUpstreamLastModified("now");
+
+        Asset saved = storage.save(asset);
+
+        assertThat(saved.getContentType()).isEqualTo("application/zip");
+        assertThat(saved.getUpstreamEtag()).isNull();
+        assertThat(saved.getUpstreamLastModified()).isEqualTo("now");
+    }
+
+    @Test
+    void componentCoordinatesLongerThanTheirColumnsAreRefusedAsInvalidInput() {
+        Repository repo = hosted("h");
+        var longVersion = new StorageService.ComponentCoordinates("", "pkg", "1.".repeat(101));
+        var longName = new StorageService.ComponentCoordinates("", "n".repeat(501), "1");
+        var longNamespace = new StorageService.ComponentCoordinates("s".repeat(501), "n", "1");
+        var missingVersion = new StorageService.ComponentCoordinates("", "n", null);
+
+        for (var coordinates : List.of(longVersion, longName, longNamespace, missingVersion)) {
+            assertThatThrownBy(() -> storage.ensureComponent(repo, coordinates))
+                    .isInstanceOf(InvalidStorageInputException.class)
+                    .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("component.invalid"));
+        }
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+        var max = new StorageService.ComponentCoordinates("s".repeat(500), "n".repeat(500), "v".repeat(200));
+        assertThat(storage.ensureComponent(repo, max).getId()).isNotNull();
+    }
+
+    @Test
+    void nulCharactersArePathAndCoordinateErrors() {
+        Repository repo = hosted("h");
+        assertThatThrownBy(() -> StorageService.normalise("a/b\u0000.txt"))
+                .isInstanceOf(InvalidStorageInputException.class)
+                .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("path.invalid"));
+        assertThatThrownBy(() -> storage.find(repo, "a\u0000")).isInstanceOf(InvalidStorageInputException.class);
+        assertThatThrownBy(() -> storage.ensureComponent(repo, new StorageService.ComponentCoordinates("", "n\u0000", "1")))
+                .isInstanceOf(InvalidStorageInputException.class)
+                .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("component.invalid"));
+        // other control characters are legal in a path (format handlers refuse them where their protocol does)
+        assertThat(StorageService.normalise("a/b\u0001c")).isEqualTo("a/b\u0001c");
+    }
+
+    @Test
+    void componentCoordinatesTooLongForTheIndexInUtf8AreRefused() {
+        Repository repo = hosted("h");
+        // every column fits, but 500 + 500 + 200 three-byte characters are 3,600 bytes for one index entry
+        var wide = new StorageService.ComponentCoordinates("中".repeat(500), "文".repeat(500), "版".repeat(200));
+        assertThatThrownBy(() -> storage.ensureComponent(repo, wide))
+                .isInstanceOf(InvalidStorageInputException.class)
+                .satisfies(e -> assertThat(((InvalidStorageInputException) e).code()).isEqualTo("component.invalid"));
+        assertThatThrownBy(() -> storage.store(repo, "w/1", in("x"), null, Asset.Origin.UPLOADED, false, wide))
+                .isInstanceOf(InvalidStorageInputException.class);
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+        assertThat(assets.countByRepositoryId(repo.getId())).isZero();
+        // 2,600 bytes together are fine
+        var fits = new StorageService.ComponentCoordinates("中".repeat(400), "文".repeat(400), "1".repeat(200));
+        assertThat(storage.ensureComponent(repo, fits).getId()).isNotNull();
+    }
+
     private static ByteArrayInputStream in(String s) {
         return new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
     }

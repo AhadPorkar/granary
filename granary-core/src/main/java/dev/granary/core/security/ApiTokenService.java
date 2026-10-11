@@ -43,8 +43,10 @@ public class ApiTokenService {
 
     @Transactional
     public IssuedToken issue(User user, String name, Instant expiresAt) {
-        if (name == null || name.isBlank() || name.length() > 200) {
-            throw GranaryException.badRequest("token.name.invalid", "Token name must be 1-200 characters");
+        // a NUL character cannot be stored on PostgreSQL; refuse it like a name that is too long
+        if (name == null || name.isBlank() || name.length() > 200 || name.indexOf('\0') >= 0) {
+            throw GranaryException.badRequest("token.name.invalid",
+                    "Token name must be 1-200 characters without NUL characters");
         }
         if (expiresAt != null && !expiresAt.isAfter(Instant.now())) {
             throw GranaryException.badRequest("token.expiry.past", "Expiry must be in the future");

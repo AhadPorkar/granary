@@ -76,6 +76,12 @@ curl -fsS -X POST "$BASE/api/v1/repositories/standard" -H "Authorization: Bearer
 APITOKEN=$(curl -fsS -X POST "$BASE/api/v1/tokens" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"verify-conan"}' | sed -E 's/.*"secret":"([^"]+)".*/\1/')
 [[ "$APITOKEN" == gry_* ]] && ok "api token" || bad "api token"
+# the repositories and the user an earlier run on this server created: removed, so the run can be repeated (and the
+# proxies start without the cache of an upstream that is gone)
+for repo in conan-readonly conan-chained conan-upstream; do
+  curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/repositories/$repo" -H "Authorization: Bearer $TOKEN" 2>/dev/null
+done
+curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/users/conan-chain" -H "Authorization: Bearer $TOKEN" 2>/dev/null
 HOSTED="$BASE/repository/conan-hosted"
 GROUP="$BASE/repository/conan-group"
 STEP="v1/ping advertises revisions"

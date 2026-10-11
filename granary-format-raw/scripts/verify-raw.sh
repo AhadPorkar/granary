@@ -7,6 +7,8 @@
 # public upstreams this host cannot reach (each such skip also checks that the proxy answers a clean 503). The
 # cabal and stack steps download the full Hackage index (about 140 MB, 1 GB unpacked) several times and delete
 # each copy right after its step; the work directory goes to $TMPDIR (default /tmp), e.g. TMPDIR=/dev/shm.
+# VERIFY_SKIP_IMAGES lists Docker images not to pull (their steps are reported as SKIP), for machines short of disk
+# space: e.g. VERIFY_SKIP_IMAGES="haskell:9.6 r-base:4.5.1" (haskell:9.6 alone is several GB).
 # Usage: verify-raw.sh http://localhost:8108   (GRANARY_USER/GRANARY_PASSWORD, default admin/admin123)
 set -uo pipefail
 BASE=${1:-http://localhost:8108}
@@ -26,7 +28,10 @@ code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 expect_code() { local want=$1; shift; local got; got=$(code "$@"); [ "$got" = "$want" ] && ok "$STEP ($got)" || bad "$STEP (expected $want, got $got)"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 header() { curl -s -o /dev/null -D - "$@" | tr -d '\r'; }
-image() { docker image inspect "$1" >/dev/null 2>&1 || docker pull -q "$1" >/dev/null 2>&1; }
+image() {
+  case " ${VERIFY_SKIP_IMAGES:-} " in *" $1 "*) return 1 ;; esac
+  docker image inspect "$1" >/dev/null 2>&1 || docker pull -q "$1" >/dev/null 2>&1
+}
 settings() { curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$1" >/dev/null; }
 # the connect snippet the server shows for a repository, with the API token filled in
 snippet() {
@@ -190,7 +195,7 @@ DESC
       Rscript -e 'install.packages("praise", repos="'"$BASE"'/repository/cran-group/", lib=tempdir()); library(praise, lib.loc=tempdir()); cat(praise())'
   fi
   cd "$WORK"
-else skip "R (docker or image r-base:4.5.1 missing)"; fi
+else skip "R (docker or image r-base:4.5.1 missing, or listed in VERIFY_SKIP_IMAGES)"; fi
 
 echo "== hackage (cabal and stack in docker haskell:9.6)"
 if have docker && image haskell:9.6; then
@@ -226,7 +231,7 @@ if have docker && image haskell:9.6; then
     skip "stackage-proxy (www.stackage.org unreachable from this host: $(tail -1 "$WORK/stackage-direct.log"))"
     STEP="stackage-proxy: uncached file behind an unreachable upstream is a clean 503"; expect_code 503 "$BASE/repository/stackage-proxy/lts-22.43/cabal.config"
   fi
-else skip "cabal and stack (docker or image haskell:9.6 missing)"; fi
+else skip "cabal and stack (docker or image haskell:9.6 missing, or listed in VERIFY_SKIP_IMAGES)"; fi
 
 echo "== bower (npx bower, registry lookup)"
 if have npx && have git; then

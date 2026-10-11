@@ -75,6 +75,16 @@ echo "== Repositories"
 api -X POST "$GRANARY/api/v1/repositories/standard" >/dev/null && ok "standard repositories (swift-hosted, swift-group)" || bad "standard repositories"
 APITOKEN=$(api -X POST "$GRANARY/api/v1/tokens" -d '{"name":"verify-swift"}' | jq -r .secret)
 [[ "$APITOKEN" == gry_* ]] && ok "api token" || bad "api token"
+# what an earlier run on this server left behind is removed, so the run can be repeated: its releases in
+# swift-hosted, and swift-origin and swift-proxy with their content and cache (the cached archive of an earlier
+# acme.other would not match the one published now). swift-group is set back to swift-hosted first, because a
+# group member cannot be deleted.
+api -X PUT "$GRANARY/api/v1/repositories/swift-group" -d '{"name":"swift-group","format":"swift","type":"GROUP","members":["swift-hosted"]}' >/dev/null 2>&1
+for repo in swift-proxy swift-origin; do api -X DELETE "$GRANARY/api/v1/repositories/$repo" >/dev/null 2>&1; done
+for id in $(api "$GRANARY/api/v1/repositories/swift-hosted/components?q=acme&size=500" \
+            | jq -r '.items[] | select(.namespace == "acme" and (.name == "demo" or .name == "signed")) | .id'); do
+  api -X DELETE "$GRANARY/api/v1/repositories/swift-hosted/components/$id" >/dev/null || bad "remove an earlier run's release $id"
+done
 api -X POST "$GRANARY/api/v1/repositories" -d '{"name":"swift-origin","format":"swift","type":"HOSTED","allowRedeploy":false}' >/dev/null 2>&1 \
   || api "$GRANARY/api/v1/repositories/swift-origin" >/dev/null || bad "create swift-origin"
 api -X POST "$GRANARY/api/v1/repositories" -d "{\"name\":\"swift-proxy\",\"format\":\"swift\",\"type\":\"PROXY\",\"remoteUrl\":\"$GRANARY/repository/swift-origin/\",\"metadataMaxAgeMinutes\":0}" >/dev/null 2>&1 \

@@ -47,6 +47,11 @@ class StorageErrorHandlerTest {
                 case "hibernate-stale" -> () -> new StaleObjectStateException("Asset", "id");
                 case "hibernate-constraint" -> () -> new ConstraintViolationException("dup", new SQLException("dup", "23505"), "uk_asset_path");
                 case "wrapped" -> () -> new IllegalStateException("store failed", new DataIntegrityViolationException("duplicate"));
+                // SQLSTATE class 22: H2 "value too long" and PostgreSQL's refusal of a NUL character
+                case "too-long" -> () -> new DataIntegrityViolationException("could not execute statement",
+                        new ConstraintViolationException("value too long", new SQLException("Value too long", "22001"), null));
+                case "nul" -> () -> new DataIntegrityViolationException("could not execute statement",
+                        new SQLException("ERROR: invalid byte sequence for encoding \"UTF8\": 0x00", "22021"));
                 case "path" -> () -> new InvalidStorageInputException("path.invalid", "path too long");
                 case "component" -> () -> new InvalidStorageInputException("component.invalid", "version too long");
                 default -> () -> new IllegalStateException("a genuine bug");
@@ -69,6 +74,16 @@ class StorageErrorHandlerTest {
         mvc.perform(get("/fail/" + kind))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("storage.conflict"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    /** A value the database refuses is no race: retrying cannot help, so it is a 400, not a 409. */
+    @ParameterizedTest
+    @ValueSource(strings = {"too-long", "nul"})
+    void valuesTheDatabaseRefusesBecome400(String kind) throws Exception {
+        mvc.perform(get("/fail/" + kind))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("request.invalid"))
                 .andExpect(jsonPath("$.message").isNotEmpty());
     }
 

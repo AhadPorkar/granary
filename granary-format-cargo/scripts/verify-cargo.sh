@@ -70,6 +70,17 @@ curl -fsS -X POST "$BASE/api/v1/repositories/standard" -H "Authorization: Bearer
 APITOKEN=$(curl -fsS -X POST "$BASE/api/v1/tokens" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"verify-cargo"}' | sed -E 's/.*"secret":"([^"]+)".*/\1/')
 [[ "$APITOKEN" == gry_* ]] && ok "api token" || bad "api token"
+# an earlier run on this server published the same demo crates: remove them through the component API, so the run
+# can be repeated (a crate file removed this way takes its version out of the index the next moment)
+removed=0; failed=0
+for crate in acme-hello acme-extra; do
+  for id in $(curl -fsS "$BASE/api/v1/repositories/cargo-hosted/components?q=$crate&size=500" -H "Authorization: Bearer $TOKEN" \
+              | grep -o '{[^{}]*}' | grep "\"name\":\"$crate\"" | sed -E 's/.*"id":"([^"]+)".*/\1/'); do
+    curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/repositories/cargo-hosted/components/$id" -H "Authorization: Bearer $TOKEN" \
+      && removed=$((removed + 1)) || failed=$((failed + 1))
+  done
+done
+[ "$failed" = 0 ] && ok "demo crates of an earlier run removed from cargo-hosted ($removed versions)" || bad "removing the demo crates of an earlier run"
 settings() { curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$1" >/dev/null; }
 # whatever happens below, leave the server online and readable
 trap 'settings "{\"offlineMode\":false,\"anonymousRead\":true}" 2>/dev/null' EXIT

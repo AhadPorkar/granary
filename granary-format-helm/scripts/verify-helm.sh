@@ -125,6 +125,8 @@ STEP="uploads to the group are refused with a 405"
 SIGNED=""
 if command -v gpg >/dev/null; then
   export GNUPGHOME="$WORK/g"; mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
+  # gpg starts an agent for this home directory; it would outlive the script
+  trap 'gpgconf --kill gpg-agent >/dev/null 2>&1' EXIT
   if gpg --batch --pinentry-mode loopback --passphrase '' --quick-gen-key "Chart Signer <signer@example.com>" rsa2048 sign never >/dev/null 2>&1 \
      && gpg --batch --pinentry-mode loopback --passphrase '' --export-secret-keys > "$WORK/secring.gpg" 2>/dev/null \
      && gpg --batch --export > "$WORK/pubring.gpg" 2>/dev/null; then

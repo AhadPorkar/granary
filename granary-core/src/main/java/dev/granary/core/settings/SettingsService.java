@@ -1,5 +1,6 @@
 package dev.granary.core.settings;
 
+import dev.granary.core.StorableText;
 import dev.granary.core.config.GranaryProperties;
 import dev.granary.core.dao.SettingDao;
 import dev.granary.core.model.Setting;
@@ -17,6 +18,9 @@ public class SettingsService {
     public static final String ANONYMOUS_READ = "security.anonymousRead";
     public static final String GLOBAL_OFFLINE = "system.offlineMode";
     public static final String BASE_URL = "system.baseUrl";
+
+    /** Column length of {@code settings.setting_value}. */
+    static final int MAX_VALUE = 2000;
 
     private final SettingDao settings;
     private final GranaryProperties properties;
@@ -66,7 +70,9 @@ public class SettingsService {
     }
 
     public void setBaseUrl(String baseUrl) {
-        set(BASE_URL, baseUrl == null ? null : baseUrl.trim());
+        String value = baseUrl == null ? null : baseUrl.trim();
+        StorableText.check("baseUrl", value, MAX_VALUE);
+        set(BASE_URL, value);
     }
 
     public Map<String, Object> snapshot() {

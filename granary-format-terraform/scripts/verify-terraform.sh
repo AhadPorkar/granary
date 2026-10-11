@@ -13,6 +13,8 @@
 #   * when registry.terraform.io is unreachable (and TF_UPSTREAM_URL is not set) it starts stand-in-registry.py,
 #     a minimal registry for hashicorp/null whose download URLs still point at releases.hashicorp.com, so
 #     Granary caches the real provider files and the CLIs verify HashiCorp's real signature.
+#     The proxies terraform-registry and opentofu-registry are pointed at it for the run and restored afterwards
+#     (to their previous settings, or to the public registries when the run created them).
 # Given an https:// URL the TLS front is yours: Granary's base URL must already name it and GRANARY_CA may name
 # the CA the CLIs and curl should trust.
 #
@@ -21,6 +23,7 @@
 #   TF_VERSION / TOFU_VERSION  versions to download (default 1.13.4 / 1.10.7)
 #   TF_VERIFY_CACHE            download cache (default ~/.cache/granary-verify-terraform)
 #   TF_UPSTREAM_URL            registry the proxies point at instead of registry.terraform.io / registry.opentofu.org
+#   TF_VERIFY_NAMESPACE        namespace of the uploaded provider and module (default acme-<epoch seconds>)
 #   TF_TLS_PORT                port of the TLS front for a plain-HTTP Granary (default 443; anything else skips
 #                              the network-mirror steps because the mirror protocol cannot carry a port)
 #   CURL_CA_BUNDLE             CA bundle for downloads through an intercepting proxy
@@ -31,6 +34,8 @@ GRANARY=${1:-http://localhost:8109}; GRANARY=${GRANARY%/}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROVIDER=hashicorp/null; PROVIDER_VERSION=3.2.4
 PROVIDER_NS=${PROVIDER%%/*}; PROVIDER_TYPE=${PROVIDER#*/}
+# namespace of the hosted provider and module: new on every run, so the run can be repeated on the same server
+NS=${TF_VERIFY_NAMESPACE:-acme-$(date +%s)}
 PLATFORM=linux_amd64
 TF_VERSION=${TF_VERSION:-1.13.4}; TOFU_VERSION=${TOFU_VERSION:-1.10.7}
 CACHE=${TF_VERIFY_CACHE:-$HOME/.cache/granary-verify-terraform}
@@ -60,7 +65,25 @@ settings() { "${G[@]}" -f -X PUT "$GRANARY/api/v1/system/settings" "${AUTH[@]}" 
 ORIGINAL_BASE_URL=$("${G[@]}" -f "$GRANARY/api/v1/system/settings" "${AUTH[@]}" | jq -r '.baseUrl // ""')
 
 PIDS=()
+REPOINTED=()  # proxies pointed at TF_UPSTREAM_URL; their previous settings are in $WORK/<name>.before.json
+restore_proxies() {
+  local name body
+  for name in "${REPOINTED[@]}"; do
+    if [ -s "$WORK/$name.before.json" ]; then  # the fields of the update request, as they were before the run
+      body=$(jq -c '{name, format, type, online, blobStore, description, allowRedeploy, versionPolicy, remoteUrl,
+                     connectTimeoutSeconds, readTimeoutSeconds, metadataMaxAgeMinutes, negativeCacheMinutes,
+                     offlineMode, members, formatSettings} | with_entries(select(.value != null))' "$WORK/$name.before.json")
+    else  # created by this run: point it at the public registry like the standard repository
+      local url=https://registry.terraform.io/; [ "$name" = opentofu-registry ] && url=https://registry.opentofu.org/
+      body="{\"name\":\"$name\",\"format\":\"terraform\",\"type\":\"PROXY\",\"remoteUrl\":\"$url\"}"
+    fi
+    "${G[@]}" -f -X PUT "$GRANARY/api/v1/repositories/$name" "${AUTH[@]}" -H 'Content-Type: application/json' -d "$body" >/dev/null \
+      && "${G[@]}" -f -X POST "$GRANARY/api/v1/repositories/$name/invalidate" "${AUTH[@]}" >/dev/null \
+      || echo "WARN  could not restore the proxy $name; check its remote URL" >&2
+  done
+}
 cleanup() {
+  restore_proxies
   settings "{\"offlineMode\":false,\"anonymousRead\":true,\"baseUrl\":$(jq -Rn --arg u "$ORIGINAL_BASE_URL" '$u')}" || true
   for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null; done
 }
@@ -115,6 +138,8 @@ echo "== API"
 if [ -n "${TF_UPSTREAM_URL:-}" ]; then
   for name in terraform-registry opentofu-registry; do
     body="{\"name\":\"$name\",\"format\":\"terraform\",\"type\":\"PROXY\",\"remoteUrl\":\"$TF_UPSTREAM_URL\"}"
+    api "$BASE/api/v1/repositories/$name" "${AUTH[@]}" >"$WORK/$name.before.json" 2>/dev/null || : >"$WORK/$name.before.json"
+    REPOINTED+=("$name")
     # create it, or repoint an existing one (a second run on the same data directory) and drop its cache
     api -X POST "$BASE/api/v1/repositories" "${AUTH[@]}" -H 'Content-Type: application/json' -d "$body" >/dev/null 2>&1 \
       || { api -X PUT "$BASE/api/v1/repositories/$name" "${AUTH[@]}" -H 'Content-Type: application/json' -d "$body" >/dev/null \
@@ -233,7 +258,7 @@ if [ -n "${TF_UPSTREAM_URL:-}" ]; then
 fi
 
 # --- hosted provider: re-upload what the proxy cached, signed by the real key ---------------------------------------------
-echo "== hosted provider upload (acme/$PROVIDER_TYPE $PROVIDER_VERSION, the files the proxy just cached)"
+echo "== hosted provider upload ($NS/$PROVIDER_TYPE $PROVIDER_VERSION, the files the proxy just cached)"
 mkdir -p hosted && cd hosted
 ZIP="terraform-provider-${PROVIDER_TYPE}_${PROVIDER_VERSION}_${PLATFORM}.zip"
 SUMS="terraform-provider-${PROVIDER_TYPE}_${PROVIDER_VERSION}_SHA256SUMS"
@@ -243,7 +268,7 @@ check bash -c "$(printf '%q ' "${CURL[@]}") -f -o '$ZIP' '$FILES/$ZIP' && $(prin
 STEP="signing key taken from the proxied download document"
 api "$GROUP/v1/providers/$PROVIDER_NS/$PROVIDER_TYPE/$PROVIDER_VERSION/download/${PLATFORM%_*}/${PLATFORM#*_}" \
   | jq '.signing_keys.gpg_public_keys[0] | {key_id, ascii_armor}' > gpg-key.json && jq -e .key_id gpg-key.json >/dev/null && ok "$STEP" || bad "$STEP"
-HP="$HOSTED/v1/providers/acme/$PROVIDER_TYPE"
+HP="$HOSTED/v1/providers/$NS/$PROVIDER_TYPE"
 STEP="PUT provider zip"; expect_code 201 -u "admin:$APITOKEN" -X PUT --data-binary "@$ZIP" -H 'Content-Type: application/zip' "$HP/$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
 STEP="PUT SHA256SUMS"; expect_code 201 -u "admin:$APITOKEN" -X PUT --data-binary @SHA256SUMS "$HP/$PROVIDER_VERSION/SHA256SUMS"
 STEP="PUT SHA256SUMS.sig"; expect_code 201 -u "admin:$APITOKEN" -X PUT --data-binary @SHA256SUMS.sig "$HP/$PROVIDER_VERSION/SHA256SUMS.sig"
@@ -252,18 +277,18 @@ STEP="re-uploading the same zip is a 409"; expect_code 409 -u "admin:$APITOKEN" 
 STEP="re-uploading it as v$PROVIDER_VERSION is a 409 too"; expect_code 409 -u "admin:$APITOKEN" -X PUT --data-binary "@$ZIP" "$HP/v$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
 STEP="anonymous upload is a 401"; expect_code 401 -X PUT --data-binary "@$ZIP" "$HP/$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
 STEP="upload with a wrong token is a 401"; expect_code 401 -u "admin:gry_wrong" -X PUT --data-binary "@$ZIP" "$HP/$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
-STEP="uploads to the group are refused (405)"; expect_code 405 -u "admin:$APITOKEN" -X PUT --data-binary "@$ZIP" "$GROUP/v1/providers/acme/$PROVIDER_TYPE/$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
+STEP="uploads to the group are refused (405)"; expect_code 405 -u "admin:$APITOKEN" -X PUT --data-binary "@$ZIP" "$GROUP/v1/providers/$NS/$PROVIDER_TYPE/$PROVIDER_VERSION/${PLATFORM%_*}/${PLATFORM#*_}/$ZIP"
 STEP="a traversal attempt is a 400"; expect_code 400 --path-as-is -u "admin:$APITOKEN" -X PUT --data-binary "@$ZIP" "$HP/$PROVIDER_VERSION/linux/amd64/..%2F..%2Fevil.zip"
 STEP="generated versions document lists $PROVIDER_VERSION for $PLATFORM"
-api "$GROUP/v1/providers/acme/$PROVIDER_TYPE/versions" | jq -e --arg v "$PROVIDER_VERSION" '.versions[] | select(.version == $v) | .platforms[] | select(.os == "linux" and .arch == "amd64")' >/dev/null && ok "$STEP" || bad "$STEP"
+api "$GROUP/v1/providers/$NS/$PROVIDER_TYPE/versions" | jq -e --arg v "$PROVIDER_VERSION" '.versions[] | select(.version == $v) | .platforms[] | select(.os == "linux" and .arch == "amd64")' >/dev/null && ok "$STEP" || bad "$STEP"
 STEP="generated download document carries the SHA256SUMS digest and the key"
-api "$GROUP/v1/providers/acme/$PROVIDER_TYPE/$PROVIDER_VERSION/download/linux/amd64" \
+api "$GROUP/v1/providers/$NS/$PROVIDER_TYPE/$PROVIDER_VERSION/download/linux/amd64" \
   | jq -e --arg s "$(sha256sum "$ZIP" | cut -c1-64)" '.shasum == $s and (.signing_keys.gpg_public_keys | length) == 1 and (.download_url | startswith("https://"))' >/dev/null && ok "$STEP" || bad "$STEP"
 STEP="HEAD and If-None-Match on the archive"
 ETAG=$("${CURL[@]}" -fI "$FILES/$ZIP" | tr -d '\r' | awk -F': ' 'tolower($1)=="etag" {print $2}')
 [ -n "$ETAG" ] && [ "$(code -H "If-None-Match: $ETAG" "$FILES/$ZIP")" = 304 ] && ok "$STEP" || bad "$STEP"
 
-echo "== hosted module upload (acme/demo/local 1.0.0)"
+echo "== hosted module upload ($NS/demo/local 1.0.0)"
 mkdir -p module-src && cat > module-src/main.tf <<'HCL'
 variable "name" {
   type    = string
@@ -271,24 +296,24 @@ variable "name" {
 }
 
 output "greeting" {
-  value = "hello ${var.name} from acme/demo/local"
+  value = "hello ${var.name} from the hosted demo module"
 }
 HCL
 tar -C module-src -czf demo-1.0.0.tgz main.tf
-STEP="PUT module tarball"; expect_code 201 -u "admin:$APITOKEN" -X PUT --data-binary @demo-1.0.0.tgz "$HOSTED/v1/modules/acme/demo/local/1.0.0.tgz"
-STEP="re-uploading the module version is a 409"; expect_code 409 -u "admin:$APITOKEN" -X PUT --data-binary @demo-1.0.0.tgz "$HOSTED/v1/modules/acme/demo/local/1.0.0.tgz"
-STEP="module versions document lists 1.0.0"; api "$GROUP/v1/modules/acme/demo/local/versions" | jq -e '.modules[0].versions[0].version == "1.0.0"' >/dev/null && ok "$STEP" || bad "$STEP"
+STEP="PUT module tarball"; expect_code 201 -u "admin:$APITOKEN" -X PUT --data-binary @demo-1.0.0.tgz "$HOSTED/v1/modules/$NS/demo/local/1.0.0.tgz"
+STEP="re-uploading the module version is a 409"; expect_code 409 -u "admin:$APITOKEN" -X PUT --data-binary @demo-1.0.0.tgz "$HOSTED/v1/modules/$NS/demo/local/1.0.0.tgz"
+STEP="module versions document lists 1.0.0"; api "$GROUP/v1/modules/$NS/demo/local/versions" | jq -e '.modules[0].versions[0].version == "1.0.0"' >/dev/null && ok "$STEP" || bad "$STEP"
 STEP="module download answers 204 with X-Terraform-Get"
-"${CURL[@]}" -D headers.txt -o /dev/null "$GROUP/v1/modules/acme/demo/local/1.0.0/download" && grep -qi "^X-Terraform-Get: $GROUP/files/modules/acme/demo/local/1.0.0.tgz" headers.txt && ok "$STEP" || { bad "$STEP"; cat headers.txt; }
+"${CURL[@]}" -D headers.txt -o /dev/null "$GROUP/v1/modules/$NS/demo/local/1.0.0/download" && grep -qi "^X-Terraform-Get: $GROUP/files/modules/$NS/demo/local/1.0.0.tgz" headers.txt && ok "$STEP" || { bad "$STEP"; cat headers.txt; }
 cd "$WORK"
 
 for c in "${CLIS[@]}"; do
   echo "== $c: hosted provider and module"
-  H="$WORK/$c/hosted-provider"; provider_project "$H" "$HOSTPORT/acme/$PROVIDER_TYPE"
-  STEP="$c init acme/$PROVIDER_TYPE from the hosted repository (signature verified against the uploaded key)"; check cli "$c" "$H" init -no-color
-  STEP="$c lock file records $HOSTPORT/acme/$PROVIDER_TYPE"; grep -q "provider \"$HOSTPORT/acme/$PROVIDER_TYPE\"" "$H/.terraform.lock.hcl" 2>/dev/null && ok "$STEP" || bad "$STEP"
-  D="$WORK/$c/hosted-module"; module_project "$D" "$HOSTPORT/acme/demo/local" "1.0.0"
-  STEP="$c init module \"x\" { source = \"$HOSTPORT/acme/demo/local\" }"; check cli "$c" "$D" init -no-color
+  H="$WORK/$c/hosted-provider"; provider_project "$H" "$HOSTPORT/$NS/$PROVIDER_TYPE"
+  STEP="$c init $NS/$PROVIDER_TYPE from the hosted repository (signature verified against the uploaded key)"; check cli "$c" "$H" init -no-color
+  STEP="$c lock file records $HOSTPORT/$NS/$PROVIDER_TYPE"; grep -q "provider \"$HOSTPORT/$NS/$PROVIDER_TYPE\"" "$H/.terraform.lock.hcl" 2>/dev/null && ok "$STEP" || bad "$STEP"
+  D="$WORK/$c/hosted-module"; module_project "$D" "$HOSTPORT/$NS/demo/local" "1.0.0"
+  STEP="$c init module \"x\" { source = \"$HOSTPORT/$NS/demo/local\" }"; check cli "$c" "$D" init -no-color
   STEP="$c module files were unpacked"; [ -f "$D/.terraform/modules/x/main.tf" ] && ok "$STEP" || bad "$STEP"
   STEP="$c validate with the module"; check cli "$c" "$D" validate -no-color
 done
@@ -315,14 +340,14 @@ settings '{"offlineMode":false}' && ok "offline mode off" || bad "offline mode o
 echo "== Credentials: anonymous read off, token in the CLI configuration"
 settings '{"anonymousRead":false}' && ok "anonymous read off" || bad "anonymous read off"
 STEP="discovery without credentials is a 401"; expect_code 401 "$BASE/.well-known/terraform.json"
-STEP="versions document with the token"; expect_code 200 -u "admin:$APITOKEN" "$GROUP/v1/providers/acme/$PROVIDER_TYPE/versions"
-STEP="versions document with a wrong token is a 401"; expect_code 401 -H "Authorization: Bearer gry_wrong" "$GROUP/v1/providers/acme/$PROVIDER_TYPE/versions"
+STEP="versions document with the token"; expect_code 200 -u "admin:$APITOKEN" "$GROUP/v1/providers/$NS/$PROVIDER_TYPE/versions"
+STEP="versions document with a wrong token is a 401"; expect_code 401 -H "Authorization: Bearer gry_wrong" "$GROUP/v1/providers/$NS/$PROVIDER_TYPE/versions"
 for c in "${CLIS[@]}"; do
-  A="$WORK/$c/authenticated"; provider_project "$A" "$HOSTPORT/acme/$PROVIDER_TYPE"
+  A="$WORK/$c/authenticated"; provider_project "$A" "$HOSTPORT/$NS/$PROVIDER_TYPE"
   printf 'credentials "%s" {\n  token = "%s"\n}\n' "$HOSTPORT" "$APITOKEN" > "$A/cli.tfrc"
   STEP="$c init with credentials \"$HOSTPORT\" { token = ... }"
   if cli "$c" "$A" init -no-color >"$WORK/last.log" 2>&1; then ok "$STEP"
-  elif grep -q "Finding $HOSTPORT/acme/$PROVIDER_TYPE versions" "$WORK/last.log" && grep -qi "401" "$WORK/last.log"; then
+  elif grep -q "Finding $HOSTPORT/$NS/$PROVIDER_TYPE versions" "$WORK/last.log" && grep -qi "401" "$WORK/last.log"; then
     known "$STEP: registry calls authenticated, the checksum download is sent without the token (401)"
   else bad "$STEP"; tail -25 "$WORK/last.log"; fi
 done

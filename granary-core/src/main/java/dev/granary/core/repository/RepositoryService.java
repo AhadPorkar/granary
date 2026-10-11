@@ -1,6 +1,7 @@
 package dev.granary.core.repository;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.StorableText;
 import dev.granary.core.dao.AssetDao;
 import dev.granary.core.dao.ComponentDao;
 import dev.granary.core.dao.RepositoryDao;
@@ -36,14 +37,21 @@ public class RepositoryService {
         return repositories.findAllByOrderByNameAsc();
     }
 
+    /**
+     * The repository with this name. A name no repository can have (a NUL character, longer than the column) is
+     * not found without asking the database, which on PostgreSQL would refuse to compare it.
+     */
     @Transactional(readOnly = true)
     public Optional<Repository> find(String name) {
+        if (!StorableText.usableKey(name, RepositoryValidator.MAX_NAME)) {
+            return Optional.empty();
+        }
         return repositories.findByName(name);
     }
 
     @Transactional(readOnly = true)
     public Repository require(String name) {
-        return repositories.findByName(name).orElseThrow(() ->
+        return find(name).orElseThrow(() ->
                 GranaryException.notFound("repository.notFound", "Repository '" + name + "' does not exist"));
     }
 

@@ -1,6 +1,7 @@
 package dev.granary.core.security;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.StorableText;
 import dev.granary.core.dao.ApiTokenDao;
 import dev.granary.core.dao.UserDao;
 import dev.granary.core.model.Role;
@@ -23,6 +24,11 @@ public class UserService {
 
     private static final Pattern USERNAME = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9._@-]{0,99}$");
 
+    /** Column lengths of {@code users}. */
+    static final int MAX_USERNAME = 100;
+    static final int MAX_DISPLAY_NAME = 200;
+    static final int MAX_EMAIL = 320;
+
     private final UserDao users;
     private final ApiTokenDao tokens;
     private final RoleService roleService;
@@ -40,8 +46,15 @@ public class UserService {
         return users.findAllByOrderByUsernameAsc();
     }
 
+    /**
+     * The user with this name. A name no user can have (a NUL character, longer than the column) is simply not
+     * found: it comes from credentials or URLs, and PostgreSQL would refuse to even compare it.
+     */
     @Transactional(readOnly = true)
     public Optional<User> find(String username) {
+        if (!StorableText.usableKey(username, MAX_USERNAME)) {
+            return Optional.empty();
+        }
         return users.findByUsername(username);
     }
 
@@ -52,7 +65,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public User require(String username) {
-        return users.findByUsername(username).orElseThrow(() ->
+        return find(username).orElseThrow(() ->
                 GranaryException.notFound("user.notFound", "User '" + username + "' does not exist"));
     }
 
@@ -67,6 +80,7 @@ public class UserService {
         if (users.existsByUsername(username)) {
             throw GranaryException.conflict("user.username.taken", "A user named '" + username + "' already exists");
         }
+        checkProfile(displayName, email);
         checkPassword(password);
         User user = new User();
         user.setUsername(username);
@@ -80,6 +94,7 @@ public class UserService {
     @Transactional
     public User update(String username, String displayName, String email, Boolean enabled, Set<String> roleNames) {
         User user = require(username);
+        checkProfile(displayName, email);
         user.setDisplayName(displayName);
         user.setEmail(email);
         if (enabled != null) {
@@ -114,6 +129,11 @@ public class UserService {
         }
         tokens.deleteByUserId(user.getId());
         users.delete(user);
+    }
+
+    private static void checkProfile(String displayName, String email) {
+        StorableText.check("displayName", displayName, MAX_DISPLAY_NAME);
+        StorableText.check("email", email, MAX_EMAIL);
     }
 
     public boolean passwordMatches(User user, String rawPassword) {

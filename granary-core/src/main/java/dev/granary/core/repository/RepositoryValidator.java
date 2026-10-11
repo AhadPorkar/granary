@@ -1,6 +1,7 @@
 package dev.granary.core.repository;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.StorableText;
 import dev.granary.core.blob.BlobStoreRegistry;
 import dev.granary.core.dao.RepositoryDao;
 import dev.granary.core.format.FormatRegistry;
@@ -23,6 +24,14 @@ public class RepositoryValidator {
 
     /** Names appear in URLs and on the command line, so keep them to a safe character set. */
     public static final Pattern NAME = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$");
+
+    /** Column lengths of {@code repositories}. */
+    static final int MAX_NAME = 100;
+    static final int MAX_DESCRIPTION = 500;
+    static final int MAX_REMOTE_URL = 1000;
+    static final int MAX_REMOTE_USERNAME = 200;
+    static final int MAX_REMOTE_PASSWORD = 500;
+    static final int MAX_REMOTE_TOKEN = 1000;
 
     private final RepositoryDao repositories;
     private final FormatRegistry formats;
@@ -54,6 +63,13 @@ public class RepositoryValidator {
             throw GranaryException.badRequest("repository.blobstore.unknown",
                     "Unknown blob store '" + repo.getBlobStore() + "'");
         }
+        // free text that is stored as it is: a NUL character or a value longer than its column would otherwise fail
+        // in the database (PostgreSQL refuses NUL in any text) and reach the client as a 409 or 500
+        StorableText.check("description", repo.getDescription(), MAX_DESCRIPTION);
+        StorableText.check("remoteUrl", repo.getRemoteUrl(), MAX_REMOTE_URL);
+        StorableText.check("remoteUsername", repo.getRemoteUsername(), MAX_REMOTE_USERNAME);
+        StorableText.check("remotePassword", repo.getRemotePassword(), MAX_REMOTE_PASSWORD);
+        StorableText.check("remoteToken", repo.getRemoteToken(), MAX_REMOTE_TOKEN);
         switch (repo.getType()) {
             case HOSTED -> validateHosted(repo);
             case PROXY -> validateProxy(repo);
@@ -111,7 +127,9 @@ public class RepositoryValidator {
                 throw GranaryException.badRequest("repository.members.self",
                         "A group cannot contain itself");
             }
-            Repository target = repositories.findByName(member).orElseThrow(() ->
+            Optional<Repository> found = member != null && NAME.matcher(member).matches()
+                    ? repositories.findByName(member) : Optional.empty();
+            Repository target = found.orElseThrow(() ->
                     GranaryException.badRequest("repository.members.unknown",
                             "Member repository '" + member + "' does not exist", Map.of("member", member)));
             if (!target.getFormat().equals(repo.getFormat())) {

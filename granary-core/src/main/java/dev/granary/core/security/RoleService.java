@@ -1,6 +1,7 @@
 package dev.granary.core.security;
 
 import dev.granary.core.GranaryException;
+import dev.granary.core.StorableText;
 import dev.granary.core.dao.RoleDao;
 import dev.granary.core.dao.UserDao;
 import dev.granary.core.model.Role;
@@ -24,6 +25,10 @@ public class RoleService {
 
     private static final Pattern NAME = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$");
 
+    /** Column lengths of {@code roles}. */
+    static final int MAX_NAME = 100;
+    static final int MAX_DESCRIPTION = 500;
+
     private final RoleDao roles;
     private final UserDao users;
 
@@ -39,12 +44,16 @@ public class RoleService {
 
     @Transactional(readOnly = true)
     public Optional<Role> find(String name) {
+        // a name no role can have is not found, without asking PostgreSQL to compare a NUL character
+        if (!StorableText.usableKey(name, MAX_NAME)) {
+            return Optional.empty();
+        }
         return roles.findByName(name);
     }
 
     @Transactional(readOnly = true)
     public Role require(String name) {
-        return roles.findByName(name).orElseThrow(() ->
+        return find(name).orElseThrow(() ->
                 GranaryException.notFound("role.notFound", "Role '" + name + "' does not exist"));
     }
 
@@ -56,6 +65,7 @@ public class RoleService {
         if (roles.findByName(name).isPresent()) {
             throw GranaryException.conflict("role.name.taken", "A role named '" + name + "' already exists");
         }
+        StorableText.check("description", description, MAX_DESCRIPTION);
         Role role = new Role();
         role.setName(name);
         role.setDescription(description);
@@ -69,6 +79,7 @@ public class RoleService {
         if (role.isBuiltin() && ADMIN.equals(name) && !privileges.contains(Privileges.SYSTEM_ADMIN)) {
             throw GranaryException.badRequest("role.admin.locked", "The admin role must keep system:admin");
         }
+        StorableText.check("description", description, MAX_DESCRIPTION);
         role.setDescription(description);
         role.setPrivileges(validated(privileges));
         return roles.save(role);

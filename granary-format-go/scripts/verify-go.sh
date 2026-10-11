@@ -38,6 +38,16 @@ curl -fsS -X POST "$BASE/api/v1/repositories/standard" -H "Authorization: Bearer
 APITOKEN=$(curl -fsS -X POST "$BASE/api/v1/tokens" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"verify-go"}' | sed -E 's/.*"secret":"([^"]+)".*/\1/')
 [[ "$APITOKEN" == gry_* ]] && ok "api token" || bad "api token"
+# an earlier run on this server published the same demo module and created go-copy: remove both through the API,
+# so the run can be repeated
+removed=0; failed=0
+for id in $(curl -fsS "$BASE/api/v1/repositories/go-hosted/components?q=hello&size=500" -H "Authorization: Bearer $TOKEN" \
+            | grep -o '{[^{}]*}' | grep '"namespace":"example.com/acme","name":"hello"' | sed -E 's/.*"id":"([^"]+)".*/\1/'); do
+  curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/repositories/go-hosted/components/$id" -H "Authorization: Bearer $TOKEN" \
+    && removed=$((removed + 1)) || failed=$((failed + 1))
+done
+curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/repositories/go-copy" -H "Authorization: Bearer $TOKEN" 2>/dev/null
+[ "$failed" = 0 ] && ok "demo module of an earlier run removed from go-hosted ($removed versions)" || bad "removing the demo module of an earlier run"
 STEP="connect snippets for go-group"; check sh -c "curl -fsS -H 'Authorization: Bearer $TOKEN' '$BASE/api/v1/repositories/go-group/connect' | grep -q 'go env -w GOPROXY=$GROUP,direct'"
 
 echo "== Public modules through go-proxy, checksums verified via sumdb/sum.golang.org on Granary"

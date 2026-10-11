@@ -4,6 +4,7 @@ import dev.granary.core.storage.InvalidStorageInputException;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PessimisticLockException;
+import java.sql.SQLException;
 import java.util.Map;
 import org.hibernate.StaleStateException;
 import org.hibernate.exception.ConstraintViolationException;
@@ -34,6 +35,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *       per-key write locks timing out) or a deadlock victim: {@code 409 storage.conflict}. Retrying the request
  *       succeeds. {@code StorageService} prevents these races for paths and components on a single node; this
  *       mapping is the last line of defence so they never surface as a {@code 500}.</li>
+ *   <li>A value the database refuses to store or compare (SQLSTATE class 22, "data exception": a string longer
+ *       than its column, a NUL character on PostgreSQL): {@code 400 request.invalid}. That is no race, and a retry
+ *       would fail the same way; the services refuse such values before they reach the database, so this too is
+ *       only a last line of defence.</li>
  * </ul>
  */
 @RestControllerAdvice
@@ -60,9 +65,24 @@ public class StorageErrorHandler {
             ConstraintViolationException.class,
             LockAcquisitionException.class})
     public ResponseEntity<Map<String, String>> conflict(Exception e) {
+        if (isDataException(e)) {
+            log.warn("value refused by the database, answered 400: {}", e.toString());
+            return body(HttpStatus.BAD_REQUEST, "request.invalid",
+                    "A value is too long or contains a character that cannot be stored");
+        }
         log.warn("concurrent write conflict, answered 409: {}", e.toString());
         return body(HttpStatus.CONFLICT, "storage.conflict",
                 "The request collided with a concurrent change of the same content; retry it");
+    }
+
+    /** SQLSTATE class 22 (data exception) anywhere in the cause chain: the same on H2 and PostgreSQL. */
+    static boolean isDataException(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof SQLException sql && sql.getSQLState() != null && sql.getSQLState().startsWith("22")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ResponseEntity<Map<String, String>> body(HttpStatus status, String code, String message) {

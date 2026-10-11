@@ -51,6 +51,8 @@ APITOKEN=$(curl -fsS -X POST "$BASE/api/v1/tokens" -H "Authorization: Bearer $TO
 [[ "$APITOKEN" == gry_* ]] && ok "api token" || bad "api token"
 HOSTED="$BASE/repository/pypi-hosted/"
 GROUP="$BASE/repository/pypi-group/simple"
+# version of the demo packages: new on every run, so the run can be repeated on the same server
+VER=${PYPI_VERIFY_VERSION:-1.0.$(date +%s)}
 
 echo "== Tools"
 need() { # need <command> [package]: use the installed tool, otherwise install it through the Granary group
@@ -69,19 +71,19 @@ build-backend = "$4"
 
 [project]
 name = "$2"
-version = "1.0.0"
+version = "$VER"
 description = "Demo package for the Granary PyPI verification"
 requires-python = ">=3.9"
 PYPROJECT
-  printf '"""Demo package for the Granary PyPI verification."""\n__version__ = "1.0.0"\n' > "$1/src/${2//-/_}/__init__.py"
+  printf '"""Demo package for the Granary PyPI verification."""\n__version__ = "%s"\n' "$VER" > "$1/src/${2//-/_}/__init__.py"
 }
 
-echo "== Build acme-demo 1.0.0 (depends on six from pypi.org)"
+echo "== Build acme-demo $VER (depends on six from pypi.org)"
 demo pkg acme-demo "setuptools>=68" setuptools.build_meta
 sed -i 's/^requires-python = ">=3.9"$/requires-python = ">=3.9"\ndependencies = ["six>=1.16"]/' pkg/pyproject.toml
 # the build backend (setuptools) is resolved through the Granary proxy as well
 STEP="uv build (sdist + wheel, setuptools via pypi-proxy)"; checkin pkg env UV_DEFAULT_INDEX="$GROUP" uv build --no-cache
-ls pkg/dist/acme_demo-1.0.0-py3-none-any.whl pkg/dist/acme_demo-1.0.0.tar.gz >/dev/null 2>&1 && ok "dist/ has wheel and sdist" || bad "dist/ has wheel and sdist"
+ls pkg/dist/acme_demo-$VER-py3-none-any.whl pkg/dist/acme_demo-$VER.tar.gz >/dev/null 2>&1 && ok "dist/ has wheel and sdist" || bad "dist/ has wheel and sdist"
 
 echo "== twine"
 cat > pypirc <<PYPIRC
@@ -100,7 +102,7 @@ STEP="twine upload again is refused (400 File already exists)"
 if twine upload --verbose --non-interactive --config-file pypirc -r granary pkg/dist/* >"$WORK/last.log" 2>&1; then bad "$STEP"; else grep -q "File already exists" "$WORK/last.log" && ok "$STEP" || { bad "$STEP"; tail -5 "$WORK/last.log"; }; fi
 STEP="hosted simple page lists both files with PEP 658 metadata"
 curl -fsS -H 'Accept: application/vnd.pypi.simple.v1+json' "$BASE/repository/pypi-hosted/simple/acme-demo/" >"$WORK/page.json" 2>&1 \
-  && grep -q 'acme_demo-1.0.0-py3-none-any.whl' "$WORK/page.json" && grep -q 'acme_demo-1.0.0.tar.gz' "$WORK/page.json" && grep -q 'core-metadata' "$WORK/page.json" \
+  && grep -q "acme_demo-$VER-py3-none-any.whl" "$WORK/page.json" && grep -q "acme_demo-$VER.tar.gz" "$WORK/page.json" && grep -q 'core-metadata' "$WORK/page.json" \
   && ok "$STEP" || bad "$STEP"
 
 echo "== uv publish, hatch publish, flit publish, poetry publish"
@@ -112,7 +114,7 @@ checkin uvpkg sh -c 'uv publish --publish-url "$1" --check-url "$2" --username _
   sh "$HOSTED" "$GROUP" "$APITOKEN"
 demo hatchpkg acme-hatch hatchling hatchling.build
 STEP="uv build acme-hatch (hatchling via pypi-proxy)"; checkin hatchpkg env UV_DEFAULT_INDEX="$GROUP" uv build --no-cache
-STEP="hatch publish acme-hatch"; checkin hatchpkg hatch publish -r "$HOSTED" -u __token__ -a "$APITOKEN" dist/acme_hatch-1.0.0-py3-none-any.whl dist/acme_hatch-1.0.0.tar.gz
+STEP="hatch publish acme-hatch"; checkin hatchpkg hatch publish -r "$HOSTED" -u __token__ -a "$APITOKEN" dist/acme_hatch-$VER-py3-none-any.whl dist/acme_hatch-$VER.tar.gz
 demo flitpkg acme-flit "flit_core>=3.4,<4" flit_core.buildapi
 mv flitpkg/src/acme_flit flitpkg/acme_flit && rmdir flitpkg/src
 STEP="flit publish acme-flit (builds itself, uses the .pypirc section)"; checkin flitpkg flit publish --pypirc "$WORK/pypirc" --repository granary
@@ -131,26 +133,26 @@ STEP="python -m venv"; check python3 -m venv --without-pip venv-pip
 # pip itself comes through the Granary proxy, like everything else
 STEP="bootstrap pip through pypi-group"; check uv pip install --python venv-pip/bin/python --default-index "$GROUP" --no-cache pip
 STEP="pip install acme-demo via pypi-group (own package + six through pypi.org)"
-check venv-pip/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-demo==1.0.0
+check venv-pip/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-demo==$VER
 STEP="pip installs what the other publishers uploaded"
-check venv-pip/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-uv==1.0.0 acme-hatch==1.0.0 acme-flit==1.0.0 acme-poetry==1.0.0
+check venv-pip/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-uv==$VER acme-hatch==$VER acme-flit==$VER acme-poetry==$VER
 STEP="pip imports every demo package and six"; check venv-pip/bin/python -c 'import acme_demo, acme_uv, acme_hatch, acme_flit, acme_poetry, six; print(acme_demo.__version__, six.__version__)'
 STEP="pip download of a sdist-only project via proxy"; check venv-pip/bin/python -m pip download --no-cache-dir --no-deps --no-binary :all: --index-url "$GROUP" $TRUSTED -d dl "six==1.16.0"
 
 echo "== uv"
 STEP="uv venv"; check uv venv venv-uv
-STEP="uv pip install acme-demo via pypi-group"; check env UV_CACHE_DIR="$WORK/uv-cache1" uv pip install --python venv-uv/bin/python --default-index "$GROUP" acme-demo==1.0.0
+STEP="uv pip install acme-demo via pypi-group"; check env UV_CACHE_DIR="$WORK/uv-cache1" uv pip install --python venv-uv/bin/python --default-index "$GROUP" acme-demo==$VER
 STEP="uv imports acme_demo and six"; check venv-uv/bin/python -c 'import acme_demo, six; print(acme_demo.__version__, six.__version__)'
 
 echo "== poetry"
 mkdir -p poetrydemo && cd poetrydemo
-cat > pyproject.toml <<'PYPROJECT'
+cat > pyproject.toml <<PYPROJECT
 [project]
 name = "poetrydemo"
 version = "0.1.0"
 description = "consumer"
 requires-python = ">=3.9"
-dependencies = ["acme-demo==1.0.0", "acme-poetry==1.0.0"]
+dependencies = ["acme-demo==$VER", "acme-poetry==$VER"]
 
 [tool.poetry]
 package-mode = false
@@ -164,12 +166,12 @@ cd "$WORK"
 
 echo "== pdm"
 mkdir -p pdmdemo && cd pdmdemo
-cat > pyproject.toml <<'PYPROJECT'
+cat > pyproject.toml <<PYPROJECT
 [project]
 name = "pdmdemo"
 version = "0.1.0"
 requires-python = ">=3.9"
-dependencies = ["acme-demo==1.0.0", "acme-flit==1.0.0"]
+dependencies = ["acme-demo==$VER", "acme-flit==$VER"]
 
 [tool.pdm]
 distribution = false
@@ -190,8 +192,8 @@ verify_ssl = $PIPENV_VERIFY
 name = "granary"
 
 [packages]
-acme-demo = "==1.0.0"
-acme-hatch = "==1.0.0"
+acme-demo = "==$VER"
+acme-hatch = "==$VER"
 PIPFILE
 STEP="pipenv install (lock + install)"; check pipenv install
 STEP="pipenv env imports acme_demo and acme_hatch"; check .venv/bin/python -c 'import acme_demo, acme_hatch, six'
@@ -200,7 +202,7 @@ cd "$WORK"
 echo "== Docker build with the connect dialogue's Dockerfile snippet (needs docker; the build uses the host network)"
 if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
   mkdir -p dockerbuild
-  printf 'acme-demo==1.0.0\nacme-flit==1.0.0\n' > dockerbuild/requirements.txt
+  printf 'acme-demo==%s\nacme-flit==%s\n' "$VER" "$VER" > dockerbuild/requirements.txt
   STEP="connect snippets of pypi-group"
   check sh -c "curl -fsS -H 'Authorization: Bearer $TOKEN' '$BASE/api/v1/repositories/pypi-group/connect' > '$WORK/connect.json'"
   { echo "FROM python:3.13-slim"; echo "COPY requirements.txt ."
@@ -213,11 +215,12 @@ else
 fi
 
 echo "== Chained proxy: a proxy whose upstream is this Granary's pypi-hosted (simple URL as remoteUrl)"
+curl -fsS -o /dev/null -X DELETE "$BASE/api/v1/repositories/pypi-chained" -H "Authorization: Bearer $TOKEN" 2>/dev/null
 STEP="create pypi-chained"
 check curl -fsS -X POST "$BASE/api/v1/repositories" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d "{\"name\":\"pypi-chained\",\"format\":\"pypi\",\"type\":\"PROXY\",\"remoteUrl\":\"$BASE/repository/pypi-hosted/simple/\"}"
 STEP="pip install acme-uv through the chained proxy"
-check venv-pip/bin/python -m pip install --no-cache-dir --force-reinstall --no-deps --index-url "$BASE/repository/pypi-chained/simple" $TRUSTED acme-uv==1.0.0
+check venv-pip/bin/python -m pip install --no-cache-dir --force-reinstall --no-deps --index-url "$BASE/repository/pypi-chained/simple" $TRUSTED acme-uv==$VER
 
 echo "== JSON API and downloads"
 STEP="pypi/acme-demo/json via group"; check curl -fsS "$BASE/repository/pypi-group/pypi/acme-demo/json"
@@ -229,13 +232,14 @@ curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN
 venv-pip/bin/python -m pip cache purge >/dev/null 2>&1
 STEP="offline fresh venv"; check python3 -m venv --without-pip venv-pip-offline
 STEP="offline bootstrap pip from the cache"; check uv pip install --python venv-pip-offline/bin/python --default-index "$GROUP" --cache-dir "$(mktemp -d)" pip
-STEP="offline pip install acme-demo + six (no pip cache)"; check venv-pip-offline/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-demo==1.0.0
+STEP="offline pip install acme-demo + six (no pip cache)"; check venv-pip-offline/bin/python -m pip install --no-cache-dir --index-url "$GROUP" $TRUSTED acme-demo==$VER
 STEP="offline uv venv"; check uv venv venv-uv-offline
-STEP="offline uv pip install acme-demo + six (empty uv cache)"; check env UV_CACHE_DIR="$(mktemp -d)" uv pip install --python venv-uv-offline/bin/python --default-index "$GROUP" acme-demo==1.0.0
+STEP="offline uv pip install acme-demo + six (empty uv cache)"; check env UV_CACHE_DIR="$(mktemp -d)" uv pip install --python venv-uv-offline/bin/python --default-index "$GROUP" acme-demo==$VER
 STEP="offline poetry install from scratch"; rm -rf poetrydemo/.venv; checkin poetrydemo env POETRY_CACHE_DIR="$(mktemp -d)" poetry install --no-root
 STEP="offline pdm install from scratch"; rm -rf pdmdemo/.venv; checkin pdmdemo env PDM_CACHE_DIR="$(mktemp -d)" pdm install
 STEP="offline pipenv install from the lock file"; rm -rf pipenvdemo/.venv; checkin pipenvdemo env PIPENV_CACHE_DIR="$(mktemp -d)" PIP_NO_CACHE_DIR=1 pipenv install --deploy
-STEP="offline uncached project is a clean 503"; code=$(curl -s -o /dev/null -w "%{http_code}" -H 'Accept: application/vnd.pypi.simple.v1+json' "$BASE/repository/pypi-group/simple/requests/"); [ "$code" = "503" ] && ok "$STEP ($code)" || bad "$STEP ($code)"
+# a project name nobody has asked for yet: no client cached it, not even an earlier run
+STEP="offline uncached project is a clean 503"; code=$(curl -s -o /dev/null -w "%{http_code}" -H 'Accept: application/vnd.pypi.simple.v1+json' "$BASE/repository/pypi-group/simple/granary-uncached-${VER//./-}/"); [ "$code" = "503" ] && ok "$STEP ($code)" || bad "$STEP ($code)"
 curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"offlineMode":false}' >/dev/null
 
 echo; echo "passed=$PASS failed=$FAIL  (work dir $WORK)"

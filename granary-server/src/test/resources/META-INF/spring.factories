@@ -1,0 +1,3 @@
+# Switches the test suite to PostgreSQL when -Dgranary.test.database=postgres is set (Maven profile "postgres").
+org.springframework.boot.EnvironmentPostProcessor=\
+dev.granary.server.testsupport.PostgresTestDatabaseEnvironmentPostProcessor

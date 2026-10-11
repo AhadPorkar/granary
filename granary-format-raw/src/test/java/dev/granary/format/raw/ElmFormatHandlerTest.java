@@ -116,6 +116,8 @@ class ElmFormatHandlerTest {
         verify(proxy).fetch(eq(upstream), eq("github/elm/core/zip/1.0.5"), eq(URI.create("https://github.com/elm/core/zipball/1.0.5")),
                 options.capture(), anyMap());
         assertThat(options.getValue().metadata()).isFalse();
+        // the cached zipball belongs to the package release, like an upload of it
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("elm", "core", "1.0.5"));
         assertThat(handler.isMetadataPath("github/elm/core/zip/1.0.5")).isFalse();
         assertThat(handler.isMetadataPath("packages/elm/core/1.0.5/endpoint.json")).isTrue();
         assertThat(handler.isMetadataPath("packages/elm/core/releases.json")).isTrue();

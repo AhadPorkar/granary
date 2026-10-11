@@ -77,8 +77,10 @@ class CdnFormatHandlerTest {
         ArgumentCaptor<FetchOptions> options = ArgumentCaptor.forClass(FetchOptions.class);
         verify(proxy).fetch(eq(jsdelivr), eq("npm/lodash@4.17.21/lodash.min.js"), options.capture());
         assertThat(options.getValue().metadata()).isFalse();
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("npm", "lodash", "4.17.21"));
         verify(proxy).fetch(eq(jsdelivr), eq("npm/lodash@latest/lodash.min.js"), options.capture());
         assertThat(options.getValue().metadata()).isTrue();
+        assertThat(options.getValue().component()).isNull(); // an unpinned path is no version of anything
     }
 
     @Test

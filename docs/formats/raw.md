@@ -100,10 +100,16 @@ hand; the examples below use such names.
   one file cannot be stored or read under two spellings.
 * `Content-Type` is the value the client declared on upload (form encodings and
   `application/octet-stream` are replaced by a guess from the file name) or the upstream's.
-* A component is recorded for every upload: profile-specific coordinates where the profile can
-  derive them (CRAN `<pkg>_<ver>.tar.gz`, CPAN `<Dist>-<ver>.tar.gz`, Hackage `<pkg>-<ver>`, vcpkg
-  `binaries/<name>/<version>/…`, cdn `npm/<pkg>@<ver>/…`, Elm `packages/<author>/<project>/<ver>/…`),
-  otherwise namespace `""`, name = directory, version = file name.
+* A component is recorded for every upload and for every immutable file a proxy caches:
+  profile-specific coordinates where the profile can derive them (CRAN `<pkg>_<ver>.tar.gz`, in
+  `src/contrib/` and in `src/contrib/Archive/<pkg>/` alike, CPAN
+  `<Dist>-<ver>.tar.gz`, Hackage `<pkg>-<ver>`, vcpkg `binaries/<name>/<version>/…`, cdn
+  `npm/<pkg>@<ver>/…`, Elm `packages/<author>/<project>/<ver>/…`), otherwise namespace `""`,
+  name = directory, version = file name. Metadata (indexes and the other paths matching the metadata
+  patterns, unpinned CDN URLs, Bower registry entries) is not a component. What a group serves is recorded in the
+  member that holds it. Deleting a cached component removes the file; the next request fetches
+  it again, or answers `503` while the proxy is offline. Files cached by an earlier Granary
+  version, which recorded no components, are linked the first time they are served.
 
 ## Settings
 

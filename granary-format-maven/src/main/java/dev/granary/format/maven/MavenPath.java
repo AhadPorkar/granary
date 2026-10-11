@@ -1,5 +1,6 @@
 package dev.granary.format.maven;
 
+import dev.granary.core.storage.StorageService;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -176,6 +177,19 @@ public record MavenPath(String path, Kind kind, String groupId, String artifactI
         return kind == Kind.METADATA
                 || isMutableSnapshotArtifact()
                 || (kind == Kind.CHECKSUM && parse(checksumOf).isMutable());
+    }
+
+    /**
+     * The component a file belongs to: groupId, artifactId and (directory) version of an artifact, or of the artifact
+     * a checksum sidecar describes, so that deleting a component takes its checksums along. Metadata documents, their
+     * checksums, directories and files outside the Maven layout belong to none.
+     */
+    public Optional<StorageService.ComponentCoordinates> component() {
+        MavenPath subject = kind == Kind.CHECKSUM ? parse(checksumOf) : this;
+        if (subject.kind != Kind.ARTIFACT) {
+            return Optional.empty();
+        }
+        return Optional.of(new StorageService.ComponentCoordinates(subject.groupId, subject.artifactId, subject.version));
     }
 
     private static String fileName(String path) {

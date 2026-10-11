@@ -35,6 +35,7 @@ import dev.granary.core.repository.GroupResolver;
 import dev.granary.core.security.ApiTokenService;
 import dev.granary.core.security.AuthenticationService;
 import dev.granary.core.security.UserService;
+import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -180,8 +181,10 @@ class NpmFormatHandlerTest {
                 "application/json", true);
         StoredContent tgz = storage.put(hosted("elsewhere"), "x", tarball("ui"), "application/octet-stream", false);
         when(upstream.upstreamUri(eq(proxyRepo), any())).thenAnswer(inv -> URI.create(NPMJS + inv.getArgument(1)));
+        // linked to the version the packument names, scope as namespace, like a published version
         when(proxy.fetch(eq(proxyRepo), eq("@acme/ui/-/ui-1.0.0.tgz"), eq(URI.create(NPMJS + "download/@acme/ui/1.0.0/ui-1.0.0.tgz")),
-                eq(FetchOptions.artifact()), anyMap())).thenReturn(Optional.of(tgz));
+                eq(FetchOptions.artifact(new StorageService.ComponentCoordinates("acme", "ui", "1.0.0"))), anyMap()))
+                .thenReturn(Optional.of(tgz));
 
         ResponseEntity<?> response = handler.handle(request(proxyRepo, "GET", "@acme/ui/-/ui-1.0.0.tgz"));
 
@@ -192,8 +195,45 @@ class NpmFormatHandlerTest {
         // a URL on a foreign host is not followed with our credentials: the conventional path is used instead
         storage.put(proxyRepo, "cdn", packument("cdn", "1.0.0", "https://cdn.example.com/blobs/cdn-1.0.0.tgz"), "application/json", true);
         when(proxy.fetch(eq(proxyRepo), eq("cdn/-/cdn-1.0.0.tgz"), eq(URI.create(NPMJS + "cdn/-/cdn-1.0.0.tgz")),
-                eq(FetchOptions.artifact()), anyMap())).thenReturn(Optional.of(tgz));
+                eq(FetchOptions.artifact(new StorageService.ComponentCoordinates("", "cdn", "1.0.0"))), anyMap()))
+                .thenReturn(Optional.of(tgz));
         assertThat(handler.handle(request(proxyRepo, "GET", "cdn/-/cdn-1.0.0.tgz")).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void proxyTarballWithoutCachedPackumentIsLinkedByItsFileName() throws Exception {
+        StoredContent tgz = storage.put(hosted("elsewhere"), "x", tarball("t"), "application/octet-stream", false);
+        when(upstream.upstreamUri(eq(proxyRepo), any())).thenAnswer(inv -> URI.create(NPMJS + inv.getArgument(1)));
+        when(proxy.fetch(eq(proxyRepo), eq("@types/node/-/node-22.10.0-rc.1.tgz"), any(URI.class),
+                eq(FetchOptions.artifact(new StorageService.ComponentCoordinates("types", "node", "22.10.0-rc.1"))), anyMap()))
+                .thenReturn(Optional.of(tgz));
+        // a file name that does not follow npm's convention cannot be told apart: cached, but not linked
+        when(proxy.fetch(eq(proxyRepo), eq("odd/-/blob.tgz"), any(URI.class), eq(FetchOptions.artifact()), anyMap()))
+                .thenReturn(Optional.of(tgz));
+
+        assertThat(handler.handle(request(proxyRepo, "GET", "@types/node/-/node-22.10.0-rc.1.tgz")).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(handler.handle(request(proxyRepo, "GET", "odd/-/blob.tgz")).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void cachedTarballThatIsAlreadyLinkedIsServedWithoutAskingTheProxy() throws Exception {
+        StoredContent cached = storage.put(proxyRepo, "demo/-/demo-1.0.0.tgz", tarball("c"), "application/octet-stream", false);
+        cached.asset().setComponentId(java.util.UUID.randomUUID());
+
+        assertThat(bodyBytes(handler.handle(request(proxyRepo, "GET", "demo/-/demo-1.0.0.tgz")))).isEqualTo(tarball("c"));
+        org.mockito.Mockito.verifyNoInteractions(proxy);
+    }
+
+    @Test
+    void versionsAreReadFromNpmStyleTarballNames() {
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("lodash/-/lodash-4.17.21.tgz"))).contains("4.17.21");
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("@babel/core/-/core-7.26.0.tgz"))).contains("7.26.0");
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("a-b/-/a-b-1.0.0-beta.2+build.5.tgz"))).contains("1.0.0-beta.2+build.5");
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("lodash/-/lodash-latest.tgz"))).isEmpty();
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("lodash/-/underscore-1.0.0.tgz"))).isEmpty();
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("lodash/-/lodash-1.0.0.zip"))).isEmpty();
+        assertThat(NpmPackuments.versionInFileName(NpmPath.parse("lodash/-/lodash-.tgz"))).isEmpty();
     }
 
     @Test
@@ -205,7 +245,8 @@ class NpmFormatHandlerTest {
         when(proxy.fetch(eq(proxyRepo), eq("demo"), eq(FetchOptions.index()), anyMap())).thenReturn(Optional.of(cached));
         StoredContent upstreamTgz = storage.put(hosted("elsewhere"), "y", tarball("proxied"), "application/octet-stream", false);
         when(upstream.upstreamUri(eq(proxyRepo), any())).thenAnswer(inv -> URI.create(NPMJS + inv.getArgument(1)));
-        when(proxy.fetch(eq(proxyRepo), eq("demo/-/demo-2.0.0.tgz"), any(URI.class), eq(FetchOptions.artifact()), anyMap()))
+        when(proxy.fetch(eq(proxyRepo), eq("demo/-/demo-2.0.0.tgz"), any(URI.class),
+                eq(FetchOptions.artifact(new StorageService.ComponentCoordinates("", "demo", "2.0.0"))), anyMap()))
                 .thenReturn(Optional.of(upstreamTgz));
 
         JsonNode doc = jsonBody(handler.handle(request(groupRepo, "GET", "demo")));

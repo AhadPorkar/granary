@@ -221,9 +221,15 @@ public abstract class RawFormatHandler implements FormatHandler {
         };
     }
 
-    /** Fetches a path through the proxy cache with the right immutability, honouring {@link #upstreamUri}. */
+    /**
+     * Fetches a path through the proxy cache with the right immutability, honouring {@link #upstreamUri}. Immutable
+     * files are linked to the component an upload of the same path would get ({@link #coordinates}), so the component
+     * browser and search list what the proxy holds; metadata belongs to no component.
+     */
     protected Optional<StoredContent> fetch(Repository proxyRepository, String path) {
-        FetchOptions options = metadata(proxyRepository, path) ? FetchOptions.index() : FetchOptions.artifact();
+        FetchOptions options = metadata(proxyRepository, path)
+                ? FetchOptions.index()
+                : FetchOptions.artifact(RawComponents.fit(coordinates(path)));
         URI custom = upstreamUri(proxyRepository, path);
         return custom == null
                 ? proxy.fetch(proxyRepository, path, options)

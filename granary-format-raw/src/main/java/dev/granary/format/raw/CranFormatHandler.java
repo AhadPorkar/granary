@@ -83,7 +83,9 @@ public class CranFormatHandler extends RawFormatHandler {
 
     @Override
     protected StorageService.ComponentCoordinates coordinates(String path) {
-        return CranPackages.coordinates(path).orElseGet(() -> RawComponents.generic(path));
+        return CranPackages.coordinates(path)
+                .or(() -> CranPackages.archivedCoordinates(path))
+                .orElseGet(() -> RawComponents.generic(path));
     }
 
     @Override

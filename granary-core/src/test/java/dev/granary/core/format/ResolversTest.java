@@ -27,6 +27,9 @@ class ResolversTest extends CoreServiceTest {
     @Autowired
     FormatRegistry formats;
 
+    @Autowired
+    dev.granary.core.dao.ComponentDao components;
+
     @Test
     void flattensNestedGroupsInOrderSkippingOfflineMembers() {
         hosted("a");
@@ -65,6 +68,39 @@ class ResolversTest extends CoreServiceTest {
         a.setOnline(false);
         a = repositories.update("a", a);
         assertThat(resolver.resolve(a, "f")).isEmpty();
+    }
+
+    @Test
+    void groupLookupLinksWhatItsProxyMemberCachesAndLeavesHostedContentAlone() throws IOException {
+        var upstream = new com.github.tomakehurst.wiremock.WireMockServer(
+                com.github.tomakehurst.wiremock.core.WireMockConfiguration.options().dynamicPort());
+        upstream.start();
+        try {
+            upstream.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/pkg/1.0/pkg-1.0.tgz")
+                    .willReturn(com.github.tomakehurst.wiremock.client.WireMock.aResponse().withStatus(200).withBody("P")));
+            Repository h = hosted("h");
+            Repository p = proxy("p", upstream.baseUrl() + "/");
+            group("g", "h", "p");
+            storage.store(h, "own/1.0/own-1.0.tgz", bytes("H"), null, Asset.Origin.UPLOADED, false);
+            var coordinates = new StorageService.ComponentCoordinates("", "pkg", "1.0");
+
+            var fromProxy = resolver.resolve(repositories.require("g"), "pkg/1.0/pkg-1.0.tgz",
+                    dev.granary.core.proxy.FetchOptions.artifact(coordinates)).orElseThrow();
+            var fromHosted = resolver.resolve(repositories.require("g"), "own/1.0/own-1.0.tgz",
+                    dev.granary.core.proxy.FetchOptions.artifact(new StorageService.ComponentCoordinates("", "own", "1.0")))
+                    .orElseThrow();
+
+            assertThat(fromProxy.readUtf8()).isEqualTo("P");
+            assertThat(fromProxy.asset().getRepositoryId()).isEqualTo(p.getId());
+            assertThat(fromProxy.asset().getComponentId()).isNotNull();
+            assertThat(components.countByRepositoryId(p.getId())).isEqualTo(1);
+            // hosted content is linked when it is uploaded, never by a read
+            assertThat(fromHosted.asset().getComponentId()).isNull();
+            assertThat(components.countByRepositoryId(h.getId())).isZero();
+            assertThat(components.countByRepositoryId(repositories.require("g").getId())).isZero();
+        } finally {
+            upstream.stop();
+        }
     }
 
     @Test

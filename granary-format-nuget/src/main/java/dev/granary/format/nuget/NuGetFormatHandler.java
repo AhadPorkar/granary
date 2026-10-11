@@ -234,7 +234,7 @@ public class NuGetFormatHandler implements FormatHandler {
     private Optional<StoredContent> file(Repository repo, String id, String version, NuGetPath.Kind kind) {
         return switch (repo.getType()) {
             case HOSTED -> storage.find(repo, storagePath(id, version, kind));
-            case PROXY -> upstream.flatFile(repo, id, version, kind);
+            case PROXY -> upstream.flatFile(repo, id, version, kind).map(content -> linkComponent(repo, id, version, kind, content));
             case GROUP -> {
                 for (Repository member : groups.leafMembers(repo)) {
                     Optional<StoredContent> hit = file(member, id, version, kind);
@@ -245,6 +245,58 @@ public class NuGetFormatHandler implements FormatHandler {
                 yield Optional.empty();
             }
         };
+    }
+
+    /**
+     * Links a package, manifest or symbol package a proxy cached to its package version, so the component browser and
+     * search list what was restored through the proxy. Done once per file, when it has no component yet: right after it
+     * was fetched, or when a copy cached by an older version is served.
+     */
+    private StoredContent linkComponent(Repository repo, String id, String version, NuGetPath.Kind kind,
+                                        StoredContent content) {
+        if (content.asset().getComponentId() != null) {
+            return content;
+        }
+        Optional<StorageService.ComponentCoordinates> coordinates = cachedComponent(id, version, kind, content);
+        if (coordinates.isEmpty()) {
+            return content;
+        }
+        try {
+            return storage.linkComponent(repo, content.asset().getPath(), coordinates.get())
+                    .map(asset -> new StoredContent(asset, content.blobStore()))
+                    .orElse(content);
+        } catch (RuntimeException e) {
+            // never fail a restore over the component browser; the next request tries again
+            log.debug("could not link {} in {} to {}: {}", content.asset().getPath(), repo.getName(), coordinates.get(),
+                    e.toString());
+            return content;
+        }
+    }
+
+    /**
+     * The coordinates of a cached file, spelled the way a push to a hosted repository records them: the id as the
+     * manifest spells it and the normalised version. A manifest that cannot be read, or that names another package
+     * than the one requested, yields the requested id in lower case instead.
+     */
+    static Optional<StorageService.ComponentCoordinates> cachedComponent(String id, String version, NuGetPath.Kind kind,
+                                                                         StoredContent content) {
+        Optional<NuGetVersion> requested = NuGetVersion.tryParse(version);
+        if (requested.isEmpty() || id == null || id.isEmpty()) {
+            return Optional.empty();
+        }
+        try (InputStream in = content.open()) {
+            Nuspec nuspec = kind == NuGetPath.Kind.NUSPEC ? NuspecReader.parse(in) : NuspecReader.readNupkg(in).nuspec();
+            Optional<NuGetVersion> declared = NuGetVersion.tryParse(nuspec.version()).filter(requested.get()::equals);
+            if (nuspec.id() != null && nuspec.id().equalsIgnoreCase(id) && declared.isPresent()) {
+                return Optional.of(new StorageService.ComponentCoordinates("", nuspec.id(), declared.get().toNormalizedString()));
+            }
+            log.debug("cached {} declares {} {}; linking it by its path", content.asset().getPath(), nuspec.id(),
+                    nuspec.version());
+        } catch (IOException | RuntimeException e) {
+            log.debug("cannot read the manifest of cached {}: {}", content.asset().getPath(), e.toString());
+        }
+        return Optional.of(new StorageService.ComponentCoordinates("", NuGetLayout.lower(id),
+                requested.get().toNormalizedString()));
     }
 
     private static String storagePath(String id, String version, NuGetPath.Kind kind) {

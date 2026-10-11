@@ -81,6 +81,11 @@ registry) with the same paths; add it to `swift-group` after `swift-hosted`.
   max age* and served stale while the upstream is unreachable. Archives and manifests (with their
   variants and the `Link` header that lists them) are immutable and cached forever. Release URLs in
   lists are rewritten to the Granary repository (or the group the client asked through).
+* The cached archive and manifests of a release (with the variants) form its component
+  `(<scope>, <name>, <version>)`, scope and name in lower case, as a publish to a hosted
+  repository does, so the component browser and search list what was resolved through the proxy.
+  Deleting the component removes them all; the next resolve fetches them again, or gets `503`
+  while the proxy is offline.
 * An upstream `404` is remembered by the negative cache; for offline use see
   [Offline behaviour](#offline-behaviour).
 

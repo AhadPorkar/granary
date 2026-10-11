@@ -222,8 +222,13 @@ public class MavenFormatHandler implements FormatHandler {
         return Optional.of(md);
     }
 
+    /**
+     * How a proxy treats a path: metadata is re-validated, everything else cached forever; artifacts and their checksum
+     * sidecars are linked to their component, so what a proxy holds shows up in the component browser and search.
+     */
     private static FetchOptions options(MavenPath path) {
-        return path.isMutable() ? FetchOptions.index() : FetchOptions.artifact();
+        FetchOptions options = path.isMutable() ? FetchOptions.index() : FetchOptions.artifact();
+        return options.withComponent(path.component().orElse(null));
     }
 
     // --- PUT ---------------------------------------------------------------------------------
@@ -256,9 +261,7 @@ public class MavenFormatHandler implements FormatHandler {
         if (path.kind() == MavenPath.Kind.CHECKSUM) {
             return putChecksum(request, path);
         }
-        StorageService.ComponentCoordinates coordinates = path.kind() == MavenPath.Kind.ARTIFACT
-                ? new StorageService.ComponentCoordinates(path.groupId(), path.artifactId(), path.version())
-                : null;
+        StorageService.ComponentCoordinates coordinates = path.component().orElse(null);
         try (InputStream body = request.body()) {
             storage.store(repo, path.path(), body, null, Asset.Origin.UPLOADED,
                     path.kind() == MavenPath.Kind.METADATA, coordinates);
@@ -279,8 +282,9 @@ public class MavenFormatHandler implements FormatHandler {
                         "Uploaded " + path.checksumAlgorithm() + " does not match the stored artifact");
             }
         }
+        // a checksum of an artifact belongs to the artifact's component, so deleting the component removes it too
         storage.store(request.repository(), path.path(), new ByteArrayInputStream(body), "text/plain",
-                Asset.Origin.UPLOADED, MavenPath.parse(path.checksumOf()).isMutable());
+                Asset.Origin.UPLOADED, MavenPath.parse(path.checksumOf()).isMutable(), path.component().orElse(null));
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

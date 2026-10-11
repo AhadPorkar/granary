@@ -107,8 +107,11 @@ public class DockerRegistry {
         if (digest.isPresent()) {
             Digest d = digest.get();
             String path = DockerLayout.manifestPath(upstreamName, d);
+            // a manifest pulled by digest (a platform manifest of an index, or an image pinned by digest) is the
+            // component <name>@<digest>, as a manifest pushed by digest to a hosted repository is; one cached through
+            // a tag already belongs to that tag's component and stays there
             Optional<StoredContent> content = upstream.fetch(repo, path, upstreamName + "/manifests/" + d, upstreamName,
-                    FetchOptions.artifact(), MediaTypes.DEFAULT_ACCEPT);
+                    FetchOptions.artifact(DockerLayout.coordinates(upstreamName, d.toString())), MediaTypes.DEFAULT_ACCEPT);
             if (content.isPresent() && !content.get().asset().getBlobSha256().equals(d.hex())) {
                 log.warn("upstream of {} returned a manifest with digest sha256:{} for {}; discarding it",
                         repo.getName(), content.get().asset().getBlobSha256(), d);

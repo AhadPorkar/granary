@@ -108,4 +108,45 @@ class MavenPathTest {
         assertThat(MavenPath.parse("com/acme/lib/1.0/lib-1.0").kind()).isEqualTo(MavenPath.Kind.OTHER);
         assertThat(MavenPath.parse(null).kind()).isEqualTo(MavenPath.Kind.DIRECTORY);
     }
+
+    @Test
+    void artifactsAndTheirChecksumsBelongToTheirComponent() {
+        assertThat(component("org/springframework/spring-core/6.2.0/spring-core-6.2.0.jar"))
+                .isEqualTo(coordinates("org.springframework", "spring-core", "6.2.0"));
+        assertThat(component("com/acme/lib/1.0/lib-1.0-sources.jar.sha1")).isEqualTo(coordinates("com.acme", "lib", "1.0"));
+        assertThat(component("com/acme/lib/1.0/lib-1.0.pom.asc")).isEqualTo(coordinates("com.acme", "lib", "1.0"));
+        assertThat(component("com/acme/lib/1.0/lib-1.0.pom.asc.sha256")).isEqualTo(coordinates("com.acme", "lib", "1.0"));
+        // timestamped and plain snapshot files belong to the snapshot version, like hosted deployments
+        assertThat(component("com/acme/lib/1.0-SNAPSHOT/lib-1.0-20260101.120000-3.jar"))
+                .isEqualTo(coordinates("com.acme", "lib", "1.0-SNAPSHOT"));
+        assertThat(component("com/acme/lib/1.0-SNAPSHOT/lib-1.0-SNAPSHOT.jar.md5"))
+                .isEqualTo(coordinates("com.acme", "lib", "1.0-SNAPSHOT"));
+        assertThat(component("gradle/plugin/com/gradleup/shadow/com.gradleup.shadow.gradle.plugin/9.0.0/com.gradleup.shadow.gradle.plugin-9.0.0.pom"))
+                .isEqualTo(coordinates("gradle.plugin.com.gradleup.shadow", "com.gradleup.shadow.gradle.plugin", "9.0.0"));
+    }
+
+    @Test
+    void metadataChecksumsOfChecksumsAndOtherFilesBelongToNoComponent() {
+        assertThat(MavenPath.parse("com/acme/lib/maven-metadata.xml").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/maven-metadata.xml.sha1").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/1.0-SNAPSHOT/maven-metadata.xml").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/1.0-SNAPSHOT/maven-metadata.xml.md5").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/1.0/lib-1.0.jar.sha1.md5").component()).isEmpty();
+        assertThat(MavenPath.parse("archetype-catalog.xml").component()).isEmpty();
+        assertThat(MavenPath.parse("archetype-catalog.xml.sha1").component()).isEmpty();
+        assertThat(MavenPath.parse(".index/nexus-maven-repository-index.gz").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/1.0/README.txt").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/lib/1.0/lib-2.0.jar").component()).isEmpty();
+        assertThat(MavenPath.parse("com/acme/").component()).isEmpty();
+        assertThat(MavenPath.parse("").component()).isEmpty();
+        assertThat(MavenPath.parse(null).component()).isEmpty();
+    }
+
+    private static dev.granary.core.storage.StorageService.ComponentCoordinates component(String path) {
+        return MavenPath.parse(path).component().orElseThrow();
+    }
+
+    private static dev.granary.core.storage.StorageService.ComponentCoordinates coordinates(String g, String a, String v) {
+        return new dev.granary.core.storage.StorageService.ComponentCoordinates(g, a, v);
+    }
 }

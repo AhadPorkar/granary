@@ -47,6 +47,9 @@ Ids are case-insensitive; storage paths use the lower-cased id and normalised ve
   `dotnet package search`.
 * Version comparison follows NuGet's rules (four-part versions, leading zeros, SemVer 2
   pre-release ordering, build metadata ignored).
+* Every pushed version is a component `("", <id>, <normalised version>)`, the id spelled as in
+  the package's `.nuspec` (`Newtonsoft.Json`); its assets are the package, the manifest and the
+  symbol package.
 
 ## Proxy
 
@@ -57,6 +60,14 @@ Ids are case-insensitive; storage paths use the lower-cased id and normalised ve
   non-inlined registration pages that nuget.org serves gzip-compressed.
 * Search is forwarded upstream while online and answers an empty result when offline.
 * `remoteUrl` is the V3 service index, e.g. `https://api.nuget.org/v3/index.json`.
+* Cached packages, manifests and symbol packages are linked to the component a push of that
+  version records, with the id spelled as the cached `.nuspec` spells it, so what was restored
+  through the proxy shows up in the component browser and in search (search ignores case).
+  Service and flat container indexes and registration pages are not components. Restores
+  through a group are recorded in the proxy member that cached the files.
+* Deleting a cached component removes its files; the next restore fetches them again, or gets
+  `503` while the proxy is offline. Packages cached by an earlier Granary version, which
+  recorded no components, are linked the first time they are served, even offline.
 
 ## Group
 

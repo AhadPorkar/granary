@@ -26,6 +26,9 @@ public final class CranPackages {
     private static final Pattern SOURCE = Pattern.compile("^src/contrib/([A-Za-z][A-Za-z0-9.]*)_(\\d+(?:[.-]\\d+)*)\\.tar\\.gz$");
     private static final Pattern BINARY = Pattern.compile("^bin/.+/([A-Za-z][A-Za-z0-9.]*)_(\\d+(?:[.-]\\d+)*)\\.(?:zip|tgz)$");
     private static final Pattern ARCHIVED = Pattern.compile("^src/contrib/Archive/([^/]+)/([^/]+)$");
+    /** An older source package under its package's archive directory, as CRAN keeps it. */
+    private static final Pattern ARCHIVED_SOURCE =
+            Pattern.compile("^src/contrib/Archive/([A-Za-z][A-Za-z0-9.]*)/\\1_(\\d+(?:[.-]\\d+)*)\\.tar\\.gz$");
     private static final Pattern FIELD = Pattern.compile("^([A-Za-z0-9_.@-]+):[ \\t]?(.*)$");
     static final int MAX_DESCRIPTION = 1024 * 1024;
 
@@ -46,6 +49,18 @@ public final class CranPackages {
             return Optional.empty();
         }
         return Optional.of(new StorageService.ComponentCoordinates("", m.group(1), m.group(2)));
+    }
+
+    /**
+     * {@code src/contrib/Archive/<pkg>/<pkg>_<ver>.tar.gz}, where CRAN keeps every version but the current one: the
+     * same coordinates as {@code src/contrib/<pkg>_<ver>.tar.gz}, so one package version is one component whether it
+     * was downloaded while current or from the archive.
+     */
+    public static Optional<StorageService.ComponentCoordinates> archivedCoordinates(String path) {
+        Matcher m = ARCHIVED_SOURCE.matcher(path);
+        return m.matches()
+                ? Optional.of(new StorageService.ComponentCoordinates("", m.group(1), m.group(2)))
+                : Optional.empty();
     }
 
     /** For {@code src/contrib/Archive/<pkg>/<file>}: the file name, which the live tarball is stored under. */

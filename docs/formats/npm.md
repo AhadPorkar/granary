@@ -44,6 +44,8 @@ the legacy login and treats the audit as "no data".
   in the web UI can be used directly in `.npmrc` as `_authToken`.
 * `npm search` queries the stored packages; `npm audit` is answered with `404`, which npm treats
   as "no audit data" and continues silently.
+* Every published version is a component `(<scope>, <name>, <version>)`, the scope without `@`
+  and empty for unscoped packages, e.g. `(babel, core, 7.26.0)`; its asset is the tarball.
 
 ## Proxy
 
@@ -57,6 +59,14 @@ the legacy login and treats the audit as "no data".
   conventional `<name>/-/<file>.tgz` path, which carries the proxy's upstream credentials.
 * `npm search` is forwarded to the upstream and not cached (results are short-lived).
 * `remoteUrl` is the registry root, e.g. `https://registry.npmjs.org/`.
+* Every cached tarball is linked to the component a publish of that version records
+  (`(<scope>, <name>, <version>)`), so what was installed through the proxy shows up in the
+  component browser and in search. The version comes from the cached packument, or from the
+  tarball's file name when the packument was never fetched. Packuments are not components.
+  Installs through a group are recorded in the proxy member that cached the tarball.
+* Deleting a cached component removes the tarball; the next install fetches it again, or gets
+  `503` while the proxy is offline. Tarballs cached by an earlier Granary version, which
+  recorded no components, are linked the first time they are served, even offline.
 
 ## Group
 

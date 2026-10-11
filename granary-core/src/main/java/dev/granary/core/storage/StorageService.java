@@ -183,6 +183,45 @@ public class StorageService {
     }
 
     /**
+     * Links the asset at {@code path} to the component with these coordinates (created on demand), unless it already
+     * belongs to a component. Used for files that were stored before their component was known, such as proxy caches
+     * written by older versions. Concurrent callers for the same path or component end up with one component row; the
+     * keys are taken in the same order as {@link #store}: the path's before the transaction, the component's inside.
+     *
+     * @return the asset as it is stored afterwards, or empty when nothing is stored at {@code path}
+     * @throws InvalidStorageInputException for coordinates the components table cannot hold
+     */
+    public Optional<Asset> linkComponent(Repository repo, String path, ComponentCoordinates coordinates) {
+        String normalised = normalise(path);
+        validate(coordinates);
+        return locks.withKey(assetKey(repo, normalised), () -> transactions.execute(status -> {
+            Optional<Asset> found = assets.findByRepositoryIdAndPath(repo.getId(), normalised);
+            if (found.isEmpty() || found.get().getComponentId() != null) {
+                return found;
+            }
+            Asset asset = found.get();
+            asset.setComponentId(ensureComponent(repo, coordinates).getId());
+            return Optional.of(assets.save(asset));
+        }));
+    }
+
+    /**
+     * Whether a component with these coordinates can be stored: name and version present, no NUL character, and
+     * within the column and index limits. {@link #store} and {@link #ensureComponent} refuse any other coordinates.
+     */
+    public static boolean isStorable(ComponentCoordinates coordinates) {
+        if (coordinates == null) {
+            return false;
+        }
+        try {
+            validate(coordinates);
+            return true;
+        } catch (InvalidStorageInputException e) {
+            return false;
+        }
+    }
+
+    /**
      * Marks {@code asset} as just confirmed against upstream. A {@code null} validator leaves the stored one alone;
      * any other value replaces it, sanitised by {@link AssetSanitiser} (a value too long for its column is dropped).
      */

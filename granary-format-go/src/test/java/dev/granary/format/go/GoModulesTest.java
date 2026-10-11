@@ -128,7 +128,7 @@ class GoModulesTest {
         StoredContent list2 = storage.put(proxyRepo, MODULE + "/@v/list", "v1.0.0\nv4.0.0\n".getBytes(StandardCharsets.UTF_8), "text/plain", true);
         when(proxy.fetch(proxyRepo, MODULE + "/@v/list", FetchOptions.index())).thenReturn(Optional.of(list2));
         StoredContent info = storage.put(proxyRepo, MODULE + "/@v/v4.0.0.info", "{\"Version\":\"v4.0.0\"}".getBytes(StandardCharsets.UTF_8), "application/json", false);
-        when(proxy.fetch(proxyRepo, MODULE + "/@v/v4.0.0.info", FetchOptions.artifact())).thenReturn(Optional.of(info));
+        when(proxy.fetch(proxyRepo, MODULE + "/@v/v4.0.0.info", FetchOptions.artifact(component("v4.0.0")))).thenReturn(Optional.of(info));
         assertThat(new String(modules.latest(groupRepo, MODULE).orElseThrow(), StandardCharsets.UTF_8)).isEqualTo("{\"Version\":\"v4.0.0\"}");
     }
 
@@ -148,7 +148,7 @@ class GoModulesTest {
     void groupLatestSynthesisesAnInfoWhenTheOwnerLostIt() throws IOException {
         storage.put(hostedRepo, MODULE + "/@v/v1.0.0.zip", new byte[] {1}, "application/zip", false);
         when(proxy.fetch(proxyRepo, MODULE + "/@v/list", FetchOptions.index())).thenReturn(Optional.empty());
-        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.info", FetchOptions.artifact())).thenReturn(Optional.empty());
+        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.info", FetchOptions.artifact(component("v1.0.0")))).thenReturn(Optional.empty());
         assertThat(new String(modules.latest(groupRepo, MODULE).orElseThrow(), StandardCharsets.UTF_8)).isEqualTo("{\"Version\":\"v1.0.0\"}");
     }
 
@@ -160,8 +160,8 @@ class GoModulesTest {
         assertThat(modules.file(hostedRepo, GoPath.parse(MODULE + "/@v/v2.0.0.zip"))).isEmpty();
 
         StoredContent cached = storage.put(proxyRepo, MODULE + "/@v/v2.0.0.zip", new byte[] {2}, "application/zip", false);
-        when(proxy.fetch(proxyRepo, MODULE + "/@v/v2.0.0.zip", FetchOptions.artifact())).thenReturn(Optional.of(cached));
-        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.zip", FetchOptions.artifact())).thenReturn(Optional.empty());
+        when(proxy.fetch(proxyRepo, MODULE + "/@v/v2.0.0.zip", FetchOptions.artifact(component("v2.0.0")))).thenReturn(Optional.of(cached));
+        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.zip", FetchOptions.artifact(component("v1.0.0")))).thenReturn(Optional.empty());
         assertThat(modules.file(groupRepo, zip).orElseThrow().readAllBytes()).isEqualTo(storage.bytes(hostedRepo, MODULE + "/@v/v1.0.0.zip"));
         assertThat(modules.file(groupRepo, GoPath.parse(MODULE + "/@v/v2.0.0.zip")).orElseThrow().readAllBytes()).isEqualTo(new byte[] {2});
         verify(proxy, never()).fetch(eq(proxyRepo), eq(MODULE + "/@v/v1.0.0.zip"), any());
@@ -270,5 +270,10 @@ class GoModulesTest {
     private void store(Repository repo, String module, String escapedVersion) {
         storage.put(repo, module + "/@v/" + escapedVersion + ".zip", ("zip " + escapedVersion).getBytes(StandardCharsets.UTF_8), "application/zip", false);
         storage.put(repo, module + "/@v/" + escapedVersion + ".mod", ("module " + module + "\n").getBytes(StandardCharsets.UTF_8), "text/plain; charset=utf-8", false);
+    }
+
+    /** The component a publish of {@code version} of the test module records, which a proxy links its files to. */
+    private static dev.granary.core.storage.StorageService.ComponentCoordinates component(String version) {
+        return new dev.granary.core.storage.StorageService.ComponentCoordinates("example.com/acme", "hello", version);
     }
 }

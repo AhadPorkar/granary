@@ -2,6 +2,7 @@ package dev.granary.format.raw;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.granary.core.storage.StorageService;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
@@ -75,6 +76,20 @@ class CranPackagesTest {
         assertThat(CranPackages.isSourcePackage("bin/windows/contrib/4.5/praise_1.0.0.zip")).isFalse();
         assertThat(CranPackages.archivedFile("src/contrib/Archive/praise/praise_0.9.tar.gz")).contains("praise_0.9.tar.gz");
         assertThat(CranPackages.archivedFile("src/contrib/praise_0.9.tar.gz")).isEmpty();
+    }
+
+    @Test
+    void archivedSourcePackagesHaveTheCoordinatesOfTheVersionTheyHold() {
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/praise/praise_0.9.tar.gz"))
+                .contains(new StorageService.ComponentCoordinates("", "praise", "0.9"));
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/data.table/data.table_1.14.10-1.tar.gz"))
+                .contains(new StorageService.ComponentCoordinates("", "data.table", "1.14.10-1"));
+        // a file of another package, or anything but a source tarball, is not a version of the directory's package
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/praise/other_0.9.tar.gz")).isEmpty();
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/praise/praise_0.9.zip")).isEmpty();
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/praise/README")).isEmpty();
+        assertThat(CranPackages.archivedCoordinates("src/contrib/Archive/praise/sub/praise_0.9.tar.gz")).isEmpty();
+        assertThat(CranPackages.archivedCoordinates("src/contrib/praise_0.9.tar.gz")).isEmpty();
     }
 
     @Test

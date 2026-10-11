@@ -11,13 +11,16 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import dev.granary.core.CoreServiceTest;
 import dev.granary.core.dao.AssetDao;
+import dev.granary.core.dao.ComponentDao;
 import dev.granary.core.model.Asset;
+import dev.granary.core.model.Component;
 import dev.granary.core.model.Repository;
 import dev.granary.core.storage.StorageService;
 import dev.granary.core.storage.StoredContent;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -35,6 +38,9 @@ class ProxyServiceTest extends CoreServiceTest {
 
     @Autowired
     AssetDao assets;
+
+    @Autowired
+    ComponentDao components;
 
     @Autowired
     UpstreamHealth health;
@@ -317,6 +323,131 @@ class ProxyServiceTest extends CoreServiceTest {
         upstream.verify(2, getRequestedFor(urlEqualTo("/remote/index.json")));
         upstream.verify(1, getRequestedFor(urlEqualTo("/remote/index.json")).withHeader("If-None-Match", equalTo("\"short\"")));
         upstream.verify(1, getRequestedFor(urlEqualTo("/remote/index.json")).withoutHeader("If-None-Match"));
+    }
+
+    // --- components ---------------------------------------------------------------------------------------
+
+    private static final StorageService.ComponentCoordinates LIB =
+            new StorageService.ComponentCoordinates("org.example", "lib", "1.0");
+
+    @Test
+    void cachedArtifactIsLinkedToItsComponentOnce() {
+        upstream.stubFor(get(urlEqualTo("/remote/org/example/lib/1.0/lib-1.0.jar")).willReturn(aResponse().withStatus(200).withBody("JAR")));
+        upstream.stubFor(get(urlEqualTo("/remote/org/example/lib/1.0/lib-1.0.pom")).willReturn(aResponse().withStatus(200).withBody("POM")));
+
+        StoredContent jar = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB)).orElseThrow();
+        StoredContent again = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB)).orElseThrow();
+        StoredContent pom = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.pom", FetchOptions.artifact(LIB)).orElseThrow();
+
+        assertThat(jar.asset().getComponentId()).isNotNull()
+                .isEqualTo(again.asset().getComponentId())
+                .isEqualTo(pom.asset().getComponentId());
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        Component c = components.findById(jar.asset().getComponentId()).orElseThrow();
+        assertThat(List.of(c.getNamespace(), c.getName(), c.getVersion())).containsExactly("org.example", "lib", "1.0");
+        assertThat(assets.findByComponentId(c.getId())).extracting(Asset::getPath)
+                .containsExactlyInAnyOrder("org/example/lib/1.0/lib-1.0.jar", "org/example/lib/1.0/lib-1.0.pom");
+        upstream.verify(1, getRequestedFor(urlEqualTo("/remote/org/example/lib/1.0/lib-1.0.jar")));
+    }
+
+    @Test
+    void filesWithoutCoordinatesCreateNoComponent() {
+        upstream.stubFor(get(urlEqualTo("/remote/org/example/lib/maven-metadata.xml")).willReturn(aResponse().withStatus(200).withBody("<metadata/>")));
+        upstream.stubFor(get(urlEqualTo("/remote/notes.txt")).willReturn(aResponse().withStatus(200).withBody("n")));
+
+        assertThat(proxy.fetch(repo, "org/example/lib/maven-metadata.xml", FetchOptions.index()).orElseThrow()
+                .asset().getComponentId()).isNull();
+        assertThat(proxy.fetch(repo, "notes.txt", FetchOptions.artifact()).orElseThrow().asset().getComponentId()).isNull();
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+    }
+
+    @Test
+    void artifactCachedWithoutComponentIsLinkedWhenServedAgainEvenOffline() {
+        // what a proxy of an earlier version left behind: cached, no component
+        storage.store(repo, "org/example/lib/1.0/lib-1.0.jar", new java.io.ByteArrayInputStream("JAR".getBytes()),
+                null, Asset.Origin.CACHED, false);
+        repo = repositories.setOffline("p", true);
+
+        StoredContent served = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB)).orElseThrow();
+
+        assertThat(served.asset().getComponentId()).isNotNull();
+        assertThat(assets.findById(served.asset().getId()).orElseThrow().getComponentId()).isEqualTo(served.asset().getComponentId());
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        upstream.verify(0, getRequestedFor(com.github.tomakehurst.wiremock.client.WireMock.anyUrl()));
+    }
+
+    @Test
+    void coordinatesTheTableCannotHoldStillCacheTheFile() throws IOException {
+        upstream.stubFor(get(urlEqualTo("/remote/odd.bin")).willReturn(aResponse().withStatus(200).withBody("ODD")));
+        var tooLong = new StorageService.ComponentCoordinates("", "odd", "9".repeat(500));
+
+        StoredContent stored = proxy.fetch(repo, "odd.bin", FetchOptions.artifact(tooLong)).orElseThrow();
+
+        assertThat(stored.readUtf8()).isEqualTo("ODD");
+        assertThat(stored.asset().getComponentId()).isNull();
+        assertThat(proxy.fetch(repo, "odd.bin", FetchOptions.artifact(tooLong)).orElseThrow().readUtf8()).isEqualTo("ODD");
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+        upstream.verify(1, getRequestedFor(urlEqualTo("/remote/odd.bin")));
+    }
+
+    @Test
+    void concurrentFirstFetchesOfOneComponentCreateOneRow() throws Exception {
+        int files = 4;
+        for (int i = 0; i < files; i++) {
+            upstream.stubFor(get(urlEqualTo("/remote/org/example/lib/1.0/f" + i)).willReturn(aResponse().withStatus(200)
+                    .withFixedDelay(100).withBody("F" + i)));
+        }
+        var start = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<Optional<StoredContent>>> results = new java.util.ArrayList<>();
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(files * 2)) {
+            for (int i = 0; i < files * 2; i++) {
+                String path = "org/example/lib/1.0/f" + (i % files);
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return proxy.fetch(repo, path, FetchOptions.artifact(LIB));
+                }));
+            }
+            start.countDown();
+            java.util.Set<java.util.UUID> ids = new java.util.HashSet<>();
+            for (var result : results) {
+                ids.add(result.get(30, java.util.concurrent.TimeUnit.SECONDS).orElseThrow().asset().getComponentId());
+            }
+            assertThat(ids).hasSize(1).doesNotContainNull();
+        }
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        assertThat(assets.countByRepositoryId(repo.getId())).isEqualTo(files);
+        for (int i = 0; i < files; i++) {
+            upstream.verify(1, getRequestedFor(urlEqualTo("/remote/org/example/lib/1.0/f" + i)));
+        }
+    }
+
+    @Test
+    void deletedComponentIsFetchedAgainOnlineAndMissingOffline() throws IOException {
+        upstream.stubFor(get(urlEqualTo("/remote/org/example/lib/1.0/lib-1.0.jar")).willReturn(aResponse().withStatus(200).withBody("JAR")));
+        StoredContent jar = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB)).orElseThrow();
+
+        assertThat(storage.deleteComponent(jar.asset().getComponentId())).isEqualTo(1);
+        assertThat(storage.find(repo, "org/example/lib/1.0/lib-1.0.jar")).isEmpty();
+        repo = repositories.setOffline("p", true);
+        assertThat(proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB))).isEmpty();
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+
+        repo = repositories.setOffline("p", false);
+        StoredContent refetched = proxy.fetch(repo, "org/example/lib/1.0/lib-1.0.jar", FetchOptions.artifact(LIB)).orElseThrow();
+        assertThat(refetched.readUtf8()).isEqualTo("JAR");
+        assertThat(refetched.asset().getComponentId()).isNotNull().isNotEqualTo(jar.asset().getComponentId());
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        upstream.verify(2, getRequestedFor(urlEqualTo("/remote/org/example/lib/1.0/lib-1.0.jar")));
+    }
+
+    @Test
+    void artifactOptionsCarryTheirComponent() {
+        assertThat(FetchOptions.artifact(null)).isEqualTo(FetchOptions.artifact());
+        assertThat(FetchOptions.artifact(LIB).component()).isEqualTo(LIB);
+        assertThat(FetchOptions.artifact(LIB).metadata()).isFalse();
+        assertThat(FetchOptions.index().withComponent(LIB).metadata()).isTrue();
+        assertThat(FetchOptions.index(Duration.ofMinutes(5)).withComponent(LIB).maxAge()).isEqualTo(Duration.ofMinutes(5));
+        assertThat(new FetchOptions(true, null).component()).isNull();
     }
 
     private void age(Asset asset, Duration by) {

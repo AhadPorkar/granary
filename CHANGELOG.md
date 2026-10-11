@@ -131,6 +131,17 @@ its real clients, on a core hardened for concurrent writes and long-running oper
   Write conflicts that still reach the web layer answer `409 storage.conflict` instead of `500`.
 - Concurrent proxy requests for the same uncached or stale file make one upstream request
   (`granary.proxy.single-flight-timeout`).
+- Files that Maven, npm, NuGet, Go, raw, CDN, CRAN, Hackage, CPAN and Elm proxies cache are now
+  components with the coordinates a hosted upload of them gets (Maven artifacts with their checksum
+  files, npm tarballs, NuGet packages, manifests and symbol packages, Go `.info`/`.mod`/`.zip`), so
+  the component browser and search list them; index documents stay outside components. Docker
+  proxies record manifests pulled by digest (platform manifests, images pinned by digest) as
+  components with the digest as version, as hosted repositories do, Swift proxies keep the alternate
+  `Package@swift-*.swift` manifests in their release's component, and CRAN archive downloads belong
+  to the version they hold. Deleting such a component removes its cached files, which are fetched
+  again on the next request or answer `503` while offline. Files cached by 0.1.0 are linked the
+  first time they are served. Checksum files uploaded for Maven artifacts to hosted repositories
+  now belong to the artifact's component.
 - API-token authentication holds one database connection at a time, so many concurrent CI jobs
   with tokens can no longer exhaust the connection pool.
 - Upstream responses with oversized or malformed `Content-Type`, `ETag` or `Last-Modified` headers

@@ -92,7 +92,13 @@ public class ProxyService {
      */
     public Optional<StoredContent> fetch(Repository repo, String cachePath, URI upstreamUri, FetchOptions options,
                                          Map<String, String> extraHeaders) {
-        String path = cachePath;
+        StorageService.ComponentCoordinates component = storableComponent(repo, cachePath, options.component());
+        FetchOptions effective = component == options.component() ? options : options.withComponent(component);
+        return linked(repo, lookup(repo, cachePath, upstreamUri, effective, extraHeaders), component);
+    }
+
+    private Optional<StoredContent> lookup(Repository repo, String path, URI upstreamUri, FetchOptions options,
+                                           Map<String, String> extraHeaders) {
         Optional<StoredContent> cached = storage.find(repo, path);
         if (servable(cached, repo, options)) {
             return cached;
@@ -107,6 +113,42 @@ public class ProxyService {
             return cached;
         }
         return fetchOnce(repo, path, upstreamUri, options, cached, extraHeaders);
+    }
+
+    /**
+     * The coordinates to link a cached file to, or {@code null}. Coordinates the components table cannot hold (an
+     * upstream may name a package anything) are dropped: the file is still cached and served, just not listed.
+     */
+    private static StorageService.ComponentCoordinates storableComponent(Repository repo, String path,
+                                                                         StorageService.ComponentCoordinates component) {
+        if (component == null || StorageService.isStorable(component)) {
+            return component;
+        }
+        log.debug("{} in {} is cached without a component: its coordinates {} cannot be stored", path, repo.getName(),
+                component);
+        return null;
+    }
+
+    /**
+     * Links a file served from the cache to its component when it has none yet: copies cached before the proxy
+     * recorded components (or by an older version of Granary) are linked the next time a client asks for them. A
+     * failure to link never fails the download; the next request tries again.
+     */
+    private Optional<StoredContent> linked(Repository repo, Optional<StoredContent> content,
+                                           StorageService.ComponentCoordinates component) {
+        if (component == null || content.isEmpty() || content.get().asset().getComponentId() != null) {
+            return content;
+        }
+        StoredContent found = content.get();
+        try {
+            return Optional.of(storage.linkComponent(repo, found.asset().getPath(), component)
+                    .map(asset -> new StoredContent(asset, found.blobStore()))
+                    .orElse(found));
+        } catch (RuntimeException e) {
+            log.debug("could not link {} in {} to component {}: {}", found.asset().getPath(), repo.getName(),
+                    component, e.toString());
+            return content;
+        }
     }
 
     /** Number of upstream fetches currently coalescing concurrent requests (for tests and diagnostics). */
@@ -221,7 +263,8 @@ public class ProxyService {
                         .orElseGet(() -> ContentTypes.guess(path));
                 StoredContent stored;
                 try (InputStream body = response.body()) {
-                    stored = storage.store(repo, path, body, contentType, Asset.Origin.CACHED, options.metadata());
+                    stored = storage.store(repo, path, body, contentType, Asset.Origin.CACHED, options.metadata(),
+                            options.component());
                 }
                 // StorageService sanitises the header values: oversized validators are dropped, never truncated
                 Asset asset = storage.recordUpstreamValidators(stored.asset(),

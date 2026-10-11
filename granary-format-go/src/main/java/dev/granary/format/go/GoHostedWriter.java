@@ -202,8 +202,12 @@ public class GoHostedWriter {
     }
 
     static StorageService.ComponentCoordinates coordinates(GoPath path) {
-        return new StorageService.ComponentCoordinates(GoModulePaths.namespace(path.module()),
-                GoModulePaths.name(path.module()), path.version());
+        return coordinates(path.module(), path.version());
+    }
+
+    /** The component of one version of a module: the module path without its last element, that element, the version. */
+    static StorageService.ComponentCoordinates coordinates(String module, String version) {
+        return new StorageService.ComponentCoordinates(GoModulePaths.namespace(module), GoModulePaths.name(module), version);
     }
 
     private static void requireCanonical(GoPath path) {

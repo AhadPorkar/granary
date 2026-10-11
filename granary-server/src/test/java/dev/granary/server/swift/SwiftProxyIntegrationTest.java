@@ -25,11 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import dev.granary.core.dao.AssetDao;
 import dev.granary.core.dao.ComponentDao;
+import dev.granary.core.model.Asset;
 import dev.granary.core.model.Repository;
 import dev.granary.core.model.RepositoryType;
 import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.storage.StorageService;
+import dev.granary.format.swift.SwiftLayout;
 import dev.granary.server.IntegrationTest;
 import java.net.URI;
 import org.junit.jupiter.api.AfterAll;
@@ -57,6 +60,9 @@ class SwiftProxyIntegrationTest extends IntegrationTest {
 
     @Autowired
     private ComponentDao components;
+
+    @Autowired
+    private AssetDao assets;
 
     private Repository repo;
 
@@ -290,6 +296,41 @@ class SwiftProxyIntegrationTest extends IntegrationTest {
 
         repositories.setOffline(REPO, false);
         mvc.perform(getJson(URL + "/acme/other")).andExpect(status().isOk());
+    }
+
+    @Test
+    void everyCachedFileOfAReleaseBelongsToItsComponentAndGoesWithIt() throws Exception {
+        stubRelease("1.0.0", ZIP);
+        stubManifests("1.0.0");
+        mvc.perform(getZip(URL + "/acme/demo/1.0.0.zip")).andExpect(status().isOk());
+        mvc.perform(getSwift(URL + "/acme/demo/1.0.0/Package.swift")).andExpect(status().isOk());
+        mvc.perform(getSwift(URL + "/acme/demo/1.0.0/Package.swift?swift-version=6")).andExpect(status().isOk())
+                .andExpect(content().string(MANIFEST_6));
+
+        // the variant manifest belongs to the release like the default one, as it does in a hosted repository
+        var component = components.findByRepositoryIdAndNamespaceAndNameAndVersion(repo.getId(), "acme", "demo", "1.0.0")
+                .orElseThrow();
+        assertThat(assets.findByComponentId(component.getId())).extracting(Asset::getPath).containsExactlyInAnyOrder(
+                "acme/demo/1.0.0.zip", "acme/demo/1.0.0/Package.swift", "acme/demo/1.0.0/Package@swift-6.swift",
+                "acme/demo/1.0.0/" + SwiftLayout.MANIFEST_LINKS);
+        assertThat(components.findAll()).filteredOn(c -> repo.getId().equals(c.getRepositoryId())).hasSize(1);
+
+        mvc.perform(delete(URI.create("/api/v1/repositories/" + REPO + "/components/" + component.getId()))
+                        .header("Authorization", adminBearer()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.deletedAssets").value(4));
+        assertThat(storage.list(repo, "acme/demo/1.0.0")).isEmpty();
+
+        // offline nothing of the release is left to serve; online it is fetched and linked again
+        repositories.setOffline(REPO, true);
+        mvc.perform(getSwift(URL + "/acme/demo/1.0.0/Package.swift?swift-version=6")).andExpect(status().isServiceUnavailable());
+        repositories.setOffline(REPO, false);
+        mvc.perform(getSwift(URL + "/acme/demo/1.0.0/Package.swift?swift-version=6")).andExpect(status().isOk())
+                .andExpect(content().string(MANIFEST_6));
+        var again = components.findByRepositoryIdAndNamespaceAndNameAndVersion(repo.getId(), "acme", "demo", "1.0.0")
+                .orElseThrow();
+        assertThat(assets.findByComponentId(again.getId())).extracting(Asset::getPath).containsExactlyInAnyOrder(
+                "acme/demo/1.0.0/Package.swift", "acme/demo/1.0.0/Package@swift-6.swift",
+                "acme/demo/1.0.0/" + SwiftLayout.MANIFEST_LINKS);
     }
 
     @Test

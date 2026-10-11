@@ -117,6 +117,15 @@ modified.
   upstream `ETag`), served stale while upstream is unreachable or the repository is offline. The
   list is served byte for byte as upstream sent it. `.info`, `.mod` and `.zip` of semantic versions
   are immutable and fetched once.
+* The cached `.info`, `.mod` and `.zip` of a version are linked to the component a publish of
+  that version records (`(<module path without its last element>, <last element>, <version>)`,
+  with the module path decoded: `github.com/!burnt!sushi/toml` becomes
+  `(github.com/BurntSushi, toml, …)`), so the modules builds downloaded show up in the
+  component browser and in search. `@v/list`, `@latest` and branch or commit queries are not
+  components. Downloads through a group are recorded in the proxy member that cached them.
+* Deleting a cached component removes its files; the next download fetches them again, or gets
+  `503` while the proxy is offline. Files cached by an earlier Granary version, which recorded no
+  components, are linked the first time they are served, even offline.
 * Upstream `404` and `410 Gone` (what proxy.golang.org answers for excluded or invalid versions)
   are both remembered for *negative cache* minutes and answered with `404`.
 * An uncached file while upstream is down or the repository (or the whole server) is offline is a

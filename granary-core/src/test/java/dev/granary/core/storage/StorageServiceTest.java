@@ -316,6 +316,95 @@ class StorageServiceTest extends CoreServiceTest {
         assertThat(storage.ensureComponent(repo, fits).getId()).isNotNull();
     }
 
+    @Test
+    void linkComponentLinksAnUnlinkedAssetOnceAndLeavesLinkedOnesAlone() {
+        Repository repo = proxy("p", "https://upstream.example/");
+        var coords = new StorageService.ComponentCoordinates("org.example", "lib", "1.0");
+        storage.store(repo, "org/example/lib/1.0/lib-1.0.jar", in("jar"), null, Asset.Origin.CACHED, false);
+
+        Asset linked = storage.linkComponent(repo, "/org/example/lib/1.0/lib-1.0.jar", coords).orElseThrow();
+        Asset again = storage.linkComponent(repo, "org/example/lib/1.0/lib-1.0.jar", coords).orElseThrow();
+
+        assertThat(linked.getComponentId()).isNotNull().isEqualTo(again.getComponentId());
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        Component c = components.findById(linked.getComponentId()).orElseThrow();
+        assertThat(List.of(c.getNamespace(), c.getName(), c.getVersion())).containsExactly("org.example", "lib", "1.0");
+        assertThat(c.getFormat()).isEqualTo(repo.getFormat());
+
+        // an asset that already belongs to a component keeps it
+        var other = new StorageService.ComponentCoordinates("org.example", "lib", "2.0");
+        assertThat(storage.linkComponent(repo, "org/example/lib/1.0/lib-1.0.jar", other).orElseThrow().getComponentId())
+                .isEqualTo(linked.getComponentId());
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        // the component is removed with its last asset, like one recorded at store time
+        assertThat(storage.delete(repo, "org/example/lib/1.0/lib-1.0.jar")).isTrue();
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+    }
+
+    @Test
+    void linkComponentOfAMissingPathCreatesNothing() {
+        Repository repo = proxy("p", "https://upstream.example/");
+
+        assertThat(storage.linkComponent(repo, "nothing/here", new StorageService.ComponentCoordinates("", "n", "1")))
+                .isEmpty();
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+    }
+
+    @Test
+    void linkComponentRefusesCoordinatesTheTableCannotHold() {
+        Repository repo = proxy("p", "https://upstream.example/");
+        storage.store(repo, "f", in("x"), null, Asset.Origin.CACHED, false);
+
+        assertThatThrownBy(() -> storage.linkComponent(repo, "f",
+                new StorageService.ComponentCoordinates("", "n", "v".repeat(AssetSanitiser.MAX_VERSION_LENGTH + 1))))
+                .isInstanceOf(InvalidStorageInputException.class);
+        assertThat(storage.find(repo, "f").orElseThrow().asset().getComponentId()).isNull();
+        assertThat(components.countByRepositoryId(repo.getId())).isZero();
+    }
+
+    @Test
+    void concurrentLinksOfFilesOfOneComponentShareOneRow() throws Exception {
+        Repository repo = proxy("p", "https://upstream.example/");
+        var coords = new StorageService.ComponentCoordinates("", "pkg", "1.0");
+        int files = 8;
+        for (int i = 0; i < files; i++) {
+            storage.store(repo, "pkg/1.0/f" + i, in("f" + i), null, Asset.Origin.CACHED, false);
+        }
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(files)) {
+            List<java.util.concurrent.Future<Asset>> results = new java.util.ArrayList<>();
+            for (int i = 0; i < files * 2; i++) {
+                String path = "pkg/1.0/f" + (i % files);
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return storage.linkComponent(repo, path, coords).orElseThrow();
+                }));
+            }
+            start.countDown();
+            java.util.Set<java.util.UUID> ids = new java.util.HashSet<>();
+            for (var result : results) {
+                ids.add(result.get(30, java.util.concurrent.TimeUnit.SECONDS).getComponentId());
+            }
+            assertThat(ids).hasSize(1).doesNotContainNull();
+        }
+        assertThat(components.countByRepositoryId(repo.getId())).isEqualTo(1);
+        assertThat(assets.findByComponentId(components.findByRepositoryIdAndNamespaceAndNameAndVersion(
+                repo.getId(), "", "pkg", "1.0").orElseThrow().getId())).hasSize(files);
+    }
+
+    @Test
+    void storableCoordinatesAreThoseTheStoreAccepts() {
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates(null, "n", "1"))).isTrue();
+        assertThat(StorageService.isStorable(null)).isFalse();
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates("", null, "1"))).isFalse();
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates("", "n", null))).isFalse();
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates("", "n\u0000", "1"))).isFalse();
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates("", "n",
+                "1".repeat(AssetSanitiser.MAX_VERSION_LENGTH + 1)))).isFalse();
+        assertThat(StorageService.isStorable(new StorageService.ComponentCoordinates("中".repeat(500), "文".repeat(500),
+                "版".repeat(200)))).isFalse();
+    }
+
     private static ByteArrayInputStream in(String s) {
         return new ByteArrayInputStream(s.getBytes(StandardCharsets.UTF_8));
     }

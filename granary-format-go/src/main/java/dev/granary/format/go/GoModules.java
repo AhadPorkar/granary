@@ -144,10 +144,18 @@ public class GoModules {
 
     // --- files ---------------------------------------------------------------------------------------
 
-    /** A version's {@code .info}, {@code .mod} or {@code .zip} from wherever the repository type gets it. */
+    /**
+     * A version's {@code .info}, {@code .mod} or {@code .zip} from wherever the repository type gets it. A proxy links
+     * the files of a canonical version to the component a publish of that version records, so the component browser
+     * and search list the modules downloaded through it; {@code .info} lookups of branches or commits are metadata and
+     * belong to no component.
+     */
     public Optional<StoredContent> file(Repository repo, GoPath path) {
         String file = path.filePath(extension(path));
-        return resolver.resolve(repo, file, path.isMetadata() ? FetchOptions.index() : FetchOptions.artifact());
+        FetchOptions options = path.isMetadata() ? FetchOptions.index() : FetchOptions.artifact();
+        return resolver.resolve(repo, file, path.hasCanonicalVersion() && !path.isMetadata()
+                ? options.withComponent(GoHostedWriter.coordinates(path))
+                : options);
     }
 
     private static String extension(GoPath path) {
@@ -201,8 +209,9 @@ public class GoModules {
                     order.add(member);
                 }
             }
+            FetchOptions options = FetchOptions.artifact(infoComponent(escapedModule, version));
             for (Repository member : order) {
-                Optional<StoredContent> info = resolver.resolve(member, infoPath, FetchOptions.artifact());
+                Optional<StoredContent> info = resolver.resolve(member, infoPath, options);
                 if (info.isPresent()) {
                     return Optional.of(info.get().readAllBytes());
                 }
@@ -218,6 +227,18 @@ public class GoModules {
             }
         }
         return Optional.empty();
+    }
+
+    /** The component of the {@code .info} of a canonical version a group picked as {@code @latest}, or none. */
+    private static StorageService.ComponentCoordinates infoComponent(String escapedModule, String version) {
+        if (!GoSemver.isValid(version) || !GoSemver.canonical(version).equals(version)) {
+            return null;
+        }
+        try {
+            return GoHostedWriter.coordinates(GoModulePaths.unescape(escapedModule), version);
+        } catch (RuntimeException e) {
+            return null; // not a module path the go command would send; served without a component
+        }
     }
 
     private byte[] storedInfo(Repository hosted, String escapedModule, String version) throws IOException {

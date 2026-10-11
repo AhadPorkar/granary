@@ -148,13 +148,16 @@ final class SwiftUpstream {
         }
     }
 
-    /** A version-specific manifest the upstream advertised, cached under its file name. */
+    /**
+     * A version-specific manifest the upstream advertised, cached under its file name and linked to the release's
+     * component like the default manifest and an uploaded variant, so deleting the component takes it along.
+     */
     Optional<StoredContent> alternate(Repository repo, SwiftIdentity id, String version, SwiftManifests.Alternate alternate) {
         String path = SwiftLayout.manifestPath(id, version, alternate.filename());
         URI conventional = uri(repo, id.scope() + "/" + id.name() + "/" + version + "/" + SwiftManifests.MANIFEST,
                 "swift-version=" + URLEncoder.encode(alternate.swiftVersion(), StandardCharsets.UTF_8));
         URI uri = trustedUrl(repo, alternate.url()).orElse(conventional);
-        return proxy.fetch(repo, path, uri, FetchOptions.artifact(), ACCEPT_SWIFT);
+        return proxy.fetch(repo, path, uri, FetchOptions.artifact(SwiftHosted.coordinates(id, version)), ACCEPT_SWIFT);
     }
 
     private List<SwiftManifests.Alternate> cachedAlternates(Repository repo, SwiftIdentity id, String version) {
@@ -182,8 +185,9 @@ final class SwiftUpstream {
                 entry.put("url", a.url());
             }
         }
+        // part of the cached default manifest: it belongs to the same component and goes when that is deleted
         storage.store(repo, SwiftLayout.manifestLinksPath(id, version), new ByteArrayInputStream(json.writeValueAsBytes(doc)),
-                MediaType.APPLICATION_JSON_VALUE, Asset.Origin.CACHED, false);
+                MediaType.APPLICATION_JSON_VALUE, Asset.Origin.CACHED, false, SwiftHosted.coordinates(id, version));
     }
 
     // --- helpers ------------------------------------------------------------------------------------

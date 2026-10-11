@@ -205,6 +205,13 @@ Unclaimed requests continue to the web UI.
    fetches on its own. Nothing is kept per path once its fetch is over. A fetch made inside a
    caller's own transaction does not take part: its write is invisible until that transaction
    commits, and waiting would hold the transaction's connection.
+7. **Components**: the format passes the coordinates of the file (`FetchOptions.component`),
+   the same ones a hosted upload of it records, and the cached asset is stored linked to that
+   component in the same transaction, so the component browser, search and component deletion
+   treat cached and hosted content alike. A cached file that is still unlinked (cached before
+   0.2.0) is linked when it is next served, offline too. Metadata carries no coordinates, groups
+   store nothing, and coordinates the components table cannot hold are dropped rather than
+   failing the download.
 
 ## Security
 

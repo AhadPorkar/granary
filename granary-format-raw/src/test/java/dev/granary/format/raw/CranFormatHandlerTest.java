@@ -137,6 +137,23 @@ class CranFormatHandlerTest {
         assertThat(options.getValue().metadata()).isTrue();
         verify(proxy).fetch(eq(cran), eq("src/contrib/praise_1.0.0.tar.gz"), options.capture());
         assertThat(options.getValue().metadata()).isFalse();
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("", "praise", "1.0.0"));
+    }
+
+    @Test
+    void proxyLinksArchivedTarballsToTheVersionTheyHold() throws Exception {
+        Repository cran = proxy("cran-proxy", "cran", "https://cloud.r-project.org/");
+        handler.handle(request(cran, "GET", "src/contrib/Archive/praise/praise_0.9.tar.gz"));
+        handler.handle(request(cran, "GET", "src/contrib/Archive/praise/praise_0.9.tar.gz.md5"));
+        ArgumentCaptor<FetchOptions> options = ArgumentCaptor.forClass(FetchOptions.class);
+        // what R downloads for any version but the current one: the same component as the current tarball would be
+        verify(proxy).fetch(eq(cran), eq("src/contrib/Archive/praise/praise_0.9.tar.gz"), options.capture());
+        assertThat(options.getValue().metadata()).isFalse();
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("", "praise", "0.9"));
+        // any other file in an archive directory keeps the plain directory/file coordinates
+        verify(proxy).fetch(eq(cran), eq("src/contrib/Archive/praise/praise_0.9.tar.gz.md5"), options.capture());
+        assertThat(options.getValue().component())
+                .isEqualTo(new StorageService.ComponentCoordinates("", "src/contrib/Archive/praise", "praise_0.9.tar.gz.md5"));
     }
 
     @Test

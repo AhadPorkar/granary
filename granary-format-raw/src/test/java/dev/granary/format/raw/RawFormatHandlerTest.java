@@ -393,8 +393,19 @@ class RawFormatHandlerTest {
         handler.handle(request(remote, "GET", "dists/stable/Packages"));
         verify(proxy).fetch(eq(remote), eq("dists/stable/Packages"), options.capture());
         assertThat(options.getValue().metadata()).isTrue();
+        assertThat(options.getValue().component()).isNull();
         verify(proxy).fetch(eq(remote), eq("pool/app.deb"), options.capture());
         assertThat(options.getValue().metadata()).isFalse();
+        // a cached file gets the component an upload of the same path would get
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("", "pool", "app.deb"));
+        handler.handle(request(remote, "GET", "root.bin"));
+        verify(proxy).fetch(eq(remote), eq("root.bin"), options.capture());
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("", "/", "root.bin"));
+        // coordinates the components table cannot hold are left out rather than failing the download
+        String longDirectory = "d".repeat(600) + "/file.bin";
+        handler.handle(request(remote, "GET", longDirectory));
+        verify(proxy).fetch(eq(remote), eq(longDirectory), options.capture());
+        assertThat(options.getValue().component()).isNull();
 
         assertThat(handler.handle(request(remote, "GET", "missing.txt")).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }

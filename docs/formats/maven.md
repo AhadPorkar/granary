@@ -43,6 +43,9 @@ Other files (`.index/` files, archetype catalogs) are stored and served verbatim
 * Checksum sidecars (`.md5`, `.sha1`, `.sha256`, `.sha512`) are **computed on demand** when the
   client did not upload them, and **verified** against the artifact when it did
   (`400 repository.maven.checksumMismatch`).
+* Every artifact is part of the component `(groupId, artifactId, version)`, and so are the
+  uploaded checksum sidecars of artifacts: deleting the component in the UI or through the API
+  removes them together. Metadata and its checksums belong to no component.
 * Directory listings (`GET .../org/example/`) return an HTML index like Maven Central does.
 
 ## Proxy
@@ -51,6 +54,14 @@ Other files (`.index/` files, archetype catalogs) are stored and served verbatim
 * `maven-metadata.xml` and the checksums of metadata are re-validated after *metadata max age*.
 * `remoteUrl` should end with the repository root, e.g. `https://repo1.maven.org/maven2/`.
   Authenticated upstreams accept a username/password or a bearer token.
+* Cached artifacts and their checksum sidecars are linked to the same component
+  `(groupId, artifactId, version)` a deployment to a hosted repository records, so what builds
+  downloaded shows up in the component browser and in search. `maven-metadata.xml`, its checksums
+  and other files outside a version directory are not components. Downloads through a group are
+  recorded in the proxy member that cached them, never in the group.
+* Deleting a cached component removes its files from the cache; the next request fetches them
+  again, or answers `503` while the proxy is offline. Files cached by an earlier Granary version,
+  which recorded no components, are linked the first time they are served, even offline.
 
 ## Group
 

@@ -367,6 +367,62 @@ class NuGetFormatHandlerTest {
     }
 
     @Test
+    void proxiedPackagesAreLinkedToTheirVersionAsTheManifestSpellsIt() throws IOException {
+        String serviceIndex = "{\"resources\":[{\"@id\":\"" + UPSTREAM + "/flat/\",\"@type\":\"PackageBaseAddress/3.0.0\"}]}";
+        when(proxy.fetch(eq(proxied), eq("index.json"), any(URI.class), eq(FetchOptions.index()), any()))
+                .thenReturn(Optional.of(content("index.json", serviceIndex.getBytes(StandardCharsets.UTF_8))));
+        StoredContent nupkg = content("acme.lib/2.0.0-rc.1/acme.lib.2.0.0-rc.1.nupkg",
+                TestNupkgs.nuspec("Acme.Lib", "2.0.0-RC.1").nupkg());
+        when(proxy.fetch(eq(proxied), eq("acme.lib/2.0.0-rc.1/acme.lib.2.0.0-rc.1.nupkg"), any(URI.class),
+                eq(FetchOptions.artifact()), any())).thenReturn(Optional.of(nupkg));
+        var expected = new StorageService.ComponentCoordinates("", "Acme.Lib", "2.0.0-RC.1");
+        Asset linked = asset(nupkg.asset().getPath(), nupkg.asset().getBlobSha256(), nupkg.size());
+        linked.setComponentId(UUID.randomUUID());
+        when(storage.linkComponent(proxied, nupkg.asset().getPath(), expected)).thenReturn(Optional.of(linked));
+
+        ResponseEntity<?> download = handler.handle(request(proxied, "GET", "v3/flatcontainer/acme.lib/2.0.0-rc.1/acme.lib.2.0.0-rc.1.nupkg"));
+
+        assertThat(download.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(storage).linkComponent(proxied, nupkg.asset().getPath(), expected);
+        verify(storage).recordDownload(linked);
+
+        // already linked: nothing to do
+        org.mockito.Mockito.clearInvocations(storage);
+        when(proxy.fetch(eq(proxied), eq("acme.lib/2.0.0-rc.1/acme.lib.2.0.0-rc.1.nupkg"), any(URI.class),
+                eq(FetchOptions.artifact()), any())).thenReturn(Optional.of(new StoredContent(linked, blobs)));
+        handler.handle(request(proxied, "GET", "v3/flatcontainer/acme.lib/2.0.0-rc.1/acme.lib.2.0.0-rc.1.nupkg"));
+        verify(storage, never()).linkComponent(any(), any(), any());
+    }
+
+    @Test
+    void cachedFilesAreNamedByTheirManifestOrElseByTheirPath() {
+        var fromPackage = NuGetFormatHandler.cachedComponent("newtonsoft.json", "13.0.3", NuGetPath.Kind.PACKAGE,
+                content("p", TestNupkgs.nuspec("Newtonsoft.Json", "13.0.3").nupkg()));
+        assertThat(fromPackage).contains(new StorageService.ComponentCoordinates("", "Newtonsoft.Json", "13.0.3"));
+
+        var fromManifest = NuGetFormatHandler.cachedComponent("newtonsoft.json", "13.0.3", NuGetPath.Kind.NUSPEC,
+                content("m", TestNupkgs.nuspec("Newtonsoft.Json", "13.0.3").xml().getBytes(StandardCharsets.UTF_8)));
+        assertThat(fromManifest).isEqualTo(fromPackage);
+
+        // a symbol package carries the manifest too; four-part and padded versions are normalised like a push
+        assertThat(NuGetFormatHandler.cachedComponent("acme.lib", "1.0.0.0", NuGetPath.Kind.SYMBOLS,
+                content("s", TestNupkgs.nuspec("Acme.Lib", "1.0.0.0").nupkg())))
+                .contains(new StorageService.ComponentCoordinates("", "Acme.Lib", "1.0.0"));
+
+        // unreadable, foreign or mismatching manifests fall back to the requested id and version
+        assertThat(NuGetFormatHandler.cachedComponent("Acme.Lib", "1.0.0", NuGetPath.Kind.PACKAGE, content("x", new byte[] {1, 2})))
+                .contains(new StorageService.ComponentCoordinates("", "acme.lib", "1.0.0"));
+        assertThat(NuGetFormatHandler.cachedComponent("acme.lib", "1.0.0", NuGetPath.Kind.PACKAGE,
+                content("y", TestNupkgs.nuspec("Other.Lib", "1.0.0").nupkg())))
+                .contains(new StorageService.ComponentCoordinates("", "acme.lib", "1.0.0"));
+        assertThat(NuGetFormatHandler.cachedComponent("acme.lib", "1.0.0", NuGetPath.Kind.PACKAGE,
+                content("z", TestNupkgs.nuspec("Acme.Lib", "2.0.0").nupkg())))
+                .contains(new StorageService.ComponentCoordinates("", "acme.lib", "1.0.0"));
+        assertThat(NuGetFormatHandler.cachedComponent("acme.lib", "not-a-version", NuGetPath.Kind.PACKAGE,
+                content("v", new byte[0]))).isEmpty();
+    }
+
+    @Test
     void proxyInlinesNonInlinedRegistrationPagesAndRewritesThem() throws IOException {
         String serviceIndex = """
                 {"resources":[{"@id":"https://api.nuget.org/v3/registration5-gz-semver2/","@type":"RegistrationsBaseUrl/3.6.0"}]}""";

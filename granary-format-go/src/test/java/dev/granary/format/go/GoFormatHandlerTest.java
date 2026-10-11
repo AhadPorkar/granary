@@ -351,7 +351,7 @@ class GoFormatHandlerTest {
         assertThat(body(handler.handle(request(groupRepo, "GET", MODULE + "/@v/list")))).isEqualTo("v0.1.0\nv1.0.0\n");
         assertThat(bodyBytes(handler.handle(request(groupRepo, "GET", MODULE + "/@v/v0.1.0.zip")))).isEqualTo(GoTestZips.module(MODULE, "v0.1.0"));
         StoredContent info = storage.put(proxyRepo, MODULE + "/@v/v1.0.0.info", "{\"Version\":\"v1.0.0\"}".getBytes(StandardCharsets.UTF_8), "application/json", false);
-        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.info", FetchOptions.artifact())).thenReturn(Optional.of(info));
+        when(proxy.fetch(proxyRepo, MODULE + "/@v/v1.0.0.info", FetchOptions.artifact(component("v1.0.0")))).thenReturn(Optional.of(info));
         assertThat(str(json(handler.handle(request(groupRepo, "GET", MODULE + "/@latest"))), "Version")).isEqualTo("v1.0.0");
     }
 
@@ -389,5 +389,10 @@ class GoFormatHandlerTest {
         proxyRepo.setFormatSettings(Map.of("go.sumdbName", "internal.example"));
         assertThat(handler.handle(request(proxyRepo, "GET", "sumdb/internal.example/supported")).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(handler.handle(request(proxyRepo, "GET", "sumdb/sum.golang.org/supported")).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    /** The component a publish of {@code version} of the test module records, which a proxy links its files to. */
+    private static dev.granary.core.storage.StorageService.ComponentCoordinates component(String version) {
+        return new dev.granary.core.storage.StorageService.ComponentCoordinates("example.com/acme", "hello", version);
     }
 }

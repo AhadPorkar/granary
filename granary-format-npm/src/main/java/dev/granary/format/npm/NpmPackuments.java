@@ -90,10 +90,12 @@ public class NpmPackuments {
             case HOSTED -> storage.find(repo, path.tarballPath());
             case PROXY -> {
                 Optional<StoredContent> cached = storage.find(repo, path.tarballPath());
-                if (cached.isPresent()) {
+                if (cached.isPresent() && cached.get().asset().getComponentId() != null) {
                     yield cached;
                 }
-                yield proxy.fetch(repo, path.tarballPath(), upstreamTarballUri(repo, path), FetchOptions.artifact(), Map.of());
+                // not cached yet, or cached before proxies recorded components: the proxy links it to its version
+                yield proxy.fetch(repo, path.tarballPath(), upstreamTarballUri(repo, path),
+                        FetchOptions.artifact(tarballComponent(repo, path).orElse(null)), Map.of());
             }
             case GROUP -> {
                 for (Repository member : groups.leafMembers(repo)) {
@@ -136,6 +138,38 @@ public class NpmPackuments {
             break;
         }
         return conventional;
+    }
+
+    /**
+     * The package version a tarball belongs to, with the coordinates a hosted repository records for a published
+     * version (scope as namespace, name without scope, version): the version whose {@code dist.tarball} names the
+     * file in the cached packument, else the version in an npm-style file name. Empty when neither tells.
+     */
+    Optional<StorageService.ComponentCoordinates> tarballComponent(Repository repo, NpmPath path) {
+        Optional<String> version = stored(repo, path.packageName()).flatMap(doc -> {
+            for (Map.Entry<String, JsonNode> e : NpmPackument.entries(doc, NpmPackument.VERSIONS)) {
+                String url = NpmPackument.string(e.getValue().path(NpmPackument.DIST), NpmPackument.TARBALL);
+                if (url != null && path.fileName().equals(NpmPackument.fileNameOf(url))) {
+                    return Optional.of(e.getKey());
+                }
+            }
+            return Optional.<String>empty();
+        }).or(() -> versionInFileName(path));
+        return version.map(v -> new StorageService.ComponentCoordinates(path.scope(), path.unscopedName(), v));
+    }
+
+    /**
+     * The version in an npm-style tarball name, {@code <name without scope>-<version>.tgz}, when it is a semantic
+     * version; empty for any other file name.
+     */
+    static Optional<String> versionInFileName(NpmPath path) {
+        String prefix = path.unscopedName() + "-";
+        String file = path.fileName();
+        if (file == null || !file.startsWith(prefix) || !file.endsWith(".tgz")) {
+            return Optional.empty();
+        }
+        String version = file.substring(prefix.length(), file.length() - ".tgz".length());
+        return NpmSemver.isValid(version) ? Optional.of(version) : Optional.empty();
     }
 
     public Optional<ObjectNode> parse(StoredContent content) {

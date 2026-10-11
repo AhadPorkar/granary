@@ -26,6 +26,8 @@ import dev.granary.core.proxy.ProxyService;
 import dev.granary.core.storage.StorageService;
 import dev.granary.format.docker.DockerUpstream;
 import dev.granary.server.IntegrationTest;
+import dev.granary.server.testsupport.ComponentApi;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import tools.jackson.databind.JsonNode;
 
 /**
  * A proxy in front of a fake Docker Hub: the bearer token dance, the {@code library/} prefix, caching of
@@ -153,6 +156,39 @@ class DockerProxyIntegrationTest extends IntegrationTest {
         mvc.perform(get(URL + "/v2/alpine/manifests/" + digest(amdManifest)).accept(ALL_MANIFESTS)).andExpect(status().isOk());
         mvc.perform(get(URL + "/v2/alpine/blobs/" + digest(amdConfig))).andExpect(status().isOk());
         mvc.perform(get(URL + "/v2/alpine/blobs/" + digest(amdLayer))).andExpect(status().isOk());
+    }
+
+    @Test
+    void pulledManifestsAreComponentsLikePushedOnes() throws Exception {
+        pullAlpine();
+
+        // the tag's component holds the tag and the index it named; the platform manifest pulled by digest is a
+        // component of its own, as each manifest pushed by digest to a hosted repository is; blobs belong to none
+        ComponentApi api = new ComponentApi(mvc, adminBearer());
+        List<JsonNode> pulled = api.list(REPO);
+        assertThat(pulled).extracting(ComponentApi::gav).containsExactly(
+                "library:alpine:3.20", "library:alpine:" + digest(amdManifest));
+        assertThat(api.assetPaths(REPO, pulled.get(0))).containsExactly(
+                "manifests/library/alpine/sha256/" + digest(alpineIndex).substring(7), "tags/library/alpine/3.20");
+        assertThat(api.assetPaths(REPO, pulled.get(1))).containsExactly(
+                "manifests/library/alpine/sha256/" + digest(amdManifest).substring(7));
+        assertThat(storage.find(repo, "blobs/sha256/" + digest(amdLayer).substring(7)).orElseThrow().asset().getComponentId())
+                .isNull();
+        assertThat(api.search("alpine")).hasSize(2);
+
+        // pulling again (and the same image pinned by digest) adds nothing
+        pullAlpine();
+        assertThat(api.list(REPO)).hasSize(2);
+
+        // deleting the digest's component removes the cached manifest: refetched online, missing offline
+        assertThat(api.delete(REPO, pulled.get(1))).isEqualTo(1);
+        repositories.setOffline(REPO, true);
+        mvc.perform(get(URL + "/v2/alpine/manifests/" + digest(amdManifest)).accept(ALL_MANIFESTS))
+                .andExpect(status().isServiceUnavailable());
+        repositories.setOffline(REPO, false);
+        mvc.perform(get(URL + "/v2/alpine/manifests/" + digest(amdManifest)).accept(ALL_MANIFESTS)).andExpect(status().isOk());
+        assertThat(api.list(REPO)).extracting(ComponentApi::gav).containsExactly(
+                "library:alpine:3.20", "library:alpine:" + digest(amdManifest));
     }
 
     @Test

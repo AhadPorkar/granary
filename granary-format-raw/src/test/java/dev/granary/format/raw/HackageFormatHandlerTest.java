@@ -93,8 +93,11 @@ class HackageFormatHandlerTest {
         ArgumentCaptor<FetchOptions> options = ArgumentCaptor.forClass(FetchOptions.class);
         verify(proxy).fetch(eq(hackage), eq("01-index.tar.gz"), options.capture());
         assertThat(options.getValue().metadata()).isTrue();
+        assertThat(options.getValue().component()).isNull(); // metadata belongs to no component
         verify(proxy).fetch(eq(hackage), eq("package/aeson-2.1.0.0.tar.gz"), options.capture());
         assertThat(options.getValue().metadata()).isFalse();
+        // the cached tarball is linked to the package version, like an uploaded one
+        assertThat(options.getValue().component()).isEqualTo(new StorageService.ComponentCoordinates("", "aeson", "2.1.0.0"));
     }
 
     @Test

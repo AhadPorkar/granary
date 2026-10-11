@@ -77,6 +77,10 @@ is a member of the root group.
   removes only the tag. `DELETE` of a blob removes the blob.
 * Tag listing (`/v2/<name>/tags/list`) and the catalog support `n` and `last` with an absolute
   `Link: <…>; rel="next"` header.
+* Components are `(<image path without its last element>, <last element>, <tag>)` for a manifest
+  pushed with a tag (the manifest and the tag), and the same with the digest as version for a
+  manifest pushed by digest (the platform manifests of a multi-platform push). Blobs are shared by
+  images and belong to no component.
 
 ## Proxy
 
@@ -113,6 +117,11 @@ is a member of the root group.
   reads the copy the first one cached.
 * The referrers API of a proxy answers from the manifests it has cached; it does not query the
   upstream's referrers endpoint.
+* Cached manifests are components like pushed ones: a tag and the manifest it named form
+  `(library, alpine, 3.20)`, a manifest pulled by digest (the platform manifest of a
+  multi-platform image, or an image pinned by digest) forms `(library, alpine, sha256:…)`. Blobs
+  belong to no component. Deleting a component removes its cached manifests and tags; the next
+  pull fetches them again, or gets `503` while the proxy is offline.
 * Offline use is described under [Offline behaviour](#offline-behaviour).
 
 ## Group

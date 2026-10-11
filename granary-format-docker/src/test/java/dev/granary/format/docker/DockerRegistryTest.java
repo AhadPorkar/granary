@@ -322,8 +322,10 @@ class DockerRegistryTest {
         stubUpstreamFetch(hub, "library/alpine/manifests/" + manifestDigest, manifest, MediaTypes.OCI_MANIFEST, false);
         DockerRegistry.Found found = registry.manifest(hub, "alpine", manifestDigest.toString(), null).orElseThrow();
         assertThat(found.content().asset().getPath()).isEqualTo(DockerLayout.manifestPath("library/alpine", manifestDigest));
+        // a manifest pulled by digest is the component <name>@<digest>, like one pushed by digest to a hosted repository
         verify(upstream).fetch(eq(hub), anyString(), eq("library/alpine/manifests/" + manifestDigest), eq("library/alpine"),
-                eq(FetchOptions.artifact()), eq(MediaTypes.DEFAULT_ACCEPT));
+                eq(FetchOptions.artifact(new StorageService.ComponentCoordinates("library", "alpine", manifestDigest.toString()))),
+                eq(MediaTypes.DEFAULT_ACCEPT));
 
         Digest wrong = Digest.of(cfg);
         stubUpstreamFetch(hub, "library/alpine/manifests/" + wrong, manifest, MediaTypes.OCI_MANIFEST, false);

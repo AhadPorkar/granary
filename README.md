@@ -416,9 +416,9 @@ mvn -B -Dui.skip=true verify     # Java only
 mvn -B -Dui.skip=true -Ppostgres -pl granary-server -am verify   # the server suite on PostgreSQL 17 (needs Docker)
 ```
 
-The Java suite has 4,243 tests, all passing for this release: 197 in `granary-core`, 3,247 in the
-17 format modules and 799 in `granary-server`, most of them MockMvc integration tests. The web UI
-adds 206 Vitest tests in 21 files.
+The Java suite has 4,396 tests, all passing for this release: 276 in `granary-core`, 3,260 in the
+17 format modules and 860 in `granary-server`, most of them MockMvc integration tests; the 860
+server tests also pass on PostgreSQL 17. The web UI adds 206 Vitest tests in 21 files.
 
 * `granary-core`: blob store and compaction, proxy cache (against WireMock), single flight,
   write locks, security, resolver and stored-value limits.

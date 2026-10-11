@@ -38,7 +38,7 @@ describe('AccountView', () => {
     i18n.global.locale.value = 'fa';
     const wrapper = await mountView();
     const hint = wrapper.find('[data-field="pw-new"] .field__hint').text();
-    expect(hint).toContain('۸');
+    expect(hint).toContain('\u06f8'); // 8 in Persian digits
     expect(hint).not.toMatch(/[0-9]/);
   });
 });

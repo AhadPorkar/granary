@@ -33,7 +33,7 @@ class SwiftManifestsTest {
         assertThat(SwiftManifests.toolsVersion("// swift-tools-version: 5.10.1\n")).contains("5.10.1");
         assertThat(SwiftManifests.toolsVersion("//swift-tools-version:6.0")).contains("6.0");
         assertThat(SwiftManifests.toolsVersion("// Swift-Tools-Version : 05.07")).contains("5.7");
-        assertThat(SwiftManifests.toolsVersion("﻿\n\n  // swift-tools-version:5.8\n")).contains("5.8");
+        assertThat(SwiftManifests.toolsVersion("\uFEFF\n\n  // swift-tools-version:5.8\n")).contains("5.8");
         assertThat(SwiftManifests.toolsVersion("// swift-tools-version:5.9;(experimentalFeatures)")).contains("5.9");
         assertThat(SwiftManifests.toolsVersion("// swift-tools-version:5\n")).isEmpty();
         assertThat(SwiftManifests.toolsVersion("import PackageDescription\n// swift-tools-version:5.9")).isEmpty();

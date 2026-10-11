@@ -48,13 +48,13 @@ describe('locale files', () => {
 });
 
 describe('Persian messages', () => {
-  const LRI = '⁦';
-  const PDI = '⁩';
+  const LRI = '\u2066';
+  const PDI = '\u2069';
 
   it('isolate left-to-right paths, commands and quoted values so their punctuation stays in place', () => {
     const offenders = Object.entries(flatten(messages.fa))
       .map(([key, value]) => [key, value.replace(new RegExp(`${LRI}[^${PDI}]*${PDI}`, 'g'), '').replace(/\{[A-Za-z0-9_]+\}/g, '')] as const)
-      .filter(([, rest]) => /[؀-ۿ]/.test(rest))
+      .filter(([, rest]) => /[\u0600-\u06ff]/.test(rest))
       .filter(([, rest]) => /[A-Za-z0-9][/:][A-Za-z<]|<[^<>\s]+>|"[A-Za-z][^"]*"|\{'\{'\}|(^|\s)[.-]{1,2}[A-Za-z]/.test(rest))
       .map(([key]) => key);
     expect(offenders).toEqual([]);

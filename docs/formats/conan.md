@@ -9,10 +9,29 @@ Artifactory. It works with Conan 2.x and with Conan 1.x once revisions are enabl
 `complex_search,checksum_deploy,revisions,only_v2`, so Conan 1.x without revisions stops with
 "only works with revisions enabled" instead of trying the old v1 API.
 
-Standard repositories (*Create standard repositories* in the UI, or
-`POST /api/v1/repositories/standard`):
+## Endpoints
 
-| Template       | Type   | What it is                                                    |
+Every path is relative to the repository URL. `{ref}` is `{name}/{version}/{user}/{channel}`,
+with `_/_` for a reference without user and channel.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `v1/ping` | Capabilities (`X-Conan-Server-Capabilities`) |
+| `GET`, `POST` | `v2/users/authenticate` (also `v1/…`) | Login: Basic credentials in, token out |
+| `GET` | `v2/users/check_credentials` (also `v1/…`) | Token check |
+| `GET` | `v2/conans/search?q=…` | `conan search`, `conan list` of references |
+| `GET` | `v2/conans/{ref}/latest`, `…/revisions` | Latest recipe revision, all recipe revisions |
+| `GET`, `PUT` | `v2/conans/{ref}/revisions/{rrev}/files[/{file}]` | Recipe file list, recipe files |
+| `GET` | `v2/conans/{ref}[/revisions/{rrev}]/search` | Binaries of a recipe with their settings and options |
+| `GET` | `…/revisions/{rrev}/packages/{pid}/latest`, `…/revisions` | Latest and all package revisions |
+| `GET`, `PUT` | `…/packages/{pid}/revisions/{prev}/files[/{file}]` | Package file list, package files |
+| `DELETE` | `v2/conans/{ref}`, `…/revisions/{rrev}`, `…/packages`, `…/packages/{pid}`, `…/revisions/{prev}` | `conan remove` (hosted) |
+
+Other `v1/` routes (the pre-revision API) are not served.
+
+## Standard repositories
+
+| Name           | Type   | What it is                                                    |
 |----------------|--------|---------------------------------------------------------------|
 | `conancenter`  | proxy  | ConanCenter, `https://center2.conan.io`                       |
 | `conan-hosted` | hosted | Your own recipes and binaries                                 |
@@ -83,11 +102,8 @@ Standard repositories (*Create standard repositories* in the UI, or
 * When the upstream has no `latest` endpoint, the newest entry of `revisions` is used.
 * When the upstream answers `401` to the bearer token (it was restarted with a new secret, or its
   tokens live shorter than 30 minutes), the next request logs in again.
-* Offline (repository or global offline mode): only the cache is used and the upstream is never
-  contacted, not even to log in. Anything not cached is a `503` with code `upstream.offline`, which
-  Conan reports as an error rather than "not found". That includes a `conan search` (or a version
-  range) that was never asked through the proxy before; searches asked before are served from the
-  cache. An upstream that answers a search with `404` means "no results".
+* Offline use is described under [Offline behaviour](#offline-behaviour). An upstream that
+  answers a search with `404` means "no results".
 * Proxies are read-only (`403`, see the group section).
 
 ## Group
@@ -148,6 +164,17 @@ conan install zlib/1.3.1@ -r granary --build=missing
 ```
 
 The *Connect* page of each repository shows these commands with the right URLs.
+
+## Offline behaviour
+
+* In offline mode (the repository's or the whole server's) only the cache is used and the
+  upstream is never contacted, not even to log in. Cached documents are also served stale while
+  the upstream is unreachable.
+* Anything not cached is a `503` (`upstream.offline`, or `upstream.unavailable` when the upstream
+  is down), which Conan reports as an error rather than "not found". That includes a
+  `conan search` (or a version range) that was never asked through the proxy before; searches
+  asked before are served from the cache.
+* A group keeps serving hosted content and everything its proxy members have cached.
 
 ## Limitations
 

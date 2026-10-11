@@ -8,11 +8,6 @@ Works with `dart pub` and `flutter pub` (the same client) because Granary implem
 package listings, version documents, security advisories, archive downloads and the three-step
 publish, plus pub.dev's endpoints for retracting versions and discontinuing packages.
 
-The standard repositories (`POST /api/v1/repositories/standard`, or the button in the web UI) are
-`pub-dev` (proxy of `https://pub.dev/`), `pub-hosted` and `pub-group` (`pub-hosted` + `pub-dev`), so a
-single `PUB_HOSTED_URL=http://host:8081/repository/pub-group` serves your own packages and everything
-from pub.dev.
-
 ## Endpoints
 
 All paths are relative to the repository URL. The API answers with
@@ -42,6 +37,13 @@ never points at pub.dev or at a member. When Granary runs behind a reverse proxy
 Errors use pub's shape, `{"error":{"code":"NotFound","message":"…"}}`, which the client prints as
 "Message from server: …". Malformed package names or versions, and paths with an encoded slash
 (`%2F`), are a `400`; unknown packages are a `404`.
+
+## Standard repositories
+
+The standard repositories (`POST /api/v1/repositories/standard`, or the button in the web UI) are
+`pub-dev` (proxy of `https://pub.dev/`), `pub-hosted` and `pub-group` (`pub-hosted` + `pub-dev`), so a
+single `PUB_HOSTED_URL=http://host:8081/repository/pub-group` serves your own packages and everything
+from pub.dev.
 
 ## Hosted
 
@@ -89,9 +91,7 @@ Errors use pub's shape, `{"error":{"code":"NotFound","message":"…"}}`, which t
 * Advisories are passed through. While an advisories document cannot be served (offline and never
   fetched) the listing leaves out `advisoriesUpdated`, so the client does not ask for it.
 * The upstream's `latest`, `retracted`, `isDiscontinued` and `replacedBy` are kept.
-* Offline (repository or server-wide): everything cached is served; anything else is a `503`
-  (`upstream.offline`) rather than a `404`, so the client does not conclude that the package does not
-  exist.
+* Offline use is described under [Offline behaviour](#offline-behaviour).
 
 ## Group
 
@@ -193,12 +193,15 @@ packages. To cache those as well, create a raw proxy of `https://storage.googlea
 
 The connect dialogue of each repository shows these snippets with the right URLs filled in.
 
-## Offline use
+## Offline behaviour
 
-With the server in offline mode (`PUT /api/v1/system/settings {"offlineMode":true}`), `dart pub get`
-with an empty `PUB_CACHE` resolves everything that was fetched through Granary before: listings from
-the cache, archives from the cache, hosted packages as always. A package that was never fetched fails
-with `503` after the client's retries; set `PUB_MAX_HTTP_RETRIES=1` to fail fast.
+Offline (the repository's offline mode, or the server's: `PUT /api/v1/system/settings
+{"offlineMode":true}`), everything cached is served; anything else is a `503` (`upstream.offline`, or
+`upstream.unavailable` while the upstream is down) rather than a `404`, so the client does not
+conclude that the package does not exist. `dart pub get` with an empty `PUB_CACHE` resolves
+everything that was fetched through Granary before: listings from the cache, archives from the
+cache, hosted packages as always. A package that was never fetched fails with `503` after the
+client's retries; set `PUB_MAX_HTTP_RETRIES=1` to fail fast.
 
 ## Limitations
 

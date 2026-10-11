@@ -19,7 +19,8 @@ describe('detectLocale', () => {
   });
 
   it('knows the five supported locales by their native names', () => {
-    expect(LOCALE_NAMES).toEqual({ en: 'English', de: 'Deutsch', fr: 'Français', tr: 'Türkçe', fa: 'فارسی' });
+    // fa: "Farsi" in Persian script
+    expect(LOCALE_NAMES).toEqual({ en: 'English', de: 'Deutsch', fr: 'Français', tr: 'Türkçe', fa: '\u0641\u0627\u0631\u0633\u06cc' });
   });
 });
 

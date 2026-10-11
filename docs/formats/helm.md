@@ -11,7 +11,7 @@ archives) and the parts of the ChartMuseum API those tools use.
 OCI-based charts (`oci://…`, `helm push`, `helm pull oci://…`) are not part of this format: they
 are OCI artifacts and are stored in, and proxied by, Docker repositories.
 
-## Protocol
+## Endpoints
 
 Every path is relative to the repository URL.
 
@@ -211,7 +211,7 @@ in the index is on Granary. Reads need no credentials while anonymous reads are 
 and deletes always need the write privilege for the repository (`401` with a `Basic` challenge
 without credentials, `403` without the privilege). `GET health` is always open.
 
-## Format settings
+## Settings
 
 | Key | Applies to | Default | Meaning |
 |---|---|---|---|
@@ -219,6 +219,16 @@ without credentials, `403` without the privilege). `GET health` is always open.
 | `helm.maxChartSizeMb` | hosted | `20` | largest chart archive accepted on upload, in MiB (`0`: no limit, at most `10240`) |
 
 Invalid values are refused when the repository is saved (`400 repository.helm.<key>.invalid`).
+
+## Offline behaviour
+
+* Cached chart archives and provenance files are served without contacting the upstream. A cached
+  `index.yaml` is re-validated after *metadata max age* and served stale while the upstream is
+  unreachable or the repository (or the whole server) is offline.
+* An uncached index or chart is a `503` (`upstream.offline` / `upstream.unavailable`), which helm
+  reports as a failed download rather than a missing chart.
+* A group leaves out a member whose index is unavailable and still serves the others, including
+  hosted charts.
 
 ## Verification
 
@@ -243,7 +253,9 @@ credentials, `health` stays open).
   belong to their archive, and leaves signature verification to `helm pull --verify`.
 * A proxy uses the first URL of each index entry; mirrors listed after it are not tried.
 * A proxy sends its upstream credentials to every host its index links archives to (for example a
-  release download host), as the proxy does for all formats.
+  release download host). The CocoaPods, Composer, Go and pub proxies limit them to the upstream's
+  own origin; the Helm proxy does not yet, so configure credentials only for upstreams whose
+  archives stay on hosts you trust with them.
 * `helm cm-push` needs helm 3: helm 4 installs the helm-push plugin (0.10.4, with `--verify=false`)
   as a getter plugin and offers no `cm-push` command, so upload with curl or `PUT` from helm 4.
 * ChartMuseum's `api/charts/<name>/<version>/templates` and `…/values` endpoints and its

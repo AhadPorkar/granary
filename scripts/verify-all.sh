@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Runs the real-client verification of every format against one running Granary and prints a summary table.
 #
-# Each format has its own script: scripts/verify-clients.sh for Maven, npm and NuGet, and
-# granary-format-<f>/scripts/verify-<f>.sh for the others (read its header for the details). Each one publishes to
-# the format's standard hosted repository with the real client, installs through the group and the proxy, and then
-# installs again in offline mode with empty client caches. This script runs them one after the other (they switch
-# global settings such as offline mode, anonymous read and the base URL, so they must never run in parallel against
-# the same server), restores those three settings after every script, keeps each script's output in a log file and
-# finally prints one row per format:
+# Each format has its own script: scripts/verify-clients.sh for Maven (and Gradle), npm (and pnpm, Yarn, Bun) and
+# NuGet, and granary-format-<f>/scripts/verify-<f>.sh for the others (read its header for the details). Each one
+# publishes to the format's standard hosted repository with the real client, installs through the group and the
+# proxy, and then installs again in offline mode with empty client caches. This script runs them one after the
+# other (they switch global settings such as offline mode, anonymous read and the base URL, so they must never run in
+# parallel against the same server), restores those three settings after every script, keeps each script's output in
+# a log file and finally prints one row per format:
 #   PASS     the script finished and no step failed
 #   FAIL     a step failed, the script exited with an error, or it ran into the time limit
 #   SKIP     a client the script needs is not installed (named in the table); the script was not run
@@ -48,8 +48,8 @@ USER_PASSWORD=${GRANARY_PASSWORD:-admin123}
 # A required tool written as a|b means either one is enough.
 FORMATS=(
   "server|scripts/check-server.sh||curl python3"
-  "maven|scripts/verify-clients.sh|CLIENTS=maven|curl mvn java"
-  "npm|scripts/verify-clients.sh|CLIENTS=npm|curl npm node"
+  "maven|scripts/verify-clients.sh|CLIENTS=maven,gradle|curl mvn java"
+  "npm|scripts/verify-clients.sh|CLIENTS=npm,pnpm,yarn,bun|curl npm node"
   "nuget|scripts/verify-clients.sh|CLIENTS=nuget|curl dotnet"
   "pypi|granary-format-pypi/scripts/verify-pypi.sh||curl python3 uv"
   "docker|granary-format-docker/scripts/verify-docker.sh||curl docker"

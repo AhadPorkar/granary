@@ -1,6 +1,6 @@
 # 5. One module per format behind a small SPI
 
-Date: 2026-10-08 · Status: accepted
+Date: 2026-10-08 · Status: accepted, extended by [ADR 0011](0011-format-spi-v2.md) and [ADR 0012](0012-root-routing.md)
 
 ## Context
 

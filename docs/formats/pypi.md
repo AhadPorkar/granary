@@ -8,6 +8,29 @@ Simple Repository API (PEP 503 HTML and PEP 691 JSON, with the PEP 658 metadata 
 yanking, PEP 629 repository version and PEP 700 version lists), the legacy upload API that
 twine and the other publishers use, and the `pypi/<project>/json` API.
 
+## Endpoints
+
+Every path is relative to the repository URL.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `simple/` | Project list (HTML, or JSON with `Accept: application/vnd.pypi.simple.v1+json`) |
+| `GET` | `simple/<project>/` | Project page: every file with its hashes, `requires-python`, yanked flag and metadata link |
+| `GET`, `HEAD` | `packages/…/<file>`, `packages/…/<file>.metadata` | Distribution files and their PEP 658 metadata |
+| `GET` | `pypi/<project>/json`, `pypi/<project>/<version>/json` | JSON API |
+| `POST` | `/` (the repository root) or `legacy/` | Upload (hosted) |
+| `DELETE` | `packages/<project>/<version>/<file>`, `packages/<project>/<version>` | Delete a file or a release (hosted) |
+
+Project names in other spellings (`simple/Acme.Demo`) are redirected to the normalised URL.
+
+## Standard repositories
+
+| Name | Type | Upstream / members |
+|------|------|--------------------|
+| `pypi-proxy` | proxy | `https://pypi.org/` |
+| `pypi-hosted` | hosted | |
+| `pypi-group` | group | `pypi-hosted`, `pypi-proxy` |
+
 ## Hosted
 
 * `twine upload`, `uv publish`, `hatch publish`, `flit publish` and `poetry publish` all post the
@@ -133,6 +156,24 @@ poetry config repositories.granary http://granary.example.com:8081/repository/py
 Credentials are HTTP Basic: either a username with its password or an API token, or the
 literal user `__token__` with an API token as the password.
 
+## Settings
+
+| Key | Applies to | Default | Meaning |
+|-----|------------|---------|---------|
+| `pypi.filesUrl` | proxy | `https://files.pythonhosted.org/` | Files host whose `<filesUrl>packages/…` links are cached under their own path (see *Proxy*); must be an absolute `http(s)` URL |
+
+## Offline behaviour
+
+* Cached distributions and `.metadata` sidecars are served without contacting the upstream. Cached
+  project pages and JSON documents are re-validated after *metadata max age* and served stale while
+  the upstream is unreachable or the repository (or the whole server) is offline, so installers
+  with empty caches still resolve everything that was installed through Granary before.
+* A page or file that is not cached is a `503` (`upstream.offline` / `upstream.unavailable`)
+  rather than a `404`, so the installer reports a server error instead of "no matching
+  distribution".
+* A group keeps serving hosted projects and everything its proxy members have cached.
+* Concurrent requests for the same uncached file make one upstream request.
+
 ## Limitations
 
 * twine 7 refuses `--skip-existing` for any repository other than pypi.org on the client side;
@@ -144,3 +185,6 @@ literal user `__token__` with an API token as the password.
 * The hosted `pypi/<project>/json` document carries SHA-256 digests only (no MD5 or BLAKE2).
 * The upload API accepts distribution files; `:action=submit` (registering a project without a
   file) is not supported, which no current client uses.
+* A proxy sends its upstream credentials (*remote username/password* or *remote token*) to the
+  `pypi.filesUrl` host and to any other host a project page links files to, not only to the
+  index origin.

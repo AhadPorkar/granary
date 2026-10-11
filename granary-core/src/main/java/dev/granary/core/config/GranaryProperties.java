@@ -203,7 +203,7 @@ public class GranaryProperties {
          */
         private Duration singleFlightTimeout = Duration.ofMinutes(5);
         /** Value sent as {@code User-Agent} to upstream registries. */
-        private String userAgent = "Granary/0.1 (+https://github.com/AhadPorkar/granary)";
+        private String userAgent = "Granary/0.2 (+https://github.com/AhadPorkar/granary)";
 
         public Duration getConnectTimeout() {
             return connectTimeout;

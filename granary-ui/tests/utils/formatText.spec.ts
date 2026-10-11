@@ -109,7 +109,7 @@ describe('formatText catalogue', () => {
   it('writes descriptions as full sentences in every locale', () => {
     for (const locale of SUPPORTED_LOCALES) {
       const flat = flatten(messages[locale]);
-      const unfinished = settingKeys.filter((k) => k.endsWith('.description') && !/[.。!?؟]$/.test(flat[k].trim()));
+      const unfinished = settingKeys.filter((k) => k.endsWith('.description') && !/[.。!?\u061f]$/.test(flat[k].trim()));
       expect(unfinished, locale).toEqual([]);
     }
   });

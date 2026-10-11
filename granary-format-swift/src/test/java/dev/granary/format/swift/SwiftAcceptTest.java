@@ -41,7 +41,7 @@ class SwiftAcceptTest {
         assertThat(SwiftAccept.check("application/vnd.swift.registry.1+json")).isEqualTo(Result.INVALID_VERSION);
         assertThat(SwiftAccept.check("application/vnd.swift.registry.v1+xml")).isEqualTo(Result.INVALID_VERSION);
         assertThat(SwiftAccept.check("application/vnd.swift.registryx")).isEqualTo(Result.INVALID_VERSION);
-        assertThat(SwiftAccept.check("application/vnd.swift.registry.v١+json")).isEqualTo(Result.INVALID_VERSION);
+        assertThat(SwiftAccept.check("application/vnd.swift.registry.v\u0661+json")).isEqualTo(Result.INVALID_VERSION);
         assertThat(SwiftAccept.check("application/vnd.swift.registry.vx, application/vnd.swift.registry.v2"))
                 .isEqualTo(Result.UNSUPPORTED_VERSION);
     }

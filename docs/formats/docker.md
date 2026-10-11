@@ -9,6 +9,25 @@ kubelet all talk to it with their normal registry support. Manifests, image inde
 artifacts (charts, SBOMs, signatures) and referrers are stored and served as the client sent
 them.
 
+## Endpoints
+
+The OCI Distribution API, at `/v2/` of the server (see [Root routing](#root-routing)) and under
+`/repository/<name>/v2/`. `<image>` may contain slashes (`library/nginx`, `acme/team/app`).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET`, `HEAD` | `v2/` | Ping; answers `401` with a Basic challenge when `docker.challengeAnonymous` is on |
+| `GET` | `v2/_catalog?n=…&last=…` | Image names |
+| `GET` | `v2/<image>/tags/list?n=…&last=…` | Tags of an image |
+| `GET`, `HEAD`, `PUT`, `DELETE` | `v2/<image>/manifests/<tag or digest>` | Manifests and indexes |
+| `GET`, `HEAD`, `DELETE` | `v2/<image>/blobs/<digest>` | Layers and configs (with `Range`) |
+| `POST` | `v2/<image>/blobs/uploads/` | Start an upload; `?digest=…` uploads in one request, `?mount=…&from=…` mounts a blob |
+| `GET`, `PATCH`, `PUT`, `DELETE` | `v2/<image>/blobs/uploads/<uuid>` | Upload status, chunk, completion, cancellation |
+| `GET` | `v2/<image>/referrers/<digest>?artifactType=…` | Referrers index |
+
+Writes and deletes are for hosted repositories; errors use the OCI error document
+(`{"errors":[{"code":"MANIFEST_UNKNOWN",…}]}`).
+
 ## Root routing
 
 Container clients cannot be pointed at a path: they always call `http(s)://host:port/v2/...`.
@@ -28,6 +47,16 @@ Granary therefore answers the registry API at the root of the server as well:
 Image names are stored without the repository prefix, so an image pushed as
 `host:8081/docker-hosted/acme/app:1.0` is also `host:8081/acme/app:1.0` when `docker-hosted`
 is a member of the root group.
+
+## Standard repositories
+
+| Name | Type | Upstream / members | Settings |
+| --- | --- | --- | --- |
+| `docker-hub` | proxy | `https://registry-1.docker.io` | `docker.libraryPrefix=true` |
+| `ghcr` | proxy | `https://ghcr.io` | |
+| `quay` | proxy | `https://quay.io` | |
+| `docker-hosted` | hosted | | |
+| `docker-group` | group | `docker-hosted`, `docker-hub`, `ghcr`, `quay` | `docker.rootRepository=true` |
 
 ## Hosted
 
@@ -81,9 +110,7 @@ is a member of the root group.
   reads the copy the first one cached.
 * The referrers API of a proxy answers from the manifests it has cached; it does not query the
   upstream's referrers endpoint.
-* Offline (repository offline or the global offline mode): everything in the cache is served,
-  including tag lookups; an image that was never pulled answers `503 upstream.offline` and
-  docker prints `failed to resolve reference … 503` instead of hanging.
+* Offline use is described under [Offline behaviour](#offline-behaviour).
 
 ## Group
 
@@ -215,6 +242,16 @@ an image pulled through Granary and pulls through that node's containerd CRI ima
 `crictl`, configured by the connect page's `hosts.toml`, which is the path the kubelet takes.
 `ALPINE_TAG` and `BUSYBOX_TAG` choose the Docker Hub images it pulls; pick tags the local docker
 image store does not already hold, so the layers really travel through Granary.
+
+## Offline behaviour
+
+* In offline mode (the repository's or the whole server's) everything in the cache is served,
+  including tag lookups; an image that was never pulled answers `503 upstream.offline` and
+  docker prints `failed to resolve reference … 503` instead of hanging.
+* While an upstream is unreachable, cached blobs, manifests and remembered misses are answered
+  without probing it, cached tags are served stale, and anything uncached is a
+  `503 upstream.unavailable`.
+* A group keeps serving hosted images and everything its proxies have cached.
 
 ## Storage layout
 

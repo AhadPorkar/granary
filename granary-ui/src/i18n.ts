@@ -18,7 +18,7 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   de: 'Deutsch',
   fr: 'Français',
   tr: 'Türkçe',
-  fa: 'فارسی',
+  fa: '\u0641\u0627\u0631\u0633\u06cc', // "Farsi" in Persian script
 };
 
 /** BCP 47 tags handed to Intl so numbers and dates follow each locale's conventions. */

@@ -13,8 +13,9 @@ describe('formatting through Intl', () => {
   it('spells out plain bytes, and every unit in right-to-left locales', () => {
     expect(formatBytes(0, 'en')).toBe('0 bytes');
     // a Latin "kB" next to Persian digits would be reordered by the bidi algorithm, so fa gets words
-    expect(formatBytes(1536, 'fa')).toBe('۱٫۵ کیلوبایت');
-    expect(formatBytes(1536, 'fa-IR')).toBe('۱٫۵ کیلوبایت');
+    // 1.5 in Persian digits followed by the Persian word for kilobytes
+    expect(formatBytes(1536, 'fa')).toBe('\u06f1\u066b\u06f5 \u06a9\u06cc\u0644\u0648\u0628\u0627\u06cc\u062a');
+    expect(formatBytes(1536, 'fa-IR')).toBe('\u06f1\u066b\u06f5 \u06a9\u06cc\u0644\u0648\u0628\u0627\u06cc\u062a');
     expect(formatBytes(1536, 'fa')).not.toMatch(/[A-Za-z]/);
     expect(formatBytes(1536, 'tr')).toMatch(/kB/);
   });
@@ -22,7 +23,7 @@ describe('formatting through Intl', () => {
   it('formats numbers with the digits of the locale', () => {
     expect(formatNumber(1234567, 'en')).toBe('1,234,567');
     expect(formatNumber(1234567, 'de')).toBe('1.234.567');
-    expect(formatNumber(42, 'fa')).toBe('۴۲');
+    expect(formatNumber(42, 'fa')).toBe('\u06f4\u06f2'); // 42 in Persian digits
   });
 
   it('formats durations in the unit that keeps the number short', () => {

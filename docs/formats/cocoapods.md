@@ -8,10 +8,7 @@ cloning a git repository. A Podfile line `source 'http://…/repository/cocoapod
 `pod repo add-cdn` is all a client needs; `pod install`, `pod update`, `pod outdated`,
 `pod search`, `pod spec cat` and `pod spec which` work unchanged.
 
-Templates: `cocoapods-cdn` (proxy of `https://cdn.cocoapods.org/`), `cocoapods-hosted` and
-`cocoapods-group` (hosted first, then the CDN proxy).
-
-## Layout
+## Endpoints
 
 Every repository type answers the same paths, all relative to the repository URL:
 
@@ -31,6 +28,18 @@ The shard of a pod is the first three hex digits of the MD5 of its name, one dir
 nothing changed. Pod names with spaces, `+`, `!` or non-ASCII characters (all exist on trunk) are
 handled percent-encoded in both directions. The repository root itself answers a short HTML page
 with the `source` line to use.
+
+Hosted repositories also take writes: `PUT Specs/…/<Name>.podspec.json`, `POST api/pods`,
+`PUT sources/<Name>/<version>/<file>`, `DELETE Specs/<Name>/<version>` and
+`DELETE sources/<Name>/<version>/<file>` (see [Hosted](#hosted)).
+
+## Standard repositories
+
+| Name | Type | Upstream / members |
+| --- | --- | --- |
+| `cocoapods-cdn` | proxy | `https://cdn.cocoapods.org/` |
+| `cocoapods-hosted` | hosted | |
+| `cocoapods-group` | group | `cocoapods-hosted`, `cocoapods-cdn` |
 
 ## Hosted
 
@@ -104,11 +113,7 @@ with the `source` line to use.
   served forever.
 * Cached podspecs and archives are linked to components, so they show up in the UI like pushed
   ones.
-* Offline (global offline mode, the repository's offline flag, or the upstream down): whatever
-  is cached is served, including the archives, so `pod install` keeps working; anything never
-  fetched is a `503 upstream.offline` (or `503 upstream.unavailable`), which `pod` retries and
-  then reports, instead of a `404` it would take as "no such pod". Upstream `404`s are
-  remembered in the negative cache.
+* Offline use is described under [Offline behaviour](#offline-behaviour).
 
 ## Group
 
@@ -188,6 +193,16 @@ curl -u admin:gry_… -F podspec=@MyPod.podspec.json -F source=@MyPod-1.0.0.zip 
 # pod trunk delete
 curl -u admin:gry_… -X DELETE http://granary.example.com:8081/repository/cocoapods-hosted/Specs/MyPod/1.0.0
 ```
+
+## Offline behaviour
+
+* In offline mode (global or the repository's own), or while the upstream is down, whatever is
+  cached is served, including the source archives, so `pod install` keeps working. Cached
+  indexes are served stale.
+* Anything never fetched is a `503 upstream.offline` (or `503 upstream.unavailable`), which `pod`
+  retries and then reports, instead of a `404` it would take as "no such pod". Upstream `404`s
+  are remembered in the negative cache.
+* A group keeps serving the indexes of its other members while one member's upstream is down.
 
 ## Errors
 

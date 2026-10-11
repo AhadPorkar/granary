@@ -8,7 +8,8 @@ describe('LanguageSwitcher', () => {
   it('lists the five languages by their native names', () => {
     const wrapper = mountWithPlugins(LanguageSwitcher);
     const options = wrapper.findAll('option');
-    expect(options.map((o) => o.text())).toEqual(['English', 'Deutsch', 'Français', 'Türkçe', 'فارسی']);
+    // the last one is "Farsi" in Persian script
+    expect(options.map((o) => o.text())).toEqual(['English', 'Deutsch', 'Français', 'Türkçe', '\u0641\u0627\u0631\u0633\u06cc']);
     expect(options.map((o) => o.attributes('value'))).toEqual(['en', 'de', 'fr', 'tr', 'fa']);
     expect(options.map((o) => o.attributes('lang'))).toEqual(['en', 'de', 'fr', 'tr', 'fa']);
     expect((wrapper.find('select').element as HTMLSelectElement).value).toBe('en');

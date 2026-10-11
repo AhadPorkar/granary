@@ -2,8 +2,34 @@
 
 One module (`granary-format-raw`) provides eight format ids that share the same file-oriented
 implementation and differ in their templates, metadata rules, index generation and client snippets:
+`raw`, `cdn`, `cpan`, `cran`, `hackage`, `vcpkg`, `bower` and `elm`.
 
-| Format id | Display name                               | Templates (type, upstream)                                                                                    |
+Repository URL: `http://host:8081/repository/<name>/<path>`. Every profile supports hosted, proxy and
+group repositories (vcpkg: hosted only).
+
+## Endpoints
+
+Paths are free-form below the repository URL; the profiles add their own documents on top.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `HEAD` | `<path>` | Download a file (with `Range`, `ETag`, `If-None-Match`) |
+| `GET` | `<dir>/` (and the root `/`) | Directory listing, HTML or JSON |
+| `PUT` | `<path>` | Upload a file, raw body or the first file part of a multipart form (hosted) |
+| `POST` | `<dir>/` | Upload every file part of a multipart form (hosted) |
+| `DELETE` | `<path>`, `<dir>/` | Delete a file or everything below a directory (hosted, and cached files of a proxy) |
+| `POST` | `packages` (bower) | Register a package name |
+| `POST` | `all-packages`, `all-packages/since/<n>`, `search.json` (elm) | The Elm compiler's registry reads |
+
+Generated indexes: CPAN `modules/02packages.details.txt(.gz)`, CRAN `src/contrib/PACKAGES(.gz)`,
+Bower `packages` and `packages/search/<q>`, Elm `all-packages` and `endpoint.json` (see the
+profiles).
+
+## Standard repositories
+
+`POST /api/v1/repositories/standard` creates every repository listed here:
+
+| Format id | Display name                               | Standard repositories (type, upstream)                                                                        |
 |-----------|--------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | `raw`     | Raw (generic files)                        | `raw-hosted` (hosted)                                                                                         |
 | `cdn`     | Browser CDN assets (cdnjs, jsDelivr, unpkg)| `cdnjs` → `https://cdnjs.cloudflare.com/ajax/libs/`, `jsdelivr` → `https://cdn.jsdelivr.net/`, `unpkg` → `https://unpkg.com/` |
@@ -14,9 +40,8 @@ implementation and differ in their templates, metadata rules, index generation a
 | `bower`   | Bower                                      | `bower-registry` → `https://registry.bower.io/`                                                               |
 | `elm`     | Elm packages                               | `elm-proxy` → `https://package.elm-lang.org/`                                                                 |
 
-Repository URL: `http://host:8081/repository/<name>/<path>`. Every profile supports hosted, proxy and
-group repositories (vcpkg: hosted only) and `POST /api/v1/repositories/standard` creates every
-template listed above.
+Hosted repositories and groups of the other profiles (`cpan-hosted`, `cran-group`, …) are created by
+hand; the examples below use such names.
 
 ## Shared behaviour
 
@@ -54,7 +79,8 @@ template listed above.
   forever, metadata paths are re-validated after *metadata max age* and served stale when the
   upstream is down. Upstream `404`s are remembered for the negative-cache TTL.
 * An uncached path behind an unreachable upstream is `503 upstream.unavailable`; in offline mode it
-  is `503 upstream.offline`. Proxies are read-only (`405 repository.readOnly`).
+  is `503 upstream.offline`. Proxies take no uploads (`405 repository.readOnly`); `DELETE` removes
+  cached files.
 
 **Group**
 
@@ -79,13 +105,23 @@ template listed above.
   `binaries/<name>/<version>/…`, cdn `npm/<pkg>@<ver>/…`, Elm `packages/<author>/<project>/<ver>/…`),
   otherwise namespace `""`, name = directory, version = file name.
 
-**Settings** (all profiles, `formatSettings` of the repository):
+## Settings
+
+All eight profiles share these keys (`formatSettings` of the repository; every repository type):
 
 | Key                      | Type    | Default              | Meaning                                                                                           |
 |--------------------------|---------|----------------------|---------------------------------------------------------------------------------------------------|
 | `raw.metadataPatterns`   | string  | per profile (below)  | Comma-separated globs (`**/PACKAGES*,modules/*.gz`). Matching paths are mutable metadata, everything else is immutable. Setting it replaces the profile default; profile-specific rules (cdn version pins) still apply. |
 | `raw.contentDisposition` | string  | `inline`             | `attachment` makes downloads `Content-Disposition: attachment; filename=…` instead of `inline; filename=…`. |
 | `raw.listingEnabled`     | boolean | `true`               | `false` answers `404` for directory paths instead of a listing.                                   |
+
+Default metadata patterns per profile are listed in the profiles below; vcpkg has none.
+
+## Client configuration
+
+Each profile below shows its client configuration (curl, wget and PowerShell for `raw`, browsers and
+bundlers for `cdn`, cpanm, R, cabal and stack, vcpkg, bower and the Elm compiler). The *Connect*
+panel of a repository renders the same snippets with the repository URL and your user name.
 
 ## Profiles
 
@@ -114,6 +150,8 @@ The connect panel also shows Gradle/Maven download hints and the vcpkg `x-azurl`
 
 ### `cdn` – browser CDN assets
 
+Default metadata: `libraries/**`, `api/**`, `libraries`, plus every path that does not pin a version.
+
 Proxies of cdnjs, jsDelivr and unpkg (a hosted repository works as well, for example for a
 `vite build` output). A path is immutable when it pins an exact version (`npm/lodash@4.17.21/…`,
 `lodash@4.17.21/…`, cdnjs `jquery/3.7.1/…`); unpinned paths (`npm/lodash/…`, `npm/lodash@latest/…`,
@@ -132,8 +170,11 @@ Browsers cannot send API tokens, so CDN repositories are meant to be read anonym
 ### `cpan` – Perl
 
 Default metadata: `modules/02packages.details.txt.gz`, `modules/02packages.details.txt`,
-`modules/03modlist.data.gz`, `modules/06perms.txt.gz`, `authors/01mailrc.txt.gz`, `indices/**`,
-`modules/by-module/**`, `authors/id/**/CHECKSUMS` (plus the other `modules/*` index files).
+`modules/03modlist.data.gz`, `modules/03modlist.data`, `modules/06perms.txt.gz`,
+`modules/06perms.txt`, `modules/02STAMP`, `modules/01modules.index.html`,
+`modules/01modules.mtime.html`, `authors/01mailrc.txt.gz`, `authors/01mailrc.txt`, `indices/**`,
+`modules/by-module/**`, `modules/by-authors/**`, `modules/by-category/**`,
+`authors/id/**/CHECKSUMS`, `authors/00whois.xml`, `MIRRORED.BY`, `RECENT*`, `**/RECENT*`.
 
 Hosted: upload distributions to `authors/id/<A>/<AB>/<ABC>/<Dist>-<ver>.tar.gz` (`.tgz`, `.zip`,
 `.tar.bz2`, `.tar.xz` are accepted too). `modules/02packages.details.txt` and `.txt.gz` are
@@ -225,7 +266,7 @@ A hosted hackage repository stores files but does not generate an index.
 
 ### `vcpkg` – C/C++ asset and binary caches
 
-Hosted only. vcpkg's asset cache does `GET`/`PUT <url>/assets/<sha512>` with `x-ms-blob-type:
+Hosted only, no default metadata patterns. vcpkg's asset cache does `GET`/`PUT <url>/assets/<sha512>` with `x-ms-blob-type:
 BlockBlob`; the binary cache does `GET`/`HEAD`/`PUT <url>/binaries/<name>/<version>/<sha>` of zip
 archives. The Azure headers are accepted and ignored, `PUT` answers `201` without a body (like Azure
 blob storage; vcpkg copies upload response bodies into its console output), and re-uploading
@@ -250,7 +291,7 @@ Add `;x-block-origin` to `X_VCPKG_ASSET_SOURCES` to make vcpkg take sources only
 
 ### `bower` – registry
 
-Default metadata: `packages`, `packages/*`, `packages/search/*`. The registry only maps names to git
+Default metadata: `packages`, `packages/*`, `packages/search/*`, `packages/search/**`. The registry only maps names to git
 URLs; bower clones that URL itself, so Granary caches the registry answers, not the repositories.
 
 Hosted registry: `POST packages` (form fields `name` and `url`, or a JSON body) stores
@@ -314,6 +355,17 @@ server {
 }
 ```
 
+## Offline behaviour
+
+* Immutable files a proxy has cached are served without contacting the upstream; metadata paths
+  (the profile's patterns, or `raw.metadataPatterns`) are re-validated after *metadata max age* and
+  served stale while the upstream is down or offline mode is on.
+* An uncached path is `503 upstream.offline` in offline mode and `503 upstream.unavailable` while the
+  upstream is unreachable, never a `404`.
+* Merged indexes (CPAN, CRAN, Bower, Elm) leave out members whose upstream cannot be reached; a
+  group answers `503` only when no member answers.
+* The verification script re-runs cpanm, cabal, raw and cdn downloads offline against the cache.
+
 ## Verification
 
 `granary-format-raw/scripts/verify-raw.sh <base-url>` creates the repositories it needs and drives
@@ -357,6 +409,7 @@ while a proxy member's upstream is unreachable); R falls back to `PACKAGES.gz` i
   repositories; `cpanm --mirror-only` does not need them (`cpanm --verify` would).
 * cdn: credentials cannot be sent by browsers; keep anonymous read on or use a hosted copy.
 * Elm: the zip route follows the package site's convention and needs `github.com` reachable from
-  the server; `search.json` is proxied as is.
+  the server; `search.json` is proxied as is. The proxy's upstream credentials are sent to
+  `github.com` with those downloads.
 * Identical-overwrite detection (vcpkg) spools the upload to `<data-dir>/tmp/vcpkg` to compare
   digests before deciding.

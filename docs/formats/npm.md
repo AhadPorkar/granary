@@ -2,8 +2,34 @@
 
 Format id: `npm`. Registry URL: `http://host:8081/repository/<name>/`.
 
-Works with npm, pnpm and yarn (classic and berry) because Granary implements the registry
+Works with npm, pnpm, Yarn (classic and berry) and Bun because Granary implements the registry
 protocol the clients use, not a subset of it.
+
+## Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`, `HEAD` | `<name>` (`@scope/name` or `@scope%2Fname`) | Packument: every version of a package |
+| `PUT` | `<name>` | Publish, deprecate (hosted) |
+| `GET` | `<name>/<version or dist-tag>` | One version object |
+| `GET`, `HEAD` | `<name>/-/<file>.tgz` | Tarball |
+| `PUT`, `DELETE` | `<name>/-rev/<rev>`, `<name>/-/<file>.tgz/-rev/<rev>` | `npm unpublish` of versions, the whole package or one tarball |
+| `GET` | `-/package/<name>/dist-tags` | `npm dist-tag ls` |
+| `PUT`, `DELETE` | `-/package/<name>/dist-tags/<tag>` | `npm dist-tag add` / `rm` |
+| `PUT` | `-/user/org.couchdb.user:<username>` | `npm login` (legacy flow); returns an API token |
+| `GET` | `-/whoami`, `-/ping` | Identity and health checks |
+| `GET` | `-/v1/search?text=…&size=…&from=…` | `npm search` |
+
+`-/v1/login` (web login) and `-/npm/v1/security/…` (`npm audit`) answer `404`: npm falls back to
+the legacy login and treats the audit as "no data".
+
+## Standard repositories
+
+| Name | Type | Upstream / members |
+|------|------|--------------------|
+| `npm-proxy` | proxy | `https://registry.npmjs.org/` |
+| `npm-hosted` | hosted | |
+| `npm-group` | group | `npm-hosted`, `npm-proxy` |
 
 ## Hosted
 
@@ -25,6 +51,7 @@ protocol the clients use, not a subset of it.
   stale while upstream is unreachable. Tarballs are immutable and cached forever.
 * Tarball URLs inside packuments are rewritten to the Granary repository (or the group the
   client asked through), so a lockfile never points at the public registry.
+* `npm search` is forwarded to the upstream and not cached (results are short-lived).
 * `remoteUrl` is the registry root, e.g. `https://registry.npmjs.org/`.
 
 ## Group
@@ -32,9 +59,13 @@ protocol the clients use, not a subset of it.
 * Packuments are merged across members: the first member that has a version wins, `latest` is
   the highest semver across all members, `time` entries are unioned.
 * Tarballs are served from the member that owns the version.
+* Search shows the union of the members' results, the first member winning a name clash.
 * Groups are read-only; publish to the hosted member.
 
 ## Client configuration
+
+The *Connect* panel shows the same configuration with your server and user name, plus variants
+for a single scope, pnpm, Yarn 1 (`.yarnrc`), Yarn 2+ (`.yarnrc.yml`) and Bun (`bunfig.toml`).
 
 ```ini
 # ~/.npmrc or project .npmrc
@@ -49,3 +80,27 @@ npm publish --registry http://granary.example.com:8081/repository/npm-hosted/
 
 Scoped packages are requested by npm as `/@scope%2Fname`; Granary accepts both the encoded and
 the plain form.
+
+## Settings
+
+npm has no format settings.
+
+## Offline behaviour
+
+* Cached tarballs are served without contacting the upstream; cached packuments are re-validated
+  after *metadata max age* and served stale while the upstream is unreachable or offline mode
+  is on.
+* A packument or tarball that is not cached answers `503 upstream.offline` or
+  `503 upstream.unavailable` instead of `404`, so `npm install` fails with a retryable error
+  rather than "package not found".
+* `npm search` on a proxy returns an empty result while the upstream cannot be reached; hosted
+  members of a group are still searched.
+* Concurrent requests for the same uncached file make one upstream request.
+
+## Limitations
+
+* No web login (`npm login --auth-type=web`) and no audit endpoint (`npm audit`).
+* Hosted search scans the stored components (up to 1,000 per query) rather than a full-text
+  index.
+* Organisations, teams and package access levels of npmjs.org are not modelled; access is
+  governed by Granary's repository privileges.

@@ -8,7 +8,7 @@ dependencies and the registry web API it writes through. `cargo build`, `fetch`,
 `search`, `login`, `publish`, `yank` and `owner` all work against Granary like against crates.io.
 The git index protocol is not served.
 
-## Protocol
+## Endpoints
 
 Every path is relative to the repository URL.
 
@@ -231,7 +231,7 @@ Behind TLS with a private certificate authority, point cargo at the CA:
 cainfo = "/path/to/ca.pem"   # or export CARGO_HTTP_CAINFO=/path/to/ca.pem
 ```
 
-## Format settings
+## Settings
 
 | Key | Applies to | Default | Meaning |
 |---|---|---|---|
@@ -240,6 +240,19 @@ cainfo = "/path/to/ca.pem"   # or export CARGO_HTTP_CAINFO=/path/to/ca.pem
 | `cargo.apiUrl` | proxy | `https://crates.io` | the upstream web API used for `cargo search`; `none` searches the cache only |
 
 Invalid values are refused when the repository is saved (`400 repository.cargo.<key>.invalid`).
+
+## Offline behaviour
+
+* Cached `.crate` files are served without contacting the upstream. Cached index files are
+  re-validated after *metadata max age* and served stale while the upstream is unreachable or the
+  repository (or the whole server) is offline.
+* An uncached index file or crate is answered with `503 upstream.offline` or
+  `503 upstream.unavailable`, never `404`, so cargo fails with a retryable error instead of
+  reporting that the crate does not exist.
+* `cargo search` on a proxy falls back to the crates in its cache.
+* In a group, hosted crates and everything a proxy member has cached keep resolving while that
+  member is offline.
+* Concurrent requests for the same uncached crate make one upstream download.
 
 ## Verification
 
@@ -272,4 +285,6 @@ the group. A run leaves offline mode off and anonymous reads on, also when a ste
 * A proxy authenticates to its upstream with the repository's remote token (sent as `Bearer`) or
   user name and password; a private upstream that only accepts cargo's bare token header cannot be
   proxied.
+* Those credentials are also sent to the `cargo.downloadUrl` and `cargo.apiUrl` hosts
+  (`static.crates.io` and `crates.io` by default), not only to the index origin.
 * Index responses are not compressed.

@@ -3,6 +3,9 @@
 # Needs curl and a running Granary with admin/admin123; Maven needs a JDK (21+) and mvn, npm needs Node/npm, NuGet
 # needs the .NET SDK (dotnet) on the PATH. A client that is missing is reported as SKIP, not as a failure.
 # CLIENTS selects the clients to run (default "maven npm nuget"), e.g. CLIENTS=npm verify-clients.sh ...
+# Optional clients: gradle (resolves through maven-public: Maven Central, the Gradle Plugin Portal and, with maven,
+# the release deployed above) and pnpm, yarn (1.x) and bun (install through npm-group, with npm the package
+# published above). Each installs again offline from an empty cache, e.g. CLIENTS="maven gradle npm pnpm yarn bun".
 # Every format's verification against one server: scripts/verify-all.sh.
 # Usage: [CLIENTS="maven npm nuget"] verify-clients.sh http://localhost:8081   (admin/admin123 must be valid)
 set -uo pipefail
@@ -38,7 +41,7 @@ APITOKEN=$(curl -fsS -X POST "$BASE/api/v1/tokens" -H "Authorization: Bearer $TO
 # versions unique to this run, so the script can run again against the same server (re-deploys are refused)
 RUN=$(date +%s)
 REL="1.0.$RUN"; SNAP="1.1.$RUN-SNAPSHOT"
-MAVEN=0; NPM=0; NUGET=0
+MAVEN=0; NPM=0; NUGET=0; GRADLE=0; JSCLIENTS=""
 
 if want maven mvn java; then
 MAVEN=1
@@ -133,7 +136,63 @@ STEP="dotnet restore"; check dotnet restore consumer/Consumer.csproj --force
 cd "$WORK"
 fi
 
-if [ $((MAVEN + NPM + NUGET)) -gt 0 ]; then
+if want gradle gradle java; then
+GRADLE=1
+echo "== Gradle"
+mkdir -p gradle && cd gradle
+echo "rootProject.name = 'consumer'" > settings.gradle
+# commons-lang3 comes from Maven Central and plugin-publish-plugin from the Gradle Plugin Portal, both through the group
+GRADLE_DEPS="  deps 'org.apache.commons:commons-lang3:3.17.0'
+  deps 'com.gradle.publish:plugin-publish-plugin:1.3.1'"
+[ $MAVEN = 1 ] && GRADLE_DEPS="$GRADLE_DEPS
+  deps 'com.acme:demo:$REL'"
+cat > build.gradle <<EOF
+repositories {
+  maven {
+    url = uri('$BASE/repository/maven-public/')
+    allowInsecureProtocol = true
+    credentials { username = 'admin'; password = '$APITOKEN' }
+  }
+}
+configurations { deps }
+dependencies {
+$GRADLE_DEPS
+}
+tasks.register('resolve') { doLast { configurations.deps.files.each { println it.name } } }
+EOF
+# a Gradle user home of its own (-g), so the caller's dependency cache is neither used nor changed
+STEP="gradle resolve through maven-public"; check gradle -q --no-daemon -g "$WORK/gradle/home1" resolve
+cd "$WORK"
+fi
+
+# js_install <client> <dir> <package…>: pnpm, Yarn 1 and Bun read the registry and the token from the project's .npmrc;
+# every cache and store stays inside <dir>
+js_install() {
+  local js=$1 dir=$2; shift 2
+  case $js in
+    pnpm) (cd "$dir" && pnpm add --store-dir "$dir/store" --cache-dir "$dir/cache" --registry "$BASE/repository/npm-group/" "$@") ;;
+    yarn) (cd "$dir" && yarn add --non-interactive --no-progress --cache-folder "$dir/cache" --registry "$BASE/repository/npm-group/" "$@") ;;
+    bun)  (cd "$dir" && BUN_INSTALL_CACHE_DIR="$dir/cache" BUN_CONFIG_REGISTRY="$BASE/repository/npm-group/" bun add "$@") ;;
+  esac
+}
+js_reset() { rm -rf "$1/node_modules" "$1/cache" "$1/store" "$1"/pnpm-lock.yaml "$1"/yarn.lock "$1"/bun.lock "$1"/bun.lockb; echo '{ "name": "consumer", "version": "1.0.0", "private": true }' > "$1/package.json"; }
+JSDEPS="left-pad@1.3.0"
+[ $NPM = 1 ] && JSDEPS="$JSDEPS @acme/demo@$REL"
+for js in pnpm yarn bun; do
+  want "$js" "$js" || continue
+  JSCLIENTS="$JSCLIENTS $js"
+  echo "== $js"
+  mkdir -p "$WORK/$js"
+  cat > "$WORK/$js/.npmrc" <<EOF
+registry=$BASE/repository/npm-group/
+//$HOSTPORT/repository/npm-group/:_authToken=$APITOKEN
+EOF
+  js_reset "$WORK/$js"
+  # shellcheck disable=SC2086
+  STEP="$js install $JSDEPS through npm-group"; check js_install "$js" "$WORK/$js" $JSDEPS
+done
+
+if [ $((MAVEN + NPM + NUGET + GRADLE)) -gt 0 ] || [ -n "$JSCLIENTS" ]; then
 echo "== Offline: everything above again with upstream access disabled and empty local caches"
 curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"offlineMode":true}' >/dev/null && ok "offline mode on" || bad "offline mode on"
 if [ $MAVEN = 1 ]; then
@@ -150,6 +209,14 @@ if [ $NUGET = 1 ]; then
   # pushd instead of a subshell, so the counters survive
   pushd nuget >/dev/null; STEP="offline dotnet restore"; check dotnet restore consumer/Consumer.csproj --force; popd >/dev/null
 fi
+if [ $GRADLE = 1 ]; then
+  STEP="offline gradle resolve with an empty Gradle user home"; check gradle -q --no-daemon -p gradle -g "$WORK/gradle/home2" resolve
+fi
+for js in $JSCLIENTS; do
+  js_reset "$WORK/$js"
+  # shellcheck disable=SC2086
+  STEP="offline $js install $JSDEPS from an empty cache"; check js_install "$js" "$WORK/$js" $JSDEPS
+done
 curl -fsS -X PUT "$BASE/api/v1/system/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"offlineMode":false}' >/dev/null
 fi
 

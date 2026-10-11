@@ -15,6 +15,37 @@ fingerprint of the key its documents are signed with.
 Paths are checked before anything is looked up: `..`, backslashes, encoded slashes (`%2F`, `%5C`) and
 names that are not Hex package names are answered with `400` in every repository type.
 
+## Endpoints
+
+Every path is relative to the repository URL.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `names`, `versions` | Signed registry documents: every package, every version |
+| `GET` | `packages/<name>` | Signed registry document of one package (releases, checksums, dependencies, retirements) |
+| `GET`, `HEAD` | `tarballs/<name>-<version>.tar` | Release tarball |
+| `GET` | `public_key` | The key the registry documents are signed with |
+| `GET` | `docs/<name>-<version>.tar.gz` | Documentation tarball |
+| `GET` | `installs/…` | Hex and rebar installation files (`mix local.hex`, `mix local.rebar`) |
+| `POST` | `api/publish`, `api/packages/<name>/releases` | Publish a release (hosted) |
+| `GET`, `DELETE` | `api/packages/<name>/releases/<version>` | Release details, revert |
+| `POST`, `PUT`, `DELETE` | `api/packages/<name>/releases/<version>/retire` | Retire, unretire |
+| `POST`, `PUT`, `DELETE` | `api/packages/<name>/releases/<version>/docs` | Upload, remove documentation |
+| `GET` | `api/packages`, `api/packages/<name>`, `api/packages/<name>/releases` | Search, package details, releases |
+| `GET` | `api/users/me` | `mix hex.user whoami` |
+| `GET`, `POST`, `DELETE` | `api/keys`, `api/keys/<name>` | API keys (`POST` with a password creates a Granary API token) |
+
+`api/repos/<repository>/…` is accepted as well (hex.pm's prefix for organisation repositories); the
+repository is the one in the URL.
+
+## Standard repositories
+
+| Name | Type | Upstream / members |
+| --- | --- | --- |
+| `hexpm` | proxy | `https://repo.hex.pm/` |
+| `hex-hosted` | hosted | |
+| `hex-group` | group | `hex-hosted`, `hexpm` |
+
 ## Signing
 
 Clients verify the signature of every registry document. Hosted repositories and groups sign theirs
@@ -71,9 +102,7 @@ keeps verifying them.
 * Documents are passed through byte for byte with hex.pm's signature, so the proxy is a drop-in
   `HEX_MIRROR` (mix) or `HEX_CDN` (rebar3). `installs/…` (what `mix local.hex` and
   `mix local.rebar` read) is passed through the same way.
-* While a proxy is offline, or the server is in offline mode, only cached content is served. A
-  document that is not cached is answered with `503 upstream.offline`, never `404`, so mix does not
-  report a package that exists as missing.
+* Offline use is described under [Offline behaviour](#offline-behaviour).
 * The Hex API (`api/…`) is not proxied, and publishing to a proxy is refused with `405`.
 
 ## Group
@@ -163,11 +192,21 @@ tags into the publishing project's `_checkouts`, so `rebar3 hex publish` is veri
 
 ## Settings
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `hex.repositoryName` | the Granary repository name | The name clients give the repository (`mix hex.repo add NAME`, `repo: "NAME"`, rebar3 `name`). Signed documents carry it, and clients refuse a mismatch. Letters, digits, `_`, `-`, `.`. |
-| `hex.revertWindowMinutes` | `60` | How long after publishing a developer can still revert a release. `0` means no limit. |
-| `hex.verifyUpstreamSignatures` | `true` | Groups check each proxy member's documents against that proxy's `public_key` before merging. |
+| Key | Applies to | Default | Meaning |
+| --- | --- | --- | --- |
+| `hex.repositoryName` | hosted, group | the Granary repository name | The name clients give the repository (`mix hex.repo add NAME`, `repo: "NAME"`, rebar3 `name`). Signed documents carry it, and clients refuse a mismatch. Letters, digits, `_`, `-`, `.`. |
+| `hex.revertWindowMinutes` | hosted | `60` | How long after publishing a developer can still revert a release. `0` means no limit. |
+| `hex.verifyUpstreamSignatures` | group | `true` | Groups check each proxy member's documents against that proxy's `public_key` before merging. |
+
+## Offline behaviour
+
+* While a proxy is offline, or the server is in offline mode, only cached content is served; cached
+  documents are also served stale while the upstream is unreachable. A document or tarball that is
+  not cached is answered with `503 upstream.offline` (or `503 upstream.unavailable`), never `404`,
+  so mix does not report a package that exists as missing.
+* A proxy caches the upstream's `public_key` with the first document it serves, so a group keeps
+  verifying, merging and re-signing what its proxy members cached while their upstream is
+  unreachable.
 
 ## Limitations
 

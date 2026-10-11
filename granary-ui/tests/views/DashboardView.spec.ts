@@ -165,13 +165,15 @@ describe('DashboardView blob store compaction', () => {
       await flushPromises();
       expect(document.documentElement.dir).toBe('rtl');
       const button = wrapper.find('[data-testid="compact-default"]');
-      expect(button.text()).toBe('فشرده‌سازی');
+      // "Compact" in Persian
+      expect(button.text()).toBe('\u0641\u0634\u0631\u062f\u0647\u200c\u0633\u0627\u0632\u06cc');
 
       await button.trigger('click');
       await flushPromises();
 
       const text = wrapper.find('[data-testid="compact-report-default"]').text();
-      expect(text).toContain('۷ از ۱٬۲۰۰ بلاب حذف شد');
+      // "7 of 1,200 blobs deleted" in Persian words and digits
+      expect(text).toContain('\u06f7 \u0627\u0632 \u06f1\u066c\u06f2\u06f0\u06f0 \u0628\u0644\u0627\u0628 \u062d\u0630\u0641 \u0634\u062f');
       expect(text).not.toMatch(/[0-9]/);
     } finally {
       locale.set('en');
@@ -272,6 +274,7 @@ describe('DashboardView upstream health', () => {
     i18n.global.locale.value = 'fa';
     const wrapper = await mountView(['system:admin']);
     expect(wrapper.find('[data-testid="upstream-counts"]').text()).not.toMatch(/[0-9]/);
-    expect(wrapper.find('[data-testid="upstreams-toggle"]').text()).toContain('۳۰');
+    // 30 in Persian digits
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').text()).toContain('\u06f3\u06f0');
   });
 });

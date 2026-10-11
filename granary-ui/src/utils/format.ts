@@ -16,8 +16,9 @@ export function formatNumber(value: number | null | undefined, locale: string): 
 
 /**
  * Base languages written right to left. Their short byte units are Latin ("kB"), and a Latin unit next to
- * the locale's own digits forms a left-to-right run that the bidi algorithm reorders inside a sentence
- * ("kB ۰۴ ۱۲ مؤلفه"), so these locales get the spelled-out unit ("۱۲ کیلوبایت").
+ * the locale's own digits forms a left-to-right run that the bidi algorithm reorders inside a sentence (the
+ * unit then shows up in front of the size, next to the neighbouring number), so these locales get the
+ * spelled-out unit (the Persian word for "kilobytes" after the size).
  */
 const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
 

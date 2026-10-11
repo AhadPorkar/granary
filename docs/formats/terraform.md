@@ -45,6 +45,37 @@ such as `127.0.0.1/acme/demo/local` is accepted), a registry hostname with a por
 through a network mirror, and `TF_TOKEN_<host>` cannot name a port. A proper hostname on port 443
 avoids all of them.
 
+## Endpoints
+
+Every path is relative to the repository URL, except the discovery document, which the server also
+answers at its root (see *Service discovery*).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `.well-known/terraform.json` | Service discovery: `providers.v1` and `modules.v1` of this repository |
+| `GET` | `v1/providers/<ns>/<type>/versions` | Provider versions and platforms |
+| `GET` | `v1/providers/<ns>/<type>/<version>/download/<os>/<arch>` | Download document (URLs, digest, signing keys) |
+| `GET`, `PUT` | `v1/providers/<ns>/<type>/<version>/<os>/<arch>/<file>.zip` | Provider archive; `PUT` uploads (hosted) |
+| `GET`, `PUT` | `v1/providers/<ns>/<type>/<version>/SHA256SUMS`, `…/SHA256SUMS.sig` | Checksums and signature; `PUT` uploads (hosted) |
+| `GET`, `PUT` | `v1/providers/<ns>/<type>/gpg-key` | Public key for the signatures (hosted) |
+| `GET` | `v1/modules/<ns>/<name>/<system>/versions` | Module versions |
+| `GET` | `v1/modules/<ns>/<name>/<system>/<version>/download` | `204` with `X-Terraform-Get` |
+| `GET`, `PUT` | `v1/modules/<ns>/<name>/<system>/<version>.tgz` | Module archive; `PUT` uploads (hosted) |
+| `GET` | `files/…` | Provider files and module archives a proxy caches (rewritten download URLs) |
+| `GET` | `mirror/<hostname>/<ns>/<type>/index.json`, `…/<version>.json` | Provider network mirror |
+| `DELETE` | `v1/providers/<ns>/<type>[/<version>]`, `v1/modules/<ns>/<name>/<system>[/<version>]`, a file path | Remove a provider, module, version or file (hosted) |
+
+## Standard repositories
+
+| Name | Type | Upstream / members | Settings |
+|------|------|--------------------|----------|
+| `terraform-registry` | proxy | `https://registry.terraform.io/` | |
+| `opentofu-registry` | proxy | `https://registry.opentofu.org/` | |
+| `terraform-hosted` | hosted | | |
+| `terraform-group` | group | `terraform-hosted`, `terraform-registry` | `terraform.rootRepository=true` |
+
+So `source = "granary.example.com/hashicorp/aws"` resolves through the group right away.
+
 ## Service discovery
 
 `https://granary.example.com/.well-known/terraform.json` is answered by the Terraform repository
@@ -53,11 +84,6 @@ the first Terraform repository. Every repository also serves the document under 
 (`/repository/<name>/.well-known/terraform.json`), and the document always names that repository's
 own `v1/providers/` and `v1/modules/` services.
 
-The standard repositories (`POST /api/v1/repositories/standard`) create `terraform-registry`
-(proxy of `https://registry.terraform.io/`), `opentofu-registry` (proxy of
-`https://registry.opentofu.org/`), `terraform-hosted` and `terraform-group`
-(`terraform-hosted` + `terraform-registry`, flagged as the root repository), so
-`source = "granary.example.com/hashicorp/aws"` resolves through the group right away.
 
 ## Hosted
 
@@ -134,8 +160,8 @@ curl -u user:gry_… -X PUT --data-binary @demo-1.0.0.tgz \
 * Cached provider files and module archives are recorded as components with the same coordinates
   as hosted uploads (`(<ns>, <type>, <version>)` and `(<ns>, <name>/<system>, <version>)`), so they
   can be browsed, searched and deleted like hosted content.
-* Upstream `404`s are remembered for *negative cache* minutes; an uncached document while offline
-  or with upstream down is a clean `503` (`upstream.offline` / `upstream.unavailable`).
+* Upstream `404`s are remembered for *negative cache* minutes; for offline use see
+  [Offline behaviour](#offline-behaviour).
 
 ### Network mirror
 
@@ -209,6 +235,24 @@ OpenTofu reads the same configuration keys. Its default registry is `registry.op
 Granary host in the source works the same for both CLIs. The repository's *Connect* page offers
 all of these snippets with the right host filled in.
 
+## Settings
+
+| Key | Applies to | Default | Meaning |
+|-----|------------|---------|---------|
+| `terraform.rootRepository` | all | `false` | Answer `/.well-known/terraform.json` at the server root (see *Service discovery*); flag one repository |
+| `terraform.providerProtocols` | hosted | `5.0,6.0` | Provider protocol versions announced in the generated `versions` and download documents |
+
+## Offline behaviour
+
+* Provider archives, `SHA256SUMS` files, signatures and module archives a proxy has cached are
+  served without contacting the upstream; `versions`, download documents and network-mirror
+  indexes are re-validated after *metadata max age* and served stale while the upstream is
+  unreachable or offline mode is on. `terraform init` and `tofu init` with empty plugin caches
+  therefore keep working for everything installed before.
+* An uncached document or file is a clean `503` (`upstream.offline` / `upstream.unavailable`).
+* `git::` module sources are fetched by the CLI from their host and are not available offline.
+* A group keeps serving hosted providers and modules and everything its proxy members cached.
+
 ## Limitations
 
 * **Keep anonymous read enabled on Terraform repositories.** Both CLIs send the configured token
@@ -221,6 +265,11 @@ all of these snippets with the right host filled in.
 * Hosted providers need the full HashiCorp-style set (zip, `SHA256SUMS`, `SHA256SUMS.sig`, key);
   Granary does not sign anything itself.
 * `TF_TOKEN_<host>` variables cannot name a port; use a `credentials` block for `host:port`.
+* A proxy sends its upstream credentials (*remote username/password* or *remote token*) with every
+  request it makes for the repository, including the provider and module downloads on other hosts
+  that the upstream's download documents name (`releases.hashicorp.com`, GitHub, …). Configure
+  credentials only for upstreams whose download hosts you trust with them; the public registries
+  need none.
 
 ## Verification
 

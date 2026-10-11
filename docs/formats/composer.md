@@ -9,6 +9,8 @@ repository protocol: `packages.json` with `metadata-url`, minified `p2/<vendor>/
 API, the security advisory API that `composer audit` uses, and install notifications. Composer 1
 (the `providers-url` protocol) is not supported; packagist.org shut it down in 2025 as well.
 
+## Endpoints
+
 | Path (relative to the repository URL) | Method | What it is |
 |---|---|---|
 | `packages.json` | GET | root document: `metadata-url`, `search`, `list`, `providers-api`, `notify-batch`, `security-advisories` |
@@ -25,6 +27,11 @@ API, the security advisory API that `composer audit` uses, and install notificat
 
 Searching, listing, providers, advisories and notifications are read operations even when
 Composer POSTs them; uploads and deletes need write access.
+
+## Standard repositories
+
+`packagist` (proxy of `https://repo.packagist.org/`), `composer-hosted` and `composer-group`
+(`composer-hosted`, `packagist`).
 
 ## Hosted
 
@@ -132,11 +139,6 @@ Composer POSTs them; uploads and deletes need write access.
 |---|---|---|---|---|
 | `composer.distRewrite` | boolean | `true` | proxy | Serve dist archives through Granary (and cache them); when off, clients download them from GitHub and others directly |
 
-## Standard repositories
-
-`packagist` (proxy of `https://repo.packagist.org/`), `composer-hosted` and `composer-group`
-(`composer-hosted`, `packagist`).
-
 ## Client configuration
 
 All projects of a user (`~/.config/composer/config.json`, or `$COMPOSER_HOME`):
@@ -208,6 +210,19 @@ after a release, and archives are served for every version (Satis' archive mirro
 from Private Packagist or Nexus Repository: the proxy mirrors packagist.org metadata and every
 archive on first use and keeps serving both while the internet is down, and the group is the
 single URL for private and public packages, with private versions taking precedence.
+
+## Offline behaviour
+
+* Cached `p2` documents, `packages.json`, searches, lists, providers and advisories are
+  re-validated after *metadata max age* and served stale while the upstream is unreachable or
+  offline mode is on; cached dist archives are served without contacting anyone.
+* Remembered upstream `404`s keep answering "no such package" offline, so dev-stability
+  resolutions and `composer show -a` of private packages still work.
+* An uncached document or archive is answered with `503 upstream.offline` or
+  `503 upstream.unavailable`; Composer reports the `503` and retries instead of treating the
+  package as missing.
+* With `composer.distRewrite` off, archives are downloaded from their original hosts and are not
+  available offline.
 
 ## Verification
 

@@ -8,9 +8,9 @@ dependencies, `swift package resolve` and `--replace-scm-with-registry`. Xcode r
 configuration files. Verified end to end with SwiftPM 6.1.3 (`swift:6.1` image) by
 `granary-format-swift/scripts/verify-swift.sh`.
 
-There is no public Swift registry to mirror (the Swift Package Index is a catalogue, not a registry),
-so the standard repositories are a hosted registry and a group. A proxy repository fronts *another*
-Swift registry (another Granary, Artifactory, a company registry) with the same paths.
+## Endpoints
+
+Every path is relative to the registry URL.
 
 | Endpoint | |
 |---|---|
@@ -31,6 +31,19 @@ Requests that ask for another API version in `Accept` (`application/vnd.swift.re
 `415`, a malformed version `400`; requests without a registry media type are served as version 1.
 Malformed paths (`..` segments, invalid scopes, names or versions, encoded slashes `%2F` or
 backslashes) are refused with `400`.
+
+## Standard repositories
+
+There is no public Swift registry to mirror (the Swift Package Index is a catalogue, not a registry),
+so the standard repositories are a hosted registry and a group:
+
+| Name | Type | Members |
+|---|---|---|
+| `swift-hosted` | hosted | |
+| `swift-group` | group | `swift-hosted` |
+
+A proxy repository fronts *another* Swift registry (another Granary, Artifactory, a company
+registry) with the same paths; add it to `swift-group` after `swift-hosted`.
 
 ## Hosted
 
@@ -60,13 +73,6 @@ backslashes) are refused with `400`.
 * Publishing answers `201 Created` with `Location` synchronously (the `Prefer: respond-async` SwiftPM
   sends is allowed to be ignored).
 
-Repository settings (hosted):
-
-| Key | Default | |
-|---|---|---|
-| `swift.requireSignature` | `false` | refuse unsigned releases (`422`) |
-| `swift.maxArchiveSizeMb` | none | refuse larger source archives (`413`) |
-
 ## Proxy (of another registry)
 
 * `remoteUrl` is the other registry's base URL, e.g. `https://registry.example.com/swift/`. Paths map
@@ -75,8 +81,8 @@ Repository settings (hosted):
   max age* and served stale while the upstream is unreachable. Archives and manifests (with their
   variants and the `Link` header that lists them) are immutable and cached forever. Release URLs in
   lists are rewritten to the Granary repository (or the group the client asked through).
-* An upstream `404` is remembered by the negative cache; something never cached while the upstream is
-  down or the repository is offline is a `503` (`upstream.unavailable` / `upstream.offline`).
+* An upstream `404` is remembered by the negative cache; for offline use see
+  [Offline behaviour](#offline-behaviour).
 
 ## Group
 
@@ -151,6 +157,13 @@ curl -u jane:gry_… -X PUT -H "Accept: application/vnd.swift.registry.v1+json" 
   https://granary.example.com/repository/swift-hosted/acme/demo/1.0.0
 ```
 
+## Settings
+
+| Key | Applies to | Default | Meaning |
+|---|---|---|---|
+| `swift.requireSignature` | hosted | `false` | refuse unsigned releases (`422`) |
+| `swift.maxArchiveSizeMb` | hosted | none | refuse larger source archives (`413`) |
+
 ## Authentication
 
 Reads follow the server's anonymous-read setting; publishing and deleting need write access to the
@@ -159,6 +172,15 @@ repository. API tokens arrive as `Authorization: Bearer` (`login --token`) or Ba
 problem document *without* a `WWW-Authenticate` challenge: SwiftPM on Linux (swift-corelibs-foundation)
 never completes a request answered with a Basic challenge and would hang instead of reporting the
 missing login.
+
+## Offline behaviour
+
+* Hosted releases never depend on the network. A proxy serves cached archives and manifests without
+  contacting its upstream, and serves cached release lists, release metadata and identifier lookups
+  stale while the upstream is unreachable or offline mode is on.
+* Something never cached is a `503` (`upstream.unavailable` / `upstream.offline`), which SwiftPM
+  reports as a failed request rather than a missing package.
+* A group keeps serving its hosted members and what its proxy members have cached.
 
 ## Limitations
 

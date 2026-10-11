@@ -7,7 +7,7 @@ Works with the `go` command because Granary implements the module proxy protocol
 no Go-specific client to install: `go get`, `go mod download`, `go build`, `go list -m` and
 `go mod verify` work against Granary like against proxy.golang.org.
 
-## Protocol
+## Endpoints
 
 Every path is relative to the repository URL.
 
@@ -213,12 +213,24 @@ refuses (`refusing to pass credentials to insecure URL`) a plain-HTTP `GOPROXY` 
 it. With anonymous reads off, put Granary behind TLS (any reverse proxy; Granary writes no absolute
 URLs into Go responses, so no base-URL setting is needed). Publishing with curl works over either.
 
-## Format settings
+## Settings
 
 | Key | Applies to | Default | Meaning |
 |---|---|---|---|
 | `go.sumdbName` | proxy | `sum.golang.org` | the checksum database (the name in `GOSUMDB`) passed through `sumdb/<name>/…` |
 | `go.sumdbUrl` | proxy | `https://<go.sumdbName>` | where checksum-database requests are forwarded, e.g. a mirror |
+
+## Offline behaviour
+
+* Cached `.info`, `.mod` and `.zip` files of semantic versions are served without contacting the
+  upstream. `@v/list` and `@latest` are re-validated after *metadata max age* and served stale
+  while the upstream is unreachable or the repository (or the whole server) is offline.
+* Checksum-database lookups and tiles that were asked before are cached forever, so `GOSUMDB`
+  verification keeps working offline for every module version fetched before.
+* An uncached file is a `503` (`upstream.offline` / `upstream.unavailable`), which the go command
+  reports instead of silently trying the next path prefix. Remembered upstream `404`/`410`
+  answers stay `404`.
+* A group keeps serving hosted modules and everything its proxy members have cached.
 
 ## Verification
 

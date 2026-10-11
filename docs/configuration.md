@@ -13,7 +13,7 @@ relaxed binding, so `granary.proxy.metadata-max-age` is `GRANARY_PROXY_METADATAM
 | `server.port` | `SERVER_PORT` | `8081` | HTTP port |
 | `granary.data-dir` | `GRANARY_DATA_DIR` | `./data` | Root for blobs, H2 database, generated JWT secret |
 | `granary.base-url` | `GRANARY_BASE_URL` | derived from the request | Public URL when behind a reverse proxy. Overridden at runtime by the `system.baseUrl` setting |
-| `granary.storage.blob-stores.<name>` | | | Additional blob store directories, selectable per repository |
+| `granary.storage.blob-stores.<name>.path` | | `<data-dir>/blobs-<name>` | Additional blob store directories, selectable per repository (the `default` store is `<data-dir>/blobs`) |
 | `granary.storage.write-lock-timeout` | | `30s` | How long a write waits for a concurrent write of the same path or component before it gives up with `409 storage.conflict` |
 
 ## Blob store compaction
@@ -32,7 +32,7 @@ See [Operations](#operations) below for what compaction does.
 |----------|-----|---------|---------|
 | `granary.security.admin-password` | `GRANARY_ADMIN_PASSWORD` | `admin123` | Password given to the built-in `admin` when the database is first created |
 | `granary.security.anonymous-read-default` | `GRANARY_ANONYMOUS_READ` | `true` | Initial value of the *anonymous read* setting |
-| `granary.security.jwt-secret` | `GRANARY_JWT_SECRET` | generated into `<data-dir>/jwt.secret` | HMAC key for web session tokens; set it when the data directory is not kept across restarts (Granary runs as a single node, see [Operations](#operations)) |
+| `granary.security.jwt-secret` | `GRANARY_JWT_SECRET` | generated into `<data-dir>/jwt.secret` | HMAC key for web session tokens, at least 32 bytes; set it when the data directory is not kept across restarts (Granary runs as a single node, see [Operations](#operations)) |
 | `granary.security.session-token-ttl` | | `12h` | Lifetime of a web session |
 
 ## Proxy defaults
@@ -47,7 +47,7 @@ Each proxy repository can override these; blank repository values fall back to t
 | `granary.proxy.negative-cache-ttl` | `10m` | How long an upstream `404` is remembered |
 | `granary.proxy.failure-threshold` | `3` | Consecutive failures that open the circuit breaker |
 | `granary.proxy.circuit-open-min` / `-max` | `30s` / `10m` | Back-off window while the breaker is open |
-| `granary.proxy.user-agent` | `Granary/<version>` | Sent to upstreams |
+| `granary.proxy.user-agent` | `Granary/0.2 (+https://github.com/AhadPorkar/granary)` | Sent to upstreams |
 | `granary.proxy.single-flight-timeout` | `5m` | Concurrent requests for the same uncached file wait this long for the one request that fetches it from the upstream, then fetch on their own. Global only |
 
 Outbound HTTP proxies are configured with the standard JVM flags (`-Dhttps.proxyHost`,
@@ -80,11 +80,104 @@ memory.
 |-----|---------|
 | `anonymousRead` | Whether unauthenticated clients may download from repositories |
 | `offlineMode` | Global switch: no upstream requests at all |
-| `baseUrl` | Public URL used in generated links |
+| `baseUrl` | Public URL used in generated links, at most 2,000 characters |
+
+## Repositories
+
+Repositories are created and changed in the UI or with `POST /api/v1/repositories` and
+`PUT /api/v1/repositories/{name}` (privilege `repositories:manage`). The JSON body:
+
+| Field | Applies to | Meaning |
+|-------|------------|---------|
+| `name` | all | Unique across all formats; letters, digits, `.`, `_`, `-`, starting with a letter or digit, at most 100 characters. Part of the URL `/repository/<name>/` |
+| `format` | all | A format id from `GET /api/v1/formats` (`maven2`, `npm`, `docker`, …) |
+| `type` | all | `HOSTED`, `PROXY` or `GROUP`; a format may support fewer (vcpkg: hosted only) |
+| `online` | all | `false` answers every request with `503 repository.offline` |
+| `blobStore` | all | Named blob store (default `default`); fixed once the repository holds content |
+| `description` | all | Free text shown in the UI, at most 500 characters |
+| `allowRedeploy` | hosted | Allow replacing an existing version or file (otherwise `409` or the protocol's own refusal) |
+| `versionPolicy` | Maven | `RELEASE`, `SNAPSHOT` or `MIXED` |
+| `remoteUrl` | proxy | Upstream URL (absolute `http(s)`), at most 1,000 characters |
+| `remoteUsername` / `remotePassword` / `remoteToken` | proxy | Upstream credentials: Basic, or a token sent as `Bearer` (at most 200 / 500 / 1,000 characters) |
+| `connectTimeoutSeconds`, `readTimeoutSeconds`, `metadataMaxAgeMinutes`, `negativeCacheMinutes` | proxy | Override the [proxy defaults](#proxy-defaults) |
+| `offlineMode` | proxy | Serve this proxy from its cache only |
+| `members` | group | Member names in resolution order; same format, nested groups allowed, no cycles |
+| `formatSettings` | all | Format-specific settings, an object of string values (see below) |
+
+```bash
+curl -u admin:… -H 'Content-Type: application/json' -X POST http://localhost:8081/api/v1/repositories -d '{
+  "name": "crates-mirror", "format": "cargo", "type": "PROXY",
+  "remoteUrl": "https://index.crates.io/",
+  "formatSettings": {"cargo.apiUrl": "none"}
+}'
+```
+
+`POST /api/v1/repositories/standard` creates the standard repositories every installed format
+declares (proxies of the public registries, a hosted repository and a group per format; see
+[docs/formats](formats/README.md)) and skips names that already exist.
+
+### Format settings
+
+Each format declares its settings (`GET /api/v1/formats` lists them with type, default and the
+repository types they apply to); the UI shows them as fields of the repository form. Values are
+strings, a blank value means the default, and invalid values are refused with `400` when the
+repository is saved. The format guides explain each one in context.
+
+| Key | Format | Applies to | Default | Meaning |
+|-----|--------|------------|---------|---------|
+| `cargo.authRequired` | [cargo](formats/cargo.md#settings) | all | `false` | Advertise `auth-required` so cargo sends its token with every request |
+| `cargo.downloadUrl` | [cargo](formats/cargo.md#settings) | proxy | `https://static.crates.io/crates/{crate}/{crate}-{version}.crate` | Where the upstream keeps `.crate` files |
+| `cargo.apiUrl` | [cargo](formats/cargo.md#settings) | proxy | `https://crates.io` | Upstream web API for `cargo search`; `none` searches the cache |
+| `cocoapods.rewriteHttpSources` | [cocoapods](formats/cocoapods.md#settings) | proxy, group | `true` | Serve `http` source archives through Granary and cache them |
+| `composer.distRewrite` | [composer](formats/composer.md#settings) | proxy | `true` | Serve dist archives through Granary and cache them |
+| `conan.tokenTtlHours` | [conan](formats/conan.md#settings) | all | `24` | Lifetime of the token a password login creates; `0` never expires |
+| `conan.upstreamAuth` | [conan](formats/conan.md#settings) | proxy | `token` | `token` (log in once, then Bearer) or `basic` towards the upstream |
+| `docker.rootRepository` | [docker](formats/docker.md#settings) | all | `false` | Serve this repository at `/v2/` of the server (see [Root routing](#root-routing)) |
+| `docker.libraryPrefix` | [docker](formats/docker.md#settings) | proxy | `true` for Docker Hub, else `false` | Request single-segment names upstream as `library/<name>` |
+| `docker.challengeAnonymous` | [docker](formats/docker.md#settings) | all | `true` | Answer an anonymous `GET /v2/` with a Basic challenge |
+| `go.sumdbName` | [go](formats/go.md#settings) | proxy | `sum.golang.org` | Checksum database passed through `sumdb/<name>/…` |
+| `go.sumdbUrl` | [go](formats/go.md#settings) | proxy | `https://sum.golang.org` | Where checksum-database requests are forwarded |
+| `helm.relativeUrls` | [helm](formats/helm.md#settings) | all | `false` | Chart URLs in `index.yaml` relative to the index |
+| `helm.maxChartSizeMb` | [helm](formats/helm.md#settings) | hosted | `20` | Largest chart upload in MiB; `0` disables the limit |
+| `hex.repositoryName` | [hex](formats/hex.md#settings) | hosted, group | the repository name | Repository name inside the signed registry documents |
+| `hex.revertWindowMinutes` | [hex](formats/hex.md#settings) | hosted | `60` | How long a release may be reverted; `0` means always |
+| `hex.verifyUpstreamSignatures` | [hex](formats/hex.md#settings) | group | `true` | Check proxy members' signatures before merging and re-signing |
+| `pub.maxArchiveSizeMb` | [pub](formats/pub.md#settings) | hosted | `100` | Largest archive `dart pub publish` may upload, in MiB |
+| `pub.advisories` | [pub](formats/pub.md#settings) | proxy | `true` | Pass the upstream's security advisories through |
+| `pypi.filesUrl` | [pypi](formats/pypi.md#settings) | proxy | `https://files.pythonhosted.org/` | Files host whose links are cached under their own path |
+| `raw.metadataPatterns` | [raw family](formats/raw.md#settings) | all | per format | Globs of paths that are mutable metadata |
+| `raw.contentDisposition` | [raw family](formats/raw.md#settings) | all | `inline` | `inline` or `attachment` downloads |
+| `raw.listingEnabled` | [raw family](formats/raw.md#settings) | all | `true` | Directory listings for paths ending with `/` |
+| `rubygems.signin` | [rubygems](formats/rubygems.md#settings) | all | `true` | Let `gem signin` exchange a password for an API token |
+| `rubygems.maxGemSizeMb` | [rubygems](formats/rubygems.md#settings) | hosted | `1024` | Largest `.gem` `gem push` may upload, in MiB |
+| `swift.requireSignature` | [swift](formats/swift.md#settings) | hosted | `false` | Refuse unsigned releases |
+| `swift.maxArchiveSizeMb` | [swift](formats/swift.md#settings) | hosted | no limit | Largest source archive `swift package-registry publish` may upload, in MiB |
+| `terraform.rootRepository` | [terraform](formats/terraform.md#settings) | all | `false` | Answer `/.well-known/terraform.json` of the server (see [Root routing](#root-routing)) |
+| `terraform.providerProtocols` | [terraform](formats/terraform.md#settings) | hosted | `5.0,6.0` | Provider protocol versions announced for hosted providers |
+
+The `raw.*` settings apply to all eight formats of the raw module (`raw`, `cdn`, `cpan`, `cran`,
+`hackage`, `vcpkg`, `bower`, `elm`). Maven, npm and NuGet have no format settings.
+
+### Root routing
+
+Docker and Terraform clients need URLs at the server root (see
+[ADR 0012](adr/0012-root-routing.md)):
+
+* `/v2/…` is answered by the docker repository with `docker.rootRepository` set, else the first
+  docker group, else the first docker repository (by name); `/v2/<repository>/<image>` reaches any
+  docker repository by name. The standard `docker-group` is flagged.
+* `/.well-known/terraform.json` is answered by the Terraform repository with
+  `terraform.rootRepository` set, else the first Terraform group, else the first Terraform
+  repository. The standard `terraform-group` is flagged.
+
+Flag at most one repository per format. A reverse proxy in front of Granary must pass `/v2/` and
+`/.well-known/terraform.json` through to it, not only `/repository/` and `/api/`, and Granary must
+know its public URL (`GRANARY_BASE_URL` or the `baseUrl` runtime setting) because both protocols
+write absolute URLs.
 
 ## Observability
 
-`/actuator/health` (with `liveness` and `readiness` groups) is public; `/actuator/info`,
+`/actuator/health` (with `liveness` and `readiness` groups) and `/actuator/info` are public;
 `/actuator/metrics` and `/actuator/prometheus` require the `system:admin` privilege. Logs go to
 stdout in a single-line format suitable for Docker.
 
@@ -163,7 +256,15 @@ the server (the server log has the report), and a new request meanwhile answers
 Repository paths are limited to 2,000 characters and, encoded as UTF-8, to 2,600 bytes (the most a
 PostgreSQL index entry holds; only paths of mostly non-ASCII characters reach it); a longer path
 is answered with `400 path.invalid` before anything is stored or fetched. A component's
-namespace, name and version share the same 2,600-byte limit (`400 component.invalid`). Upstream response headers are cleaned
+namespace, name and version share the same 2,600-byte limit (`400 component.invalid`).
+
+Text stored through the REST API (repository descriptions and remote credentials, user and role
+fields, token names, the base URL) is checked against its column length and must not contain a NUL
+character, which PostgreSQL cannot store: a violation answers `400 validation` with the field
+named in `details` (`400 token.name.invalid` for a token name), the same on H2 and PostgreSQL. A user name, search term or other lookup key
+with a NUL character simply matches nothing (`401` for a login).
+
+Upstream response headers are cleaned
 before they are cached: control characters are removed from `Content-Type` and, when the value
 is still not a valid media type of at most 200 characters, its parameters are dropped or the
 type is guessed from the file name. An `ETag` longer than 500 characters, a `Last-Modified`

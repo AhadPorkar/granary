@@ -8,8 +8,28 @@ the clients use: the compact index (`versions`, `info/<gem>`, `names`), which Bu
 `prerelease_specs.4.8.gz`, `quick/Marshal.4.8/<gem>.gemspec.rz`), which `gem search`,
 `gem list --remote`, `gem fetch` and `gem sources --add` still read.
 
-Templates: `rubygems-proxy` (rubygems.org), `rubygems-hosted` and `rubygems-group` (hosted
-first, then the proxy).
+## Endpoints
+
+Every path is relative to the source URL.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `versions`, `info/<gem>`, `names` | Compact index |
+| `GET` | `specs.4.8.gz`, `latest_specs.4.8.gz`, `prerelease_specs.4.8.gz` | Marshal indexes |
+| `GET` | `quick/Marshal.4.8/<gem>-<version>[-<platform>].gemspec.rz` | Quick spec |
+| `GET`, `HEAD` | `gems/<gem>-<version>[-<platform>].gem` | Gem file |
+| `GET` | `api/v1/gems/<gem>.json`, `api/v1/versions/<gem>.json`, `api/v1/versions/<gem>/latest.json` | JSON API (read only) |
+| `POST` | `api/v1/gems` | `gem push` (hosted) |
+| `DELETE`, `PUT` | `api/v1/gems/yank`, `api/v1/gems/unyank` | Yank, unyank (hosted) |
+| `GET`, `POST` | `api/v1/api_key` | `gem signin` with Basic credentials |
+
+## Standard repositories
+
+| Name | Type | Upstream / members |
+| --- | --- | --- |
+| `rubygems-proxy` | proxy | `https://rubygems.org/` |
+| `rubygems-hosted` | hosted | |
+| `rubygems-group` | group | `rubygems-hosted`, `rubygems-proxy` |
 
 ## Hosted
 
@@ -45,10 +65,7 @@ first, then the proxy).
   plain miss: it is remembered in the negative cache like a 404 and does not count as an outage,
   so requests for a gem that does not exist cannot cut the proxy off. A 403 for an index document
   still means upstream refuses Granary and is reported as `503 upstream.unavailable`.
-* Once something was installed through the proxy it stays installable offline: with the global
-  offline mode or the repository's offline flag, cached documents and gems are served and
-  anything else is a `503 upstream.offline`, which `gem` and Bundler report as a missing gem
-  rather than remembering it.
+* Offline use is described under [Offline behaviour](#offline-behaviour).
 
 ## Group
 
@@ -122,6 +139,16 @@ bundle config set --global mirror.https://rubygems.org http://granary.example.co
 A gemspec can pin pushes to the hosted repository with
 `spec.metadata["allowed_push_host"] = "http://granary.example.com:8081/repository/rubygems-hosted"`.
 
+## Offline behaviour
+
+* Once something was installed through the proxy it stays installable offline: with the global
+  offline mode or the repository's offline flag, cached documents and gems are served (documents
+  also stale while the upstream is unreachable), and anything else is a `503 upstream.offline`
+  (`503 upstream.unavailable` while the upstream is down), which `gem` and Bundler report as a
+  failed fetch rather than remembering the gem as missing.
+* A group keeps serving hosted gems and everything its proxy member has cached; a member whose
+  document is unreadable is left out of the merged indexes.
+
 ## Limitations
 
 * The dependency API (`api/v1/dependencies`), which rubygems.org retired, answers `404`;
@@ -137,10 +164,11 @@ A gemspec can pin pushes to the hosted repository with
   taken on rubygems.org therefore gets the public versions too, and Bundler picks the highest
   version that satisfies the Gemfile. Give private gems names that are not on rubygems.org, or
   pin them to the hosted repository with a `source "…/rubygems-hosted/" do … end` block.
-* Superseded copies of refreshed documents are not removed from the blob store (Granary does not
-  collect unreferenced blobs yet). rubygems.org's `versions` file is about 25 MB and changes
-  constantly, so a busy proxy, and a group that merges it, store a new copy at most once per
-  *metadata max age*; raise it on the proxy if disk space matters more than freshness.
+* rubygems.org's `versions` file is about 25 MB and changes constantly, so a busy proxy, and a
+  group that merges it, store a new copy at most once per *metadata max age*. Superseded copies
+  are deleted by blob store compaction (daily, or on demand) once they are older than its grace
+  period (24 hours by default), so the disk needs room for about a day of copies; raise the
+  metadata max age on the proxy if disk space matters more than freshness.
 * The JSON API covers the read endpoints clients and tooling use (gem, versions, latest);
   owners, web hooks, search and the activity feeds are not provided.
 * `gem signin --host <url>` sends the credentials to rubygems.org's profile endpoint first (a

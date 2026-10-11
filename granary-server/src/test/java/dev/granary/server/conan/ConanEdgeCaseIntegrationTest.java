@@ -88,12 +88,15 @@ class ConanEdgeCaseIntegrationTest extends IntegrationTest {
                 "/v2/conans/" + tooLong + "/1.0/_/_/revisions/" + RREV + "/files/conanfile.py",
                 "/v2/conans/zlib/1.0/" + tooLong + "/stable/revisions/" + RREV + "/files/conanfile.py",
                 revision(ZLIB, tooLong) + "/files/conanfile.py",
-                packageRevision(ZLIB, RREV, tooLong, PREV) + "/files/conaninfo.txt",
-                revision(ZLIB, RREV) + "/files/" + deepFile)) {
+                packageRevision(ZLIB, RREV, tooLong, PREV) + "/files/conaninfo.txt")) {
             mvc.perform(upload(HOSTED + path, utf8("x"), adminBasic()))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors[0].status").value(400));
         }
+        // Paths longer than the storage limit are refused by the dispatcher before the handler runs.
+        mvc.perform(upload(HOSTED + revision(ZLIB, RREV) + "/files/" + deepFile, utf8("x"), adminBasic()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("path.invalid"));
         mvc.perform(get(HOSTED + "/v2/conans/" + tooLong + "/1.0/_/_/latest")).andExpect(status().isBadRequest());
         mvc.perform(get(GROUP + "/v2/conans/" + tooLong + "/1.0/_/_/latest")).andExpect(status().isBadRequest());
         assertThat(storage.list(hosted, "")).isEmpty();

@@ -7,8 +7,10 @@ import { REPOSITORIES_MANAGE, SETTINGS_MANAGE, useAuthStore } from '@/stores/aut
 import { useSystemStore } from '@/stores/system';
 import { useToastStore } from '@/stores/toast';
 import { useApiError } from '@/composables/useApiError';
+import { useLocalizedFormats } from '@/composables/useLocalizedFormats';
 import { useFormatters } from '@/composables/useFormatters';
 import { countByFormat } from '@/utils/repositories';
+import { collapsedCount, countUpstreams, sortUpstreams, upstreamState } from '@/utils/upstreams';
 import AppIcon from '@/components/AppIcon.vue';
 import ErrorAlert from '@/components/ErrorAlert.vue';
 import LoadingIndicator from '@/components/LoadingIndicator.vue';
@@ -27,12 +29,16 @@ const loading = ref(true);
 const error = ref<unknown>(null);
 const status = ref<SystemStatus | null>(null);
 const repositories = ref<RepositoryView[]>([]);
-const formats = ref<FormatView[]>([]);
+const rawFormats = ref<FormatView[]>([]);
+const formats = useLocalizedFormats(rawFormats);
 const togglingOffline = ref(false);
 /** Name of the blob store being compacted right now, if any. */
 const compacting = ref<string | null>(null);
 /** The latest compaction report per blob store, shown until the page is left. */
 const reports = ref<Record<string, CompactionReport>>({});
+/** The upstream list is cut to the first entries (problems first) until the user asks for all. */
+const UPSTREAM_LIMIT = 8;
+const showAllUpstreams = ref(false);
 
 const seesStatus = computed(() => auth.can(SETTINGS_MANAGE) || auth.can(REPOSITORIES_MANAGE));
 const canToggleOffline = computed(() => auth.can(SETTINGS_MANAGE));
@@ -45,6 +51,11 @@ const assetCount = computed(() => repositories.value.reduce((sum, r) => sum + (r
 const totalBytes = computed(() => repositories.value.reduce((sum, r) => sum + (r.statistics?.bytes ?? 0), 0));
 const blobCount = computed(() => status.value?.blobStores.reduce((sum, s) => sum + s.blobCount, 0) ?? 0);
 const offlineMode = computed(() => status.value?.offlineMode ?? system.info?.offlineMode ?? false);
+const upstreams = computed(() => sortUpstreams(status.value?.upstreams ?? [], offlineMode.value));
+const upstreamCounts = computed(() => countUpstreams(upstreams.value, offlineMode.value));
+const visibleUpstreams = computed(() =>
+  showAllUpstreams.value ? upstreams.value : upstreams.value.slice(0, collapsedCount(upstreams.value, offlineMode.value, UPSTREAM_LIMIT)),
+);
 const jvmUsed = computed(() => (status.value ? status.value.jvm.totalMemory - status.value.jvm.freeMemory : 0));
 
 function usage(store: { totalBytes: number; availableBytes: number }): number {
@@ -63,7 +74,7 @@ async function load(): Promise<void> {
     ]);
     repositories.value = repos;
     status.value = stat;
-    formats.value = fmts;
+    rawFormats.value = fmts;
   } catch (e) {
     error.value = e;
   } finally {
@@ -157,7 +168,7 @@ onMounted(load);
         <div v-if="status" class="card stat">
           <span class="stat__label">{{ t('dashboard.version') }}</span>
           <span class="stat__value" style="font-size: 1.25rem">{{ status.version }}</span>
-          <span class="stat__detail">{{ t('dashboard.jvm') }} {{ status.jvm.version }}</span>
+          <span class="stat__detail">{{ t('dashboard.jvm') }} <span class="ltr">{{ status.jvm.version }}</span></span>
         </div>
       </div>
 
@@ -165,7 +176,7 @@ onMounted(load);
         <div class="card__header"><h2>{{ t('dashboard.byFormat') }}</h2></div>
         <ul class="format-counts">
           <li v-for="entry in byFormat" :key="entry.format" class="format-counts__item">
-            <RouterLink :to="{ name: 'repositories', query: { format: entry.format } }">{{ entry.displayName }}</RouterLink>
+            <RouterLink :to="{ name: 'repositories', query: { format: entry.format } }"><bdi>{{ entry.displayName }}</bdi></RouterLink>
             <span class="format-counts__value">{{ fmt.number(entry.count) }}</span>
           </li>
         </ul>
@@ -221,8 +232,13 @@ onMounted(load);
             />
           </div>
           <p v-if="canToggleOffline" class="field__hint" style="padding: 0.5rem 1rem 0">{{ t('dashboard.offlineModeHint') }}</p>
-          <ul v-if="status.upstreams.length" class="upstream-list">
-            <li v-for="up in status.upstreams" :key="up.repository" class="upstream-list__item">
+          <div v-if="upstreams.length" class="cluster upstream-counts" data-testid="upstream-counts">
+            <StatusBadge v-if="upstreamCounts.unreachable" variant="danger">{{ t('dashboard.upstreamCounts.unreachable', { count: fmt.number(upstreamCounts.unreachable) }) }}</StatusBadge>
+            <StatusBadge v-if="upstreamCounts.offline" variant="warning">{{ t('dashboard.upstreamCounts.offline', { count: fmt.number(upstreamCounts.offline) }) }}</StatusBadge>
+            <StatusBadge v-if="upstreamCounts.reachable" variant="success">{{ t('dashboard.upstreamCounts.reachable', { count: fmt.number(upstreamCounts.reachable) }) }}</StatusBadge>
+          </div>
+          <ul v-if="upstreams.length" id="upstream-list" class="upstream-list" data-testid="upstream-list">
+            <li v-for="up in visibleUpstreams" :key="up.repository" class="upstream-list__item" :data-upstream="up.repository" :data-state="upstreamState(up, offlineMode)">
               <div class="truncate">
                 <RouterLink :to="{ name: 'repository', params: { name: up.repository } }"><strong>{{ up.repository }}</strong></RouterLink>
                 <div class="small muted truncate ltr" :title="up.remoteUrl">{{ up.remoteUrl }}</div>
@@ -234,7 +250,7 @@ onMounted(load);
               </div>
               <div v-if="!up.status.reachable" class="upstream-list__error">
                 <span v-if="up.status.consecutiveFailures">{{ t('dashboard.failures', { count: fmt.number(up.status.consecutiveFailures) }) }} · </span>
-                <span v-if="up.status.lastError">{{ t('dashboard.lastError') }}: {{ up.status.lastError }}</span>
+                <span v-if="up.status.lastError">{{ t('dashboard.lastError') }}: <bdi>{{ up.status.lastError }}</bdi></span>
                 <span v-if="up.status.retryAt"> · {{ t('dashboard.retryAt') }}: {{ fmt.relative(up.status.retryAt) }}</span>
               </div>
               <div v-else-if="up.status.lastSuccessAt" class="small faint" style="grid-column: 1 / -1">
@@ -242,7 +258,12 @@ onMounted(load);
               </div>
             </li>
           </ul>
-          <p v-else class="empty">{{ t('dashboard.upstreamsEmpty') }}</p>
+          <div v-if="upstreams.length > visibleUpstreams.length || showAllUpstreams" class="card__footer" style="justify-content: center">
+            <button type="button" class="btn btn--ghost btn--sm" aria-controls="upstream-list" :aria-expanded="showAllUpstreams" data-testid="upstreams-toggle" @click="showAllUpstreams = !showAllUpstreams">
+              {{ showAllUpstreams ? t('dashboard.upstreamsFewer') : t('dashboard.upstreamsAll', { count: fmt.number(upstreams.length) }) }}
+            </button>
+          </div>
+          <p v-if="!upstreams.length" class="empty">{{ t('dashboard.upstreamsEmpty') }}</p>
         </section>
 
         <section class="card">
@@ -250,9 +271,9 @@ onMounted(load);
           <div class="card__body">
             <dl class="kv">
               <dt>{{ t('dashboard.version') }}</dt>
-              <dd>{{ status.version }}</dd>
+              <dd class="ltr">{{ status.version }}</dd>
               <dt>{{ t('dashboard.jvm') }}</dt>
-              <dd>{{ status.jvm.version }}</dd>
+              <dd class="ltr">{{ status.jvm.version }}</dd>
               <dt>{{ t('dashboard.memory') }}</dt>
               <dd>{{ t('dashboard.memoryDetail', { used: fmt.bytes(jvmUsed), max: fmt.bytes(status.jvm.maxMemory) }) }}</dd>
               <dt>{{ t('dashboard.processors') }}</dt>
@@ -291,6 +312,10 @@ onMounted(load);
 .format-counts__value {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+}
+
+.upstream-counts {
+  padding: 0.6rem 1rem 0;
 }
 
 .stat--link {

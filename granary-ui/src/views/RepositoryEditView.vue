@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { api } from '@/api';
+import { useLocalizedFormats } from '@/composables/useLocalizedFormats';
 import type { FormatView, RepositoryRequest, RepositoryView } from '@/api/types';
 import { useToastStore } from '@/stores/toast';
 import ErrorAlert from '@/components/ErrorAlert.vue';
@@ -20,7 +21,8 @@ const loading = ref(true);
 const loadError = ref<unknown>(null);
 const saveError = ref<unknown>(null);
 const saving = ref(false);
-const formats = ref<FormatView[]>([]);
+const rawFormats = ref<FormatView[]>([]);
+const formats = useLocalizedFormats(rawFormats);
 const repositories = ref<RepositoryView[]>([]);
 const initial = ref<RepositoryView | null>(null);
 
@@ -32,7 +34,7 @@ async function load(): Promise<void> {
   loadError.value = null;
   try {
     const [fmts, repos] = await Promise.all([api.formats(), api.repositories.list()]);
-    formats.value = fmts;
+    rawFormats.value = fmts;
     repositories.value = repos;
     initial.value = props.name ? (repos.find((r) => r.name === props.name) ?? (await api.repositories.get(props.name))) : null;
   } catch (e) {

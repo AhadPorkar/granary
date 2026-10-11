@@ -1,6 +1,6 @@
 /* Pure filtering and grouping of the repository list; the view only renders what comes out of here. */
 
-import type { FormatView, RepositoryView } from '@/api/types';
+import type { ComponentView, FormatView, RepositoryView } from '@/api/types';
 
 export interface RepositoryFilter {
   /** Case-insensitive substring of the name or description; blank matches everything. */
@@ -66,4 +66,9 @@ export function formatOptions(repositories: readonly RepositoryView[], formats: 
   return [...ids]
     .map((id) => ({ id, displayName: formatDisplayName(id, formats) }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+}
+
+/** Whether a namespace column is worth showing: many formats (raw, PyPI, Cargo, ...) never set one. */
+export function anyNamespace(components: readonly ComponentView[]): boolean {
+  return components.some((c) => (c.namespace ?? '').trim() !== '');
 }

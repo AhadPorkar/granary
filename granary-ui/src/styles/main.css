@@ -13,14 +13,16 @@
   --surface-2: #f0f1f4;
   --surface-3: #e6e8ec;
   --border: #d9dde3;
-  --border-strong: #b8bec8;
+  /* 3:1 against every surface: input and button outlines must stay visible (WCAG 1.4.11) */
+  --border-strong: #868e9b;
   --text: #1b1f27;
   --text-muted: #5d6675;
-  --text-faint: #8a93a2;
+  /* still 4.5:1 on --surface-2: used for small upper-case headings and secondary text */
+  --text-faint: #646d7b;
 
   --primary: #b45309;
   --primary-hover: #92400e;
-  --primary-soft: #fdf1dc;
+  --primary-soft: #fef5e6;
   --primary-contrast: #ffffff;
   --focus: #2563eb;
 
@@ -29,7 +31,7 @@
   --danger: #b91c1c;
   --danger-hover: #991b1b;
   --danger-soft: #fee2e2;
-  --warning: #a16207;
+  --warning: #985d08;
   --warning-soft: #fef3c7;
   --info: #1d4ed8;
   --info-soft: #dbeafe;
@@ -50,10 +52,10 @@
     --surface-2: #222830;
     --surface-3: #2b323c;
     --border: #2f3744;
-    --border-strong: #4a5363;
+    --border-strong: #687282;
     --text: #e8ebf0;
     --text-muted: #a3acb9;
-    --text-faint: #6f7987;
+    --text-faint: #8a94a3;
 
     --primary: #f59e0b;
     --primary-hover: #fbbf24;
@@ -298,7 +300,8 @@ svg {
   color: var(--primary);
 }
 
-.menu-button {
+/* Qualified so the .btn rules further down cannot switch it back on for wide screens. */
+.shell__header .menu-button {
   display: none;
 }
 
@@ -314,7 +317,7 @@ svg {
       'main';
   }
 
-  .menu-button {
+  .shell__header .menu-button {
     display: inline-flex;
   }
 
@@ -326,7 +329,9 @@ svg {
     height: calc(100vh - var(--header-height));
     z-index: 40;
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    /* hidden, not just moved away: the closed menu's links must not take keyboard focus */
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0.2s;
     box-shadow: var(--shadow-md);
   }
 
@@ -336,6 +341,7 @@ svg {
 
   .shell__sidebar--open {
     transform: translateX(0) !important;
+    visibility: visible;
   }
 
   .sidebar-backdrop {
@@ -434,6 +440,8 @@ svg {
 
 .grid--2 {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  /* a long card (many upstreams) must not stretch its neighbours into empty boxes */
+  align-items: start;
 }
 
 .muted {
@@ -471,6 +479,24 @@ svg {
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* Server-provided English text without a translation inside a right-to-left page: each paragraph takes
+   the direction of its own text, so punctuation and parentheses stay where English puts them. */
+/* Free text whose language is unknown (descriptions, upstream errors) gets dir="auto" so it is laid out
+   and truncated in its own direction, while it stays aligned with the rest of the page. */
+[dir='ltr'] .text-auto {
+  text-align: left;
+}
+
+[dir='rtl'] .text-auto {
+  text-align: right;
+}
+
+.source-text .field__label,
+.source-text .field__hint,
+.source-text .checkbox__text > span {
+  unicode-bidi: plaintext;
 }
 
 /* ---------------------------------------------------------------------------
@@ -768,6 +794,9 @@ svg {
    Tables
    --------------------------------------------------------------------------- */
 .table-wrap {
+  /* positioned so absolutely positioned descendants (.visually-hidden labels) are clipped by the
+     scroller instead of widening the whole page */
+  position: relative;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -824,6 +853,85 @@ svg {
 
 .table--nested {
   font-size: 0.85rem;
+}
+
+/* Narrow screens: rows of a .table--stack become blocks so a long list is read top to bottom
+   instead of being scrolled sideways. Cells carrying data-label get that label in front. */
+@media (max-width: 40rem) {
+  .table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .table--stack,
+  .table--stack tbody,
+  .table--stack tr,
+  .table--stack td,
+  .table--stack th {
+    display: block;
+  }
+
+  .table--stack tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table--stack tbody tr.table__group {
+    padding: 0;
+  }
+
+  .table--stack tr.table__group th {
+    flex: 1 1 100%;
+    padding: 0.55rem 1rem;
+  }
+
+  .table--stack td,
+  .table--stack th {
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  .table--stack td:first-child,
+  .table--stack td.table__cell--full {
+    flex: 1 1 100%;
+  }
+
+  .table--stack td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--text-muted);
+  }
+
+  .table--stack td.actions {
+    flex: 1 1 100%;
+    text-align: start;
+  }
+
+  /* placeholder cells ("—") say nothing once the column headings are gone */
+  .table--stack .table__cell--stack-hidden {
+    display: none;
+  }
+
+  .table--stack .actions .cluster {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .table--stack.table--nested tbody tr {
+    padding: 0.6rem 0.25rem;
+  }
+
+  .table--stack.table--nested td {
+    padding: 0;
+  }
 }
 
 .table--nested th,
@@ -998,9 +1106,14 @@ svg {
   color: var(--text);
   box-shadow: var(--shadow-md);
   overflow: hidden;
+  margin: auto;
+}
+
+/* only an open dialog is laid out: author styles override the browser's dialog:not([open]) rule,
+   so a plain display: flex would leave a closed dialog's empty bordered box at the end of the page */
+.dialog[open] {
   display: flex;
   flex-direction: column;
-  margin: auto;
 }
 
 .dialog--wide {
@@ -1121,7 +1234,6 @@ svg {
   position: relative;
   margin: 0;
   padding: 0.9rem 1rem;
-  padding-inline-end: 3rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1131,12 +1243,6 @@ svg {
   font-size: 0.8rem;
   line-height: 1.55;
   white-space: pre;
-}
-
-.code-block__copy {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
 }
 
 .empty {

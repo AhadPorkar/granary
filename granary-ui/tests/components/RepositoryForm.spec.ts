@@ -3,6 +3,7 @@ import { nextTick } from 'vue';
 import RepositoryForm from '@/components/RepositoryForm.vue';
 import { ApiError } from '@/api/client';
 import type { FormatView, RepositoryRequest, RepositoryView, SettingDescriptor } from '@/api/types';
+import { i18n } from '@/i18n';
 import { mountWithPlugins } from '../helpers';
 
 const ALL: FormatView['types'] = ['HOSTED', 'PROXY', 'GROUP'];
@@ -352,5 +353,69 @@ describe('RepositoryForm', () => {
 
     await wrapper.setProps({ error: new ApiError({ code: 'internal', message: 'boom', details: {}, status: 500 }) });
     expect(wrapper.find('.alert--danger').exists()).toBe(true);
+  });
+
+  it('explains which repository types a format is limited to', async () => {
+    const wrapper = mountForm();
+    expect(wrapper.find('[data-testid="types-hint"]').exists()).toBe(false);
+    expect(wrapper.find('fieldset').attributes('aria-describedby')).toBeUndefined();
+
+    await wrapper.find('[data-testid="format-select"]').setValue('raw');
+    expect(wrapper.find('[data-testid="types-hint"]').text()).toBe('Raw supports only these repository types: Hosted.');
+    expect(wrapper.find('fieldset').attributes('aria-describedby')).toBe('repo-type-hint');
+
+    await wrapper.find('[data-testid="format-select"]').setValue('go');
+    expect(wrapper.find('[data-testid="types-hint"]').text()).toBe('Go supports only these repository types: Proxy and Group.');
+  });
+
+  it('names the allowed types in the language of the UI', async () => {
+    i18n.global.locale.value = 'de';
+    const wrapper = mountForm();
+    await wrapper.find('[data-testid="format-select"]').setValue('go');
+    const hint = wrapper.find('[data-testid="types-hint"]').text();
+    expect(hint).toContain(i18n.global.t('repositories.types.PROXY'));
+    expect(hint).toContain(' und ');
+  });
+
+  it('keeps setting values left to right, monospaced except for numbers', async () => {
+    i18n.global.locale.value = 'fa';
+    const wrapper = mountForm();
+    const port = wrapper.find('input[data-setting="docker.httpPort"]');
+    expect(port.attributes('dir')).toBe('ltr');
+    expect(port.classes()).toContain('ltr');
+    expect(port.classes()).not.toContain('input--mono');
+    const namespace = wrapper.find('input[data-setting="docker.defaultRepository"]');
+    expect(namespace.attributes('dir')).toBe('ltr');
+    expect(namespace.classes()).toContain('input--mono');
+  });
+
+  it('marks settings without a translation as English text outside English', async () => {
+    const helmFormats: FormatView[] = [
+      {
+        id: 'helm',
+        displayName: 'Helm',
+        types: ['HOSTED'],
+        settings: [
+          { key: 'helm.relativeUrls', label: 'Relative Chart-URLs', type: 'BOOLEAN', defaultValue: 'false', description: 'Übersetzt.', appliesTo: ['HOSTED'] },
+          { key: 'helm.futureSetting', label: 'Future setting', type: 'STRING', defaultValue: null, description: 'Not in the catalogue yet.', appliesTo: ['HOSTED'] },
+        ],
+        templates: [],
+      },
+    ];
+    const english = mountForm({ formats: helmFormats });
+    expect(english.findAll('.source-text')).toHaveLength(0);
+    expect(english.findAll('[lang]')).toHaveLength(0);
+    english.unmount();
+
+    i18n.global.locale.value = 'de';
+    const german = mountForm({ formats: helmFormats });
+    const untranslated = german.find('.field.source-text');
+    expect(untranslated.exists()).toBe(true);
+    expect(untranslated.classes()).toContain('source-text');
+    expect(untranslated.attributes('lang')).toBe('en');
+    expect(untranslated.text()).toContain('Future setting');
+    const translated = german.find('label.switch');
+    expect(translated.classes()).not.toContain('source-text');
+    expect(translated.attributes('lang')).toBeUndefined();
   });
 });

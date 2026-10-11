@@ -3,6 +3,8 @@ import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { FormatView, RepositoryRequest, RepositoryType, RepositoryView, SettingDescriptor, VersionPolicy } from '@/api/types';
 import { useApiError } from '@/composables/useApiError';
+import { useFormatters } from '@/composables/useFormatters';
+import { SOURCE_LOCALE, settingTextKey } from '@/utils/formatText';
 import FormField from './FormField.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
 import MemberPicker from './MemberPicker.vue';
@@ -22,8 +24,9 @@ const props = withDefaults(
 
 const emit = defineEmits<{ submit: [request: RepositoryRequest]; cancel: [] }>();
 
-const { t } = useI18n();
+const { t, te, locale } = useI18n();
 const apiError = useApiError();
+const fmt = useFormatters();
 
 const TYPES: RepositoryType[] = ['HOSTED', 'PROXY', 'GROUP'];
 const POLICIES: VersionPolicy[] = ['MIXED', 'RELEASE', 'SNAPSHOT'];
@@ -111,6 +114,17 @@ const allowedTypes = computed<RepositoryType[]>(() => {
   return allowed.length ? allowed : TYPES;
 });
 
+/** Says why a type is missing when the format supports fewer than all three. */
+const typesHint = computed(() => {
+  if (allowedTypes.value.length === TYPES.length) {
+    return undefined;
+  }
+  return t('repositories.hints.typesRestricted', {
+    format: selectedFormat.value?.displayName ?? form.format,
+    types: fmt.list(allowedTypes.value.map((type) => t(`repositories.types.${type}`))),
+  });
+});
+
 watch(
   allowedTypes,
   (allowed) => {
@@ -180,6 +194,15 @@ function setSetting(setting: SettingDescriptor, value: string): void {
 function booleanValue(setting: SettingDescriptor): boolean {
   const value = form.formatSettings[setting.key] ?? setting.defaultValue ?? 'false';
   return value.trim().toLowerCase() === 'true';
+}
+
+/**
+ * True when the setting is shown with the server's English text because the UI language has no
+ * translation of it; the field is then marked lang="en" and laid out by its own text direction.
+ */
+function untranslated(setting: SettingDescriptor): boolean {
+  const key = settingTextKey(setting.key, 'label');
+  return locale.value !== SOURCE_LOCALE && (!key || !te(key, locale.value));
 }
 
 function settingInputType(setting: SettingDescriptor): 'number' | 'url' | 'text' {
@@ -313,7 +336,7 @@ defineExpose({ form });
       </FormField>
     </div>
 
-    <fieldset class="field" style="border: 0; padding: 0; margin: 0">
+    <fieldset class="field" style="border: 0; padding: 0; margin: 0" :aria-describedby="typesHint ? 'repo-type-hint' : undefined">
       <legend class="field__label">{{ t('repositories.fields.type') }}</legend>
       <div class="type-options">
         <label v-for="type in allowedTypes" :key="type" class="radio type-option" :class="{ 'type-option--selected': form.type === type }">
@@ -324,6 +347,7 @@ defineExpose({ form });
           </span>
         </label>
       </div>
+      <p v-if="typesHint" id="repo-type-hint" class="field__hint" style="margin: 0" data-testid="types-hint">{{ typesHint }}</p>
     </fieldset>
 
     <FormField id="repo-description" :label="t('repositories.fields.description')" :error="errors.description" optional>
@@ -439,14 +463,27 @@ defineExpose({ form });
             :label="setting.label"
             :hint="setting.description ?? undefined"
             :data-setting="setting.key"
+            :lang="untranslated(setting) ? SOURCE_LOCALE : undefined"
+            :class="{ 'source-text': untranslated(setting) }"
             @update:model-value="(value) => setSetting(setting, value ? 'true' : 'false')"
           />
-          <FormField v-else :id="settingId(setting)" :label="setting.label" :hint="setting.description ?? undefined" :error="errors[settingId(setting)]" optional>
+          <FormField
+            v-else
+            :id="settingId(setting)"
+            :label="setting.label"
+            :hint="setting.description ?? undefined"
+            :error="errors[settingId(setting)]"
+            :lang="untranslated(setting) ? SOURCE_LOCALE : undefined"
+            :class="{ 'source-text': untranslated(setting) }"
+            optional
+          >
             <template #default="{ id, invalid, describedBy }">
+              <!-- values are URLs, globs, names and numbers: always left-to-right -->
               <input
                 :id="id"
-                class="input"
-                :class="{ 'input--mono ltr': setting.type === 'URL' }"
+                class="input ltr"
+                :class="{ 'input--mono': setting.type !== 'INTEGER' }"
+                dir="ltr"
                 :type="settingInputType(setting)"
                 :inputmode="setting.type === 'INTEGER' ? 'numeric' : setting.type === 'URL' ? 'url' : undefined"
                 :step="setting.type === 'INTEGER' ? 1 : undefined"

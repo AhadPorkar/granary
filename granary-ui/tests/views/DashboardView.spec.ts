@@ -130,7 +130,7 @@ describe('DashboardView blob store compaction', () => {
     await flushPromises();
     expect(wrapper.find('[data-testid="compact-archive"]').text()).toBe('Compact');
     expect(wrapper.find('[data-testid="compact-archive"]').attributes('disabled')).toBeUndefined();
-    expect(wrapper.find('[data-testid="compact-report-archive"]').text()).toBe('0 of 3 blobs deleted, 0 byte reclaimed in 12 ms.');
+    expect(wrapper.find('[data-testid="compact-report-archive"]').text()).toBe('0 of 3 blobs deleted, 0 bytes reclaimed in 12 ms.');
   });
 
   it('reports a refused run with the translated server error', async () => {
@@ -184,5 +184,94 @@ describe('DashboardView blob store compaction', () => {
     const wrapper = await mountView(['system:admin']);
     expect(wrapper.find('[data-testid="compact-default"]').text()).toBe('Bereinigen');
     expect(wrapper.find('[data-testid="compact-default"]').attributes('aria-label')).toBe('Blob-Speicher default bereinigen');
+  });
+});
+
+describe('DashboardView upstream health', () => {
+  function proxy(repository: string, reachable: boolean, offlineMode = false) {
+    return {
+      repository,
+      remoteUrl: `https://example.org/${repository}/`,
+      offlineMode,
+      status: { reachable, consecutiveFailures: reachable ? 0 : 2, lastError: reachable ? null : 'Connection refused' },
+    };
+  }
+
+  /** 30 proxies as created by the standard repositories of every format; three of them failing. */
+  function manyProxies() {
+    return Array.from({ length: 30 }, (_, i) => proxy(`proxy-${String(i).padStart(2, '0')}`, ![4, 17, 29].includes(i), i === 9));
+  }
+
+  beforeEach(() => {
+    list.mockReset();
+    statusCall.mockReset();
+    list.mockResolvedValue([]);
+  });
+
+  function withUpstreams(upstreams: ReturnType<typeof proxy>[], offlineMode = false): SystemStatus {
+    return { ...systemStatus(1, 1), upstreams, offlineMode } as SystemStatus;
+  }
+
+  it('lists failing upstreams first and collapses a long list', async () => {
+    statusCall.mockResolvedValue(withUpstreams(manyProxies()));
+    const wrapper = await mountView(['system:admin']);
+    const items = wrapper.findAll('[data-testid="upstream-list"] > li');
+    expect(items).toHaveLength(8);
+    expect(items.slice(0, 4).map((li) => [li.attributes('data-upstream'), li.attributes('data-state')])).toEqual([
+      ['proxy-04', 'unreachable'],
+      ['proxy-17', 'unreachable'],
+      ['proxy-29', 'unreachable'],
+      ['proxy-09', 'offline'],
+    ]);
+    expect(items[0]!.text()).toContain('Connection refused');
+    expect(wrapper.find('[data-testid="upstream-counts"]').text()).toBe('3 unreachable1 offline26 reachable');
+  });
+
+  it('shows all upstreams on request and fewer again', async () => {
+    statusCall.mockResolvedValue(withUpstreams(manyProxies()));
+    const wrapper = await mountView(['system:admin']);
+    const toggle = wrapper.find('[data-testid="upstreams-toggle"]');
+    expect(toggle.text()).toBe('Show all 30');
+    expect(toggle.attributes('aria-expanded')).toBe('false');
+    expect(toggle.attributes('aria-controls')).toBe('upstream-list');
+
+    await toggle.trigger('click');
+    expect(wrapper.findAll('[data-testid="upstream-list"] > li')).toHaveLength(30);
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').text()).toBe('Show fewer');
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').attributes('aria-expanded')).toBe('true');
+
+    await wrapper.find('[data-testid="upstreams-toggle"]').trigger('click');
+    expect(wrapper.findAll('[data-testid="upstream-list"] > li')).toHaveLength(8);
+  });
+
+  it('never hides an unreachable upstream behind the toggle', async () => {
+    const failing = Array.from({ length: 11 }, (_, i) => proxy(`down-${String(i).padStart(2, '0')}`, false));
+    statusCall.mockResolvedValue(withUpstreams([...failing, proxy('up-1', true), proxy('up-2', true)]));
+    const wrapper = await mountView(['system:admin']);
+    const states = wrapper.findAll('[data-testid="upstream-list"] > li').map((li) => li.attributes('data-state'));
+    expect(states).toEqual(Array(11).fill('unreachable'));
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').text()).toBe('Show all 13');
+  });
+
+  it('needs no toggle for a short list', async () => {
+    statusCall.mockResolvedValue(withUpstreams([proxy('maven-central', true), proxy('npm-proxy', false)]));
+    const wrapper = await mountView(['system:admin']);
+    expect(wrapper.findAll('[data-testid="upstream-list"] > li').map((li) => li.attributes('data-upstream'))).toEqual(['npm-proxy', 'maven-central']);
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').exists()).toBe(false);
+  });
+
+  it('counts every proxy as offline in global offline mode', async () => {
+    statusCall.mockResolvedValue(withUpstreams(manyProxies(), true));
+    const wrapper = await mountView(['system:admin']);
+    expect(wrapper.find('[data-testid="upstream-counts"]').text()).toBe('30 offline');
+    expect(wrapper.findAll('[data-testid="upstream-list"] > li')).toHaveLength(8);
+  });
+
+  it('counts with Persian digits in Persian', async () => {
+    statusCall.mockResolvedValue(withUpstreams(manyProxies()));
+    i18n.global.locale.value = 'fa';
+    const wrapper = await mountView(['system:admin']);
+    expect(wrapper.find('[data-testid="upstream-counts"]').text()).not.toMatch(/[0-9]/);
+    expect(wrapper.find('[data-testid="upstreams-toggle"]').text()).toContain('۳۰');
   });
 });

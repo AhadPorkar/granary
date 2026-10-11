@@ -1,5 +1,5 @@
 import { useLocaleStore } from '@/stores/locale';
-import { formatBytes, formatDate, formatDateTime, formatDuration, formatNumber, formatPercent, formatRelative } from '@/utils/format';
+import { formatBytes, formatDate, formatDateTime, formatDuration, formatList, formatNumber, formatPercent, formatRelative } from '@/utils/format';
 
 /** Formatting helpers bound to the current UI locale. */
 export function useFormatters() {
@@ -12,5 +12,6 @@ export function useFormatters() {
     dateTime: (iso: string | null | undefined) => formatDateTime(iso, locale.intlTag),
     date: (iso: string | null | undefined) => formatDate(iso, locale.intlTag),
     relative: (iso: string | null | undefined) => formatRelative(iso, locale.intlTag),
+    list: (items: readonly string[]) => formatList(items, locale.intlTag),
   };
 }

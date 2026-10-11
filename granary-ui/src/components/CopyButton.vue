@@ -3,8 +3,13 @@ import { onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AppIcon from './AppIcon.vue';
 
-const props = withDefaults(defineProps<{ text: string; label?: string; small?: boolean; showLabel?: boolean }>(), {
+/**
+ * Copies `text`. `label` names the action for assistive technology (and is the tooltip unless `tooltip`
+ * is given, e.g. the value itself); `showLabel` adds a visible "Copy"/"Copied" text next to the icon.
+ */
+const props = withDefaults(defineProps<{ text: string; label?: string; tooltip?: string; small?: boolean; showLabel?: boolean }>(), {
   label: undefined,
+  tooltip: undefined,
   small: true,
   showLabel: false,
 });
@@ -56,7 +61,7 @@ onBeforeUnmount(() => clearTimeout(timer));
     class="btn btn--ghost"
     :class="{ 'btn--sm': small, 'btn--icon': !showLabel }"
     :aria-label="label ?? t('common.copyToClipboard')"
-    :title="label ?? t('common.copyToClipboard')"
+    :title="tooltip ?? label ?? t('common.copyToClipboard')"
     @click="copy"
   >
     <AppIcon :name="copied ? 'check' : 'copy'" :size="16" />

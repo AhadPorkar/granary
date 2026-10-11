@@ -4,6 +4,7 @@ import { nextTick, reactive } from 'vue';
 import RepositoriesView from '@/views/RepositoriesView.vue';
 import type { FormatView, RepositoryView, StandardRepositoriesResult } from '@/api/types';
 import { useAuthStore } from '@/stores/auth';
+import { i18n } from '@/i18n';
 import { mountWithPlugins } from '../helpers';
 
 const list = vi.fn<() => Promise<RepositoryView[]>>();
@@ -66,7 +67,7 @@ const repositories = [
 ];
 
 function headings(wrapper: ReturnType<typeof mountWithPlugins>): string[] {
-  return wrapper.findAll('[data-testid="format-heading"]').map((h) => `${h.find('span > span').text()} ${h.find('.badge').text()}`);
+  return wrapper.findAll('[data-testid="format-heading"]').map((h) => `${h.find('bdi').text()} ${h.find('.badge').text()}`);
 }
 
 function rows(wrapper: ReturnType<typeof mountWithPlugins>): string[] {
@@ -177,8 +178,40 @@ describe('RepositoriesView', () => {
     const wrapper = await mountView();
     const heading = wrapper.find('[data-testid="format-heading"]');
     expect(heading.attributes('scope')).toBe('rowgroup');
-    expect(heading.attributes('colspan')).toBe('8');
+    expect(heading.attributes('colspan')).toBe('6');
+    expect(wrapper.findAll('thead th')).toHaveLength(6);
     expect(wrapper.findAll('tbody')).toHaveLength(3);
+  });
+
+  it('has no format column: the group heading or the format filter already names the format', async () => {
+    const wrapper = await mountView();
+    const columns = wrapper.findAll('thead th').map((th) => th.text());
+    expect(columns).not.toContain('Format');
+    expect(wrapper.find('table').classes()).toContain('table--stack');
+  });
+
+  it('offers the repository URL through a labelled copy button whose tooltip is the URL', async () => {
+    const wrapper = await mountView();
+    const copy = wrapper.find('tr[data-repository="npm-proxy"] button[aria-label="Copy the URL of npm-proxy"]');
+    expect(copy.exists()).toBe(true);
+    expect(copy.attributes('title')).toBe('http://localhost/repository/npm-proxy/');
+    const edit = wrapper.find('tr[data-repository="npm-proxy"] [aria-label="Edit npm-proxy"]');
+    expect(edit.exists()).toBe(true);
+    expect(wrapper.find('tr[data-repository="npm-proxy"] [aria-label="Delete npm-proxy"]').exists()).toBe(true);
+  });
+
+  it('shows translated display names outside English and the server text in English', async () => {
+    formatsCall.mockResolvedValue([...formats, format('go', 'Go modules')]);
+    list.mockResolvedValue([...repositories, repo('go-proxy', 'go', 'PROXY')]);
+    const english = await mountView();
+    expect(headings(english)).toContain('Go modules 1');
+
+    i18n.global.locale.value = 'de';
+    const german = await mountView();
+    expect(headings(german)).toContain('Go-Module 1');
+    expect(german.find('[data-testid="filter-format"]').findAll('option').map((o) => o.text())).toContain('Go-Module');
+    // proper names without a translation stay as the server sends them
+    expect(headings(german)).toContain('Maven 2');
   });
 
   it('falls back to the format id when the server does not list the format', async () => {

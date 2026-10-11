@@ -26,17 +26,17 @@ final class CargoSettings {
         return List.of(
                 SettingDescriptor.bool(AUTH_REQUIRED, "Require a token for downloads", false,
                         "Publishes \"auth-required\": true in config.json so cargo sends its token with every index "
-                                + "and download request; turn it on when anonymous downloads are disabled"),
+                                + "and download request; turn it on when anonymous downloads are disabled."),
                 SettingDescriptor.string(DOWNLOAD_URL, "Upstream download URL", DEFAULT_DOWNLOAD_URL,
                         "Where the upstream keeps .crate files, as the \"dl\" value of its config.json (markers "
                                 + "{crate}, {version}, {prefix}, {lowerprefix} and {sha256-checksum}; without a marker "
-                                + "/{crate}/{version}/download is appended)")
+                                + "/{crate}/{version}/download is appended).")
                         .forTypes(RepositoryType.PROXY),
                 // a string, not a URL: "none" is a valid value, and the UI only accepts http(s) in URL fields
                 SettingDescriptor.string(API_URL, "Upstream web API", DEFAULT_API_URL,
                         "Root of the upstream registry's web API, used to answer cargo search through this proxy, or "
                                 + "\"none\" to search the cached crates only; while it is unreachable the search covers "
-                                + "the cached crates")
+                                + "the cached crates.")
                         .forTypes(RepositoryType.PROXY));
     }
 

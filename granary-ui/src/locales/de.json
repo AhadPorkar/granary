@@ -129,7 +129,14 @@
     "memory": "Arbeitsspeicher",
     "memoryDetail": "{used} von {max}",
     "processors": "Prozessoren",
-    "limited": "Sie sehen die Repositories, die Sie lesen dürfen. Administratoren sehen hier zusätzlich den Systemzustand."
+    "limited": "Sie sehen die Repositories, die Sie lesen dürfen. Administratoren sehen hier zusätzlich den Systemzustand.",
+    "upstreamCounts": {
+      "reachable": "{count} erreichbar",
+      "unreachable": "{count} nicht erreichbar",
+      "offline": "{count} offline"
+    },
+    "upstreamsAll": "Alle {count} anzeigen",
+    "upstreamsFewer": "Weniger anzeigen"
   },
   "repositories": {
     "title": "Repositories",
@@ -210,7 +217,8 @@
       "offlineMode": "Nur zwischengespeicherte Inhalte ausliefern; den Upstream nie kontaktieren.",
       "members": "Geordnete Liste: Das erste Mitglied, das ein Artefakt besitzt, gewinnt.",
       "formatTemplates": "Standard-Repositories dieses Formats: {names}",
-      "formatSettings": "Einstellungen speziell für {format}. Leere Felder verwenden den Standardwert."
+      "formatSettings": "Einstellungen speziell für {format}. Leere Felder verwenden den Standardwert.",
+      "typesRestricted": "{format} unterstützt nur diese Repository-Typen: {types}."
     },
     "sections": {
       "general": "Allgemein",
@@ -237,7 +245,10 @@
       "invalidate": "Cache verwerfen",
       "delete": "Löschen",
       "edit": "Bearbeiten",
-      "copyUrl": "URL kopieren"
+      "copyUrl": "URL kopieren",
+      "copyUrlOf": "URL von {name} kopieren",
+      "editName": "{name} bearbeiten",
+      "deleteName": "{name} löschen"
     },
     "confirmDelete": "Repository „{name}“ löschen? Alle enthaltenen Artefakte werden entfernt. Dies kann nicht rückgängig gemacht werden.",
     "toasts": {
@@ -278,6 +289,7 @@
       "path": "Pfad",
       "size": "Größe",
       "sha256": "SHA-256",
+      "copySha256": "SHA-256 von {path} kopieren",
       "downloads": "Downloads",
       "origin": "Herkunft",
       "contentType": "Inhaltstyp",
@@ -311,12 +323,13 @@
   },
   "connect": {
     "title": "Werkzeuge verbinden",
-    "intro": "Mit den folgenden Snippets richten Sie Ihren Paketmanager auf dieses Repository aus. Ersetzen Sie die Platzhalter durch Ihren Benutzernamen und ein API-Token von Ihrer Kontoseite.",
+    "intro": "Mit den folgenden Snippets richten Sie Ihren Paketmanager auf dieses Repository aus. Ihr Benutzername ist bereits eingesetzt; ersetzen Sie <api-token> durch ein API-Token von Ihrer Kontoseite.",
     "tokenLink": "API-Token erstellen",
     "anonymousHint": "Solange anonymer Zugriff aktiviert ist, sind Zugangsdaten zum Herunterladen optional; zum Veröffentlichen sind sie immer erforderlich.",
     "empty": "Für dieses Format gibt es noch keine Snippets.",
     "emptyHint": "Verwenden Sie die Repository-URL oben in der Konfiguration Ihres Clients.",
-    "language": "Sprache: {language}"
+    "language": "Sprache: {language}",
+    "copySnippet": "„{name}“ kopieren"
   },
   "search": {
     "title": "Suche",
@@ -365,7 +378,10 @@
     "you": "Sie",
     "actions": {
       "enable": "Aktivieren",
-      "disable": "Deaktivieren"
+      "disable": "Deaktivieren",
+      "editName": "{name} bearbeiten",
+      "setPasswordName": "Passwort von {name} festlegen",
+      "deleteName": "{name} löschen"
     },
     "confirmDelete": "Benutzer „{name}“ löschen? Seine API-Tokens funktionieren sofort nicht mehr.",
     "toasts": {
@@ -450,7 +466,7 @@
     "passwordChanged": "Ihr Passwort wurde geändert.",
     "tokens": {
       "title": "API-Tokens",
-      "intro": "Tokens authentifizieren Paketmanager und CI-Jobs, ohne Ihr Passwort preiszugeben. Verwenden Sie eines als Passwort für Maven und NuGet oder als _authToken für npm.",
+      "intro": "Tokens authentifizieren Paketmanager und CI-Jobs, ohne Ihr Passwort preiszugeben. Verwenden Sie eines überall dort, wo ein Client nach einem Passwort oder API-Schlüssel fragt; der Reiter „Verbinden“ jedes Repositorys zeigt, wo es hingehört.",
       "new": "Neues Token",
       "create": "Token erstellen",
       "name": "Name",
@@ -468,7 +484,8 @@
       "expired": "Abgelaufen",
       "secretTitle": "Ihr neues Token",
       "secretHint": "Kopieren Sie es jetzt. Aus Sicherheitsgründen wird es nur einmal angezeigt und kann später nicht wiederhergestellt werden.",
-      "done": "Ich habe das Token kopiert"
+      "done": "Ich habe das Token kopiert",
+      "revokeName": "Token {name} widerrufen"
     }
   },
   "settings": {
@@ -617,5 +634,161 @@
   "forbidden": {
     "title": "Zugriff verweigert",
     "text": "Sie haben nicht die nötigen Berechtigungen, um diese Seite anzuzeigen."
+  },
+  "formatText": {
+    "formats": {
+      "cdn": "Browser-CDN-Dateien (cdnjs, jsDelivr, unpkg)",
+      "elm": "Elm-Pakete",
+      "go": "Go-Module",
+      "helm": "Helm-Charts",
+      "raw": "Raw (beliebige Dateien)",
+      "swift": "Swift-Paket-Registry"
+    },
+    "settings": {
+      "cargo": {
+        "apiUrl": {
+          "label": "Upstream-Web-API",
+          "description": "Basisadresse der Web-API der Upstream-Registry, mit der dieser Proxy cargo search beantwortet, oder „none“, um nur die zwischengespeicherten Crates zu durchsuchen; solange sie nicht erreichbar ist, durchsucht die Suche die zwischengespeicherten Crates."
+        },
+        "authRequired": {
+          "label": "Token für Downloads verlangen",
+          "description": "Veröffentlicht \"auth-required\": true in config.json, damit cargo sein Token bei jeder Index- und Download-Anfrage mitsendet; aktivieren Sie dies, wenn anonyme Downloads deaktiviert sind."
+        },
+        "downloadUrl": {
+          "label": "Upstream-Download-URL",
+          "description": "Wo der Upstream die .crate-Dateien ablegt, als \"dl\"-Wert seiner config.json (Platzhalter {'{'}crate{'}'}, {'{'}version{'}'}, {'{'}prefix{'}'}, {'{'}lowerprefix{'}'} und {'{'}sha256-checksum{'}'}; ohne Platzhalter wird /{'{'}crate{'}'}/{'{'}version{'}'}/download angehängt)."
+        }
+      },
+      "cocoapods": {
+        "rewriteHttpSources": {
+          "label": "HTTP-Quellarchive zwischenspeichern",
+          "description": "Lässt source.http der weitergereichten Podspecs auf dieses Repository zeigen, sodass zip- und tar-Quellen darüber heruntergeladen und zwischengespeichert werden; git-Quellen bleiben unverändert."
+        }
+      },
+      "composer": {
+        "distRewrite": {
+          "label": "dist-Archive ausliefern",
+          "description": "Lässt jede dist-URL in den weitergereichten Metadaten auf dieses Repository zeigen, sodass Archive über Granary heruntergeladen und zwischengespeichert werden; ist dies aus, laden Clients sie direkt von GitHub und anderen Anbietern."
+        }
+      },
+      "conan": {
+        "tokenTtlHours": {
+          "label": "Gültigkeit der Anmelde-Token (Stunden)",
+          "description": "Wie lange die von „conan remote login“ ausgestellten API-Token gültig bleiben; 0 bedeutet, dass sie nie ablaufen."
+        },
+        "upstreamAuth": {
+          "label": "Upstream-Authentifizierung",
+          "description": "Bei entferntem Benutzernamen und Passwort: „token“ tauscht sie einmalig unter v2/users/authenticate gegen ein Bearer-Token (conan_server, Artifactory), „basic“ sendet sie bei jeder Anfrage mit."
+        }
+      },
+      "docker": {
+        "challengeAnonymous": {
+          "label": "Anonyme Pings herausfordern",
+          "description": "Beantwortet anonyme GET /v2/ mit 401 und einer Basic-Challenge. Docker sendet die Zugangsdaten von „docker login“ erst nach einer solchen Challenge; schalten Sie dies aus, damit nicht angemeldete Clients bei aktiviertem anonymem Lesezugriff Images ziehen können."
+        },
+        "libraryPrefix": {
+          "label": "Docker-Hub-Präfix library",
+          "description": "Fordert einteilige Namen wie „alpine“ beim Upstream als „library/alpine“ an. Standardmäßig an für Docker Hub und aus für andere Registries."
+        },
+        "rootRepository": {
+          "label": "Registry-Wurzel",
+          "description": "Stellt dieses Repository unter /v2/ des Servers bereit, sodass Images kein Repository-Präfix brauchen (host:port/<image>). Ist kein Repository markiert, ist die erste Docker-Gruppe die Wurzel."
+        }
+      },
+      "go": {
+        "sumdbName": {
+          "label": "Name der Prüfsummendatenbank",
+          "description": "Die Datenbank (der Name in GOSUMDB), deren sumdb/<name>/…-Anfragen weitergereicht werden; jede andere Datenbank kontaktiert der go-Befehl direkt."
+        },
+        "sumdbUrl": {
+          "label": "URL der Prüfsummendatenbank",
+          "description": "Wohin diese Anfragen weitergeleitet werden, z. B. an einen Spiegel wie https://sum.golang.google.cn; standardmäßig https://<Name der Prüfsummendatenbank>."
+        }
+      },
+      "helm": {
+        "maxChartSizeMb": {
+          "label": "Maximale Chart-Größe (MiB)",
+          "description": "Größtes Chart-Archiv bzw. größte Provenance-Datei, die beim Hochladen angenommen wird; 0 hebt die Grenze auf."
+        },
+        "relativeUrls": {
+          "label": "Relative Chart-URLs",
+          "description": "Führt Chart-Downloads in index.yaml als charts/<file> relativ zur Repository-URL statt als absolute URLs auf, für Server, die unter mehreren Hostnamen erreichbar sind."
+        }
+      },
+      "hex": {
+        "repositoryName": {
+          "label": "Name des Hex-Repositorys",
+          "description": "Der Name, den Clients diesem Repository geben (mix hex.repo add NAME, repo: \"NAME\", rebar3-repos-Name); die signierten Registry-Dokumente enthalten ihn und Clients lehnen Abweichungen ab. Standardmäßig der Name des Granary-Repositorys."
+        },
+        "revertWindowMinutes": {
+          "label": "Rücknahmefrist (Minuten)",
+          "description": "Wie lange nach dem Veröffentlichen ein Release noch mit mix hex.publish --revert zurückgenommen werden kann; 0 erlaubt es jederzeit. Administratoren dürfen immer zurücknehmen."
+        },
+        "verifyUpstreamSignatures": {
+          "label": "Upstream-Signaturen prüfen",
+          "description": "Prüft die Signatur jedes Registry-Dokuments, das ein Proxy-Mitglied liefert, mit dem public_key dieses Proxys, bevor die Gruppe es zusammenführt und neu signiert."
+        }
+      },
+      "pub": {
+        "advisories": {
+          "label": "Sicherheitshinweise",
+          "description": "Reicht die Sicherheitshinweise des Upstreams an dart pub weiter. Ist dies aus, fehlt advisoriesUpdated in den Paketlisten und Clients fragen nie nach Hinweisen."
+        },
+        "maxArchiveSizeMb": {
+          "label": "Maximale Archivgröße (MiB)",
+          "description": "Größtes Paketarchiv, das dart pub publish hochladen darf; pub.dev erlaubt 100 MiB."
+        }
+      },
+      "pypi": {
+        "filesUrl": {
+          "label": "Datei-Host",
+          "description": "Basis-URL des Hosts, auf den der Upstream-Index für Dateien verlinkt; eine zwischengespeicherte Datei unter packages/… wird beim ersten Abruf von <Datei-Host>/packages/… geholt."
+        }
+      },
+      "raw": {
+        "contentDisposition": {
+          "label": "Content-Disposition",
+          "description": "„inline“ lässt Browser Dateien anzeigen, „attachment“ lädt sie mit ihrem Dateinamen herunter."
+        },
+        "listingEnabled": {
+          "label": "Verzeichnislisten",
+          "description": "Beantwortet Pfade, die auf einen Schrägstrich enden, mit einer Indexseite (HTML oder JSON bei Accept: application/json)."
+        },
+        "metadataPatterns": {
+          "label": "Pfadmuster für Metadaten",
+          "description": "Kommagetrennte Globs (* innerhalb eines Segments, ** über Segmente hinweg) für Pfade, die veränderliche Indexdokumente sind: Sie werden nach dem Metadaten-Höchstalter beim Upstream erneut geprüft, statt für immer zwischengespeichert zu werden."
+        }
+      },
+      "rubygems": {
+        "maxGemSizeMb": {
+          "label": "Maximale Gem-Größe (MiB)",
+          "description": "Größte .gem-Datei, die gem push in dieses Repository hochladen darf."
+        },
+        "signin": {
+          "label": "gem signin erlauben",
+          "description": "Lässt gem signin einen an dieses Repository gesendeten Benutzernamen und ein Passwort gegen ein neues API-Token tauschen."
+        }
+      },
+      "swift": {
+        "maxArchiveSizeMb": {
+          "label": "Maximale Größe des Quellarchivs (MiB)",
+          "description": "Größtes Quellarchiv, das swift package-registry publish hochladen darf; leer bedeutet keine Grenze."
+        },
+        "requireSignature": {
+          "label": "Signierte Releases verlangen",
+          "description": "Lehnt Releases ab, die ohne Signatur des Quellarchivs veröffentlicht werden (swift package-registry publish --signing-identity oder --private-key-path mit --cert-chain-paths)."
+        }
+      },
+      "terraform": {
+        "providerProtocols": {
+          "label": "Provider-Protokollversionen",
+          "description": "Kommagetrennte Provider-Protokollversionen, die für gehostete Provider angekündigt werden, z. B. 5.0,6.0."
+        },
+        "rootRepository": {
+          "label": "/.well-known/terraform.json ausliefern",
+          "description": "Beantwortet das serverweite Service-Discovery-Dokument aus diesem Repository, sodass der Granary-Hostname in Provider- und Moduladressen funktioniert. Ein Repository pro Server, meist die Gruppe."
+        }
+      }
+    }
   }
 }

@@ -129,7 +129,14 @@
     "memory": "Bellek",
     "memoryDetail": "{used} / {max}",
     "processors": "İşlemciler",
-    "limited": "Okuma izniniz olan depoları görüyorsunuz. Yöneticiler burada ayrıca sistem durumunu görür."
+    "limited": "Okuma izniniz olan depoları görüyorsunuz. Yöneticiler burada ayrıca sistem durumunu görür.",
+    "upstreamCounts": {
+      "reachable": "{count} erişilebilir",
+      "unreachable": "{count} erişilemiyor",
+      "offline": "{count} çevrimdışı"
+    },
+    "upstreamsAll": "{count} kaydın tümünü göster",
+    "upstreamsFewer": "Daha az göster"
   },
   "repositories": {
     "title": "Depolar",
@@ -210,7 +217,8 @@
       "offlineMode": "Yalnızca önbellekteki içeriği sun; uzak kaynağa asla bağlanma.",
       "members": "Sıralı liste: yapıta sahip olan ilk üye kazanır.",
       "formatTemplates": "Bu biçimin standart depoları: {names}",
-      "formatSettings": "{format} biçimine özgü ayarlar. Varsayılanı kullanmak için alanı boş bırakın."
+      "formatSettings": "{format} biçimine özgü ayarlar. Varsayılanı kullanmak için alanı boş bırakın.",
+      "typesRestricted": "{format} yalnızca şu depo türlerini destekler: {types}."
     },
     "sections": {
       "general": "Genel",
@@ -237,7 +245,10 @@
       "invalidate": "Önbelleği geçersiz kıl",
       "delete": "Sil",
       "edit": "Düzenle",
-      "copyUrl": "URL’yi kopyala"
+      "copyUrl": "URL’yi kopyala",
+      "copyUrlOf": "{name} URL’sini kopyala",
+      "editName": "{name} deposunu düzenle",
+      "deleteName": "{name} deposunu sil"
     },
     "confirmDelete": "“{name}” deposu silinsin mi? Tüm yapıtları kaldırılır. Bu işlem geri alınamaz.",
     "toasts": {
@@ -278,6 +289,7 @@
       "path": "Yol",
       "size": "Boyut",
       "sha256": "SHA-256",
+      "copySha256": "{path} için SHA-256 değerini kopyala",
       "downloads": "İndirmeler",
       "origin": "Kaynak",
       "contentType": "İçerik türü",
@@ -311,12 +323,13 @@
   },
   "connect": {
     "title": "Araçlarınızı bağlayın",
-    "intro": "Paket yöneticinizi bu depoya yönlendirmek için aşağıdaki parçacıkları kullanın. Yer tutucuları kullanıcı adınız ve hesap sayfanızdan oluşturduğunuz bir API jetonuyla değiştirin.",
+    "intro": "Paket yöneticinizi bu depoya yönlendirmek için aşağıdaki parçacıkları kullanın. Kullanıcı adınız zaten yazılı; <api-token> yerine hesap sayfanızdan aldığınız bir API jetonunu yazın.",
     "tokenLink": "API jetonu oluştur",
     "anonymousHint": "Anonim erişim etkinken indirme için kimlik bilgileri isteğe bağlıdır; yayımlama için her zaman gereklidir.",
     "empty": "Bu biçim için henüz hazır parçacık yok.",
     "emptyHint": "İstemcinizin yapılandırmasında yukarıdaki depo URL’sini kullanın.",
-    "language": "Dil: {language}"
+    "language": "Dil: {language}",
+    "copySnippet": "“{name}” kopyala"
   },
   "search": {
     "title": "Arama",
@@ -365,7 +378,10 @@
     "you": "siz",
     "actions": {
       "enable": "Etkinleştir",
-      "disable": "Devre dışı bırak"
+      "disable": "Devre dışı bırak",
+      "editName": "{name} kullanıcısını düzenle",
+      "setPasswordName": "{name} kullanıcısının parolasını belirle",
+      "deleteName": "{name} kullanıcısını sil"
     },
     "confirmDelete": "“{name}” kullanıcısı silinsin mi? API jetonları hemen çalışmayı durdurur.",
     "toasts": {
@@ -450,7 +466,7 @@
     "passwordChanged": "Parolanız değiştirildi.",
     "tokens": {
       "title": "API jetonları",
-      "intro": "Jetonlar, parolanızı açığa çıkarmadan paket yöneticilerinin ve CI işlerinin kimliğini doğrular. Maven ve NuGet için parola olarak, npm için _authToken olarak kullanın.",
+      "intro": "Jetonlar, parolanızı açığa çıkarmadan paket yöneticilerinin ve CI işlerinin kimliğini doğrular. Bir istemcinin parola ya da API anahtarı istediği her yerde birini kullanın; her deponun Bağlan sekmesi nereye yazılacağını gösterir.",
       "new": "Yeni jeton",
       "create": "Jeton oluştur",
       "name": "Ad",
@@ -468,7 +484,8 @@
       "expired": "Süresi doldu",
       "secretTitle": "Yeni jetonunuz",
       "secretHint": "Şimdi kopyalayın. Güvenlik nedeniyle yalnızca bir kez gösterilir ve sonradan kurtarılamaz.",
-      "done": "Jetonu kopyaladım"
+      "done": "Jetonu kopyaladım",
+      "revokeName": "{name} jetonunu iptal et"
     }
   },
   "settings": {
@@ -617,5 +634,161 @@
   "forbidden": {
     "title": "Erişim reddedildi",
     "text": "Bu sayfayı görüntülemek için gerekli ayrıcalıklara sahip değilsiniz."
+  },
+  "formatText": {
+    "formats": {
+      "cdn": "Tarayıcı CDN dosyaları (cdnjs, jsDelivr, unpkg)",
+      "elm": "Elm paketleri",
+      "go": "Go modülleri",
+      "helm": "Helm chart’ları",
+      "raw": "Raw (genel dosyalar)",
+      "swift": "Swift paket kayıt defteri"
+    },
+    "settings": {
+      "cargo": {
+        "apiUrl": {
+          "label": "Uzak web API’si",
+          "description": "Bu vekil üzerinden cargo search sorgularını yanıtlamak için kullanılan uzak kayıt defteri web API’sinin kökü; yalnızca önbellekteki crate’lerde aramak için \"none\". Erişilemediği sürece arama önbellekteki crate’leri kapsar."
+        },
+        "authRequired": {
+          "label": "İndirmeler için jeton iste",
+          "description": "config.json içinde \"auth-required\": true yayımlar; böylece cargo her dizin ve indirme isteğinde jetonunu gönderir. Anonim indirmeler kapalıyken açın."
+        },
+        "downloadUrl": {
+          "label": "Uzak indirme URL’si",
+          "description": "Uzak kaynağın .crate dosyalarını tuttuğu yer, config.json içindeki \"dl\" değeri olarak ({'{'}crate{'}'}, {'{'}version{'}'}, {'{'}prefix{'}'}, {'{'}lowerprefix{'}'} ve {'{'}sha256-checksum{'}'} işaretleri; işaret yoksa sonuna /{'{'}crate{'}'}/{'{'}version{'}'}/download eklenir)."
+        }
+      },
+      "cocoapods": {
+        "rewriteHttpSources": {
+          "label": "HTTP kaynak arşivlerini önbelleğe al",
+          "description": "Vekil üzerinden gelen podspec’lerin source.http alanını bu depoya yönlendirir; böylece zip ve tar kaynakları bu depo üzerinden indirilip önbelleğe alınır. git kaynakları hiçbir zaman değiştirilmez."
+        }
+      },
+      "composer": {
+        "distRewrite": {
+          "label": "dist arşivlerini sun",
+          "description": "Vekil üzerinden gelen meta verideki her dist URL’sini bu depoya yönlendirir; böylece arşivler Granary üzerinden indirilip önbelleğe alınır. Kapalıyken istemciler onları doğrudan GitHub ve diğer kaynaklardan indirir."
+        }
+      },
+      "conan": {
+        "tokenTtlHours": {
+          "label": "Oturum jetonu ömrü (saat)",
+          "description": "\"conan remote login\" ile verilen API jetonlarının ne kadar süre geçerli kalacağı; 0, hiç sona ermeyecekleri anlamına gelir."
+        },
+        "upstreamAuth": {
+          "label": "Uzak kimlik doğrulama",
+          "description": "Uzak kullanıcı adı ve parola ile: \"token\" bunları v2/users/authenticate adresinde bir kez Bearer jetonuyla değiştirir (conan_server, Artifactory), \"basic\" her istekte gönderir."
+        }
+      },
+      "docker": {
+        "challengeAnonymous": {
+          "label": "Anonim ping’lere kimlik sor",
+          "description": "Anonim GET /v2/ isteklerini 401 ve bir Basic kimlik doğrulama isteğiyle yanıtlar. Docker, \"docker login\" kimlik bilgilerini ancak böyle bir istekten sonra gönderir; anonim okuma açıkken kimliği doğrulanmamış istemcilerin pull yapabilmesi için kapatın."
+        },
+        "libraryPrefix": {
+          "label": "Docker Hub library öneki",
+          "description": "\"alpine\" gibi tek parçalı adları uzak kaynaktan \"library/alpine\" olarak ister. Docker Hub için varsayılan olarak açık, diğer kayıt defterleri için kapalıdır."
+        },
+        "rootRepository": {
+          "label": "Kayıt defteri kökü",
+          "description": "Bu depoyu sunucunun /v2/ adresinde sunar; böylece imajlar depo öneki gerektirmez (host:port/<image>). İşaretli bir depo yoksa ilk docker grubu köktür."
+        }
+      },
+      "go": {
+        "sumdbName": {
+          "label": "Sağlama toplamı veritabanı adı",
+          "description": "sumdb/<name>/… istekleri iletilen veritabanı (GOSUMDB içindeki ad); go komutu diğer veritabanlarına doğrudan bağlanır."
+        },
+        "sumdbUrl": {
+          "label": "Sağlama toplamı veritabanı URL’si",
+          "description": "Bu isteklerin iletildiği yer, örneğin https://sum.golang.google.cn gibi bir yansı; varsayılan olarak https://<veritabanı adı>."
+        }
+      },
+      "helm": {
+        "maxChartSizeMb": {
+          "label": "En büyük chart boyutu (MiB)",
+          "description": "Yüklemelerde kabul edilen en büyük chart arşivi veya provenance dosyası; 0 sınırı kaldırır."
+        },
+        "relativeUrls": {
+          "label": "Göreli chart URL’leri",
+          "description": "index.yaml içindeki chart indirmelerini mutlak URL’ler yerine depo URL’sine göreli charts/<file> olarak listeler; birden çok ana makine adıyla erişilen sunucular içindir."
+        }
+      },
+      "hex": {
+        "repositoryName": {
+          "label": "Hex depo adı",
+          "description": "İstemcilerin bu depoya verdiği ad (mix hex.repo add NAME, repo: \"NAME\", rebar3 repos adı); imzalı kayıt defteri belgeleri bu adı taşır ve istemciler uyuşmazlığı reddeder. Varsayılan olarak Granary depo adıdır."
+        },
+        "revertWindowMinutes": {
+          "label": "Geri alma süresi (dakika)",
+          "description": "Bir sürümün yayımlandıktan sonra mix hex.publish --revert ile ne kadar süre geri alınabileceği; 0 her zaman geri almaya izin verir. Yöneticiler her zaman geri alabilir."
+        },
+        "verifyUpstreamSignatures": {
+          "label": "Uzak imzaları doğrula",
+          "description": "Bir grup bir vekil üyenin döndürdüğü her kayıt defteri belgesini birleştirip yeniden imzalamadan önce, imzasını o vekilin public_key değeriyle denetler."
+        }
+      },
+      "pub": {
+        "advisories": {
+          "label": "Güvenlik bildirimleri",
+          "description": "Uzak kaynağın güvenlik bildirimlerini dart pub’a iletir. Kapalıyken paket listelerinde advisoriesUpdated yer almaz ve istemciler hiçbir zaman bildirim istemez."
+        },
+        "maxArchiveSizeMb": {
+          "label": "En büyük arşiv boyutu (MiB)",
+          "description": "dart pub publish komutunun yükleyebileceği en büyük paket arşivi; pub.dev 100 MiB’a izin verir."
+        }
+      },
+      "pypi": {
+        "filesUrl": {
+          "label": "Dosya sunucusu",
+          "description": "Uzak dizinin dosyalar için bağlantı verdiği sunucunun temel URL’si; packages/… altındaki bir dosya ilk istendiğinde <dosya sunucusu>/packages/… adresinden alınır ve önbelleğe konur."
+        }
+      },
+      "raw": {
+        "contentDisposition": {
+          "label": "İçerik yerleşimi (Content-Disposition)",
+          "description": "\"inline\" tarayıcıların dosyaları göstermesini sağlar, \"attachment\" dosyaların kendi adlarıyla indirilmesini sağlar."
+        },
+        "listingEnabled": {
+          "label": "Dizin listeleri",
+          "description": "Eğik çizgiyle biten yolları bir dizin sayfasıyla yanıtlar (HTML ya da Accept: application/json için JSON)."
+        },
+        "metadataPatterns": {
+          "label": "Meta veri yol kalıpları",
+          "description": "Değişebilen dizin belgesi olan yolların virgülle ayrılmış glob kalıpları (* bir parça içinde, ** parçalar boyunca): sonsuza dek önbellekte tutulmak yerine meta veri azami yaşından sonra uzak kaynakta yeniden denetlenir."
+        }
+      },
+      "rubygems": {
+        "maxGemSizeMb": {
+          "label": "En büyük gem boyutu (MiB)",
+          "description": "gem push komutunun bu depoya yükleyebileceği en büyük .gem dosyası."
+        },
+        "signin": {
+          "label": "gem signin’e izin ver",
+          "description": "gem signin’in bu depoya gönderilen kullanıcı adı ve parolayı yeni bir API jetonuyla değiştirmesine izin verir."
+        }
+      },
+      "swift": {
+        "maxArchiveSizeMb": {
+          "label": "En büyük kaynak arşivi boyutu (MiB)",
+          "description": "swift package-registry publish komutunun yükleyebileceği en büyük kaynak arşivi; boş bırakılırsa sınır yoktur."
+        },
+        "requireSignature": {
+          "label": "İmzalı sürümler iste",
+          "description": "Kaynak arşiv imzası olmadan yayımlanan sürümleri reddeder (swift package-registry publish --signing-identity ya da --cert-chain-paths ile --private-key-path)."
+        }
+      },
+      "terraform": {
+        "providerProtocols": {
+          "label": "Sağlayıcı protokol sürümleri",
+          "description": "Barındırılan sağlayıcılar için duyurulan, virgülle ayrılmış sağlayıcı protokol sürümleri; örneğin 5.0,6.0."
+        },
+        "rootRepository": {
+          "label": "/.well-known/terraform.json sun",
+          "description": "Sunucu genelindeki hizmet keşif belgesini bu depodan yanıtlar; böylece Granary ana makine adı sağlayıcı ve modül adreslerinde çalışır. Sunucu başına bir depo, genellikle grup."
+        }
+      }
+    }
   }
 }

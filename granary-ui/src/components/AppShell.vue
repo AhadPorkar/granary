@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { SETTINGS_MANAGE, USERS_MANAGE, useAuthStore } from '@/stores/auth';
@@ -49,6 +49,16 @@ watch(
     menuOpen.value = false;
   },
 );
+
+/** Escape closes the slide-in menu on narrow screens, like any other overlay. */
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && menuOpen.value) {
+    menuOpen.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 void system.loadInfo();
 </script>

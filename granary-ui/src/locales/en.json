@@ -129,7 +129,14 @@
     "memory": "Memory",
     "memoryDetail": "{used} of {max}",
     "processors": "Processors",
-    "limited": "You see the repositories you may read. Administrators also see system health here."
+    "limited": "You see the repositories you may read. Administrators also see system health here.",
+    "upstreamCounts": {
+      "reachable": "{count} reachable",
+      "unreachable": "{count} unreachable",
+      "offline": "{count} offline"
+    },
+    "upstreamsAll": "Show all {count}",
+    "upstreamsFewer": "Show fewer"
   },
   "repositories": {
     "title": "Repositories",
@@ -210,7 +217,8 @@
       "offlineMode": "Serve cached content only; never contact the upstream.",
       "members": "Ordered list: the first member that has an artifact wins.",
       "formatTemplates": "Standard repositories of this format: {names}",
-      "formatSettings": "Settings specific to {format}. Leave a field blank to use the default."
+      "formatSettings": "Settings specific to {format}. Leave a field blank to use the default.",
+      "typesRestricted": "{format} supports only these repository types: {types}."
     },
     "sections": {
       "general": "General",
@@ -237,7 +245,10 @@
       "invalidate": "Invalidate cache",
       "delete": "Delete",
       "edit": "Edit",
-      "copyUrl": "Copy URL"
+      "copyUrl": "Copy URL",
+      "copyUrlOf": "Copy the URL of {name}",
+      "editName": "Edit {name}",
+      "deleteName": "Delete {name}"
     },
     "confirmDelete": "Delete the repository “{name}”? All of its artifacts are removed. This cannot be undone.",
     "toasts": {
@@ -278,6 +289,7 @@
       "path": "Path",
       "size": "Size",
       "sha256": "SHA-256",
+      "copySha256": "Copy the SHA-256 of {path}",
       "downloads": "Downloads",
       "origin": "Origin",
       "contentType": "Content type",
@@ -311,12 +323,13 @@
   },
   "connect": {
     "title": "Connect your tools",
-    "intro": "Use the snippets below to point your package manager at this repository. Replace the placeholders with your username and an API token from your account page.",
+    "intro": "Use the snippets below to point your package manager at this repository. Your username is already filled in; replace <api-token> with an API token from your account page.",
     "tokenLink": "Create an API token",
     "anonymousHint": "Credentials are optional for downloads while anonymous access is enabled; they are always required for publishing.",
     "empty": "This format has no ready-made snippets yet.",
     "emptyHint": "Use the repository URL above in your client's configuration.",
-    "language": "Language: {language}"
+    "language": "Language: {language}",
+    "copySnippet": "Copy “{name}”"
   },
   "search": {
     "title": "Search",
@@ -365,7 +378,10 @@
     "you": "you",
     "actions": {
       "enable": "Enable",
-      "disable": "Disable"
+      "disable": "Disable",
+      "editName": "Edit {name}",
+      "setPasswordName": "Set the password of {name}",
+      "deleteName": "Delete {name}"
     },
     "confirmDelete": "Delete the user “{name}”? Their API tokens stop working immediately.",
     "toasts": {
@@ -450,7 +466,7 @@
     "passwordChanged": "Your password has been changed.",
     "tokens": {
       "title": "API tokens",
-      "intro": "Tokens authenticate package managers and CI jobs without exposing your password. Use one as the password for Maven and NuGet, or as the _authToken for npm.",
+      "intro": "Tokens authenticate package managers and CI jobs without exposing your password. Use one wherever a client asks for a password or an API key; the Connect tab of each repository shows where it goes.",
       "new": "New token",
       "create": "Create token",
       "name": "Name",
@@ -468,7 +484,8 @@
       "expired": "Expired",
       "secretTitle": "Your new token",
       "secretHint": "Copy it now. For security reasons it is shown only once and cannot be recovered later.",
-      "done": "I have copied the token"
+      "done": "I have copied the token",
+      "revokeName": "Revoke the token {name}"
     }
   },
   "settings": {
@@ -617,5 +634,161 @@
   "forbidden": {
     "title": "Access denied",
     "text": "You do not have the privileges to view this page."
+  },
+  "formatText": {
+    "formats": {
+      "cdn": "Browser CDN assets (cdnjs, jsDelivr, unpkg)",
+      "elm": "Elm packages",
+      "go": "Go modules",
+      "helm": "Helm charts",
+      "raw": "Raw (generic files)",
+      "swift": "Swift package registry"
+    },
+    "settings": {
+      "cargo": {
+        "apiUrl": {
+          "label": "Upstream web API",
+          "description": "Root of the upstream registry's web API, used to answer cargo search through this proxy, or \"none\" to search the cached crates only; while it is unreachable the search covers the cached crates."
+        },
+        "authRequired": {
+          "label": "Require a token for downloads",
+          "description": "Publishes \"auth-required\": true in config.json so cargo sends its token with every index and download request; turn it on when anonymous downloads are disabled."
+        },
+        "downloadUrl": {
+          "label": "Upstream download URL",
+          "description": "Where the upstream keeps .crate files, as the \"dl\" value of its config.json (markers {'{'}crate{'}'}, {'{'}version{'}'}, {'{'}prefix{'}'}, {'{'}lowerprefix{'}'} and {'{'}sha256-checksum{'}'}; without a marker /{'{'}crate{'}'}/{'{'}version{'}'}/download is appended)."
+        }
+      },
+      "cocoapods": {
+        "rewriteHttpSources": {
+          "label": "Cache http source archives",
+          "description": "Point source.http of proxied podspecs at this repository, so zip and tar sources are downloaded through it and cached; git sources are never changed."
+        }
+      },
+      "composer": {
+        "distRewrite": {
+          "label": "Serve dist archives",
+          "description": "Point every dist URL in the proxied metadata at this repository, so archives are downloaded through Granary and cached; when off, clients download them from GitHub and others directly."
+        }
+      },
+      "conan": {
+        "tokenTtlHours": {
+          "label": "Login token lifetime (hours)",
+          "description": "How long the API tokens issued by 'conan remote login' stay valid; 0 means they never expire."
+        },
+        "upstreamAuth": {
+          "label": "Upstream authentication",
+          "description": "With a remote username and password: 'token' exchanges them once for a bearer token at v2/users/authenticate (conan_server, Artifactory), 'basic' sends them with every request."
+        }
+      },
+      "docker": {
+        "challengeAnonymous": {
+          "label": "Challenge anonymous pings",
+          "description": "Answer anonymous GET /v2/ with 401 and a Basic challenge. Docker only sends the credentials of 'docker login' after such a challenge; turn it off to let unauthenticated clients pull when anonymous read is enabled."
+        },
+        "libraryPrefix": {
+          "label": "Docker Hub library prefix",
+          "description": "Request single-segment names such as 'alpine' upstream as 'library/alpine'. Defaults to on for Docker Hub and off for other registries."
+        },
+        "rootRepository": {
+          "label": "Registry root",
+          "description": "Serve this repository at /v2/ of the server so images need no repository prefix (host:port/<image>). Without a flagged repository the first docker group is the root."
+        }
+      },
+      "go": {
+        "sumdbName": {
+          "label": "Checksum database name",
+          "description": "The database (the name in GOSUMDB) whose sumdb/<name>/… requests are passed through; the go command contacts any other database directly."
+        },
+        "sumdbUrl": {
+          "label": "Checksum database URL",
+          "description": "Where those requests are forwarded to, e.g. a mirror such as https://sum.golang.google.cn; by default https://<checksum database name>."
+        }
+      },
+      "helm": {
+        "maxChartSizeMb": {
+          "label": "Maximum chart size (MiB)",
+          "description": "Largest chart archive or provenance file accepted by uploads; 0 disables the limit."
+        },
+        "relativeUrls": {
+          "label": "Relative chart URLs",
+          "description": "List chart downloads in index.yaml as charts/<file> relative to the repository URL instead of absolute URLs, for servers reached under several host names."
+        }
+      },
+      "hex": {
+        "repositoryName": {
+          "label": "Hex repository name",
+          "description": "The name clients give this repository (mix hex.repo add NAME, repo: \"NAME\", rebar3 repos name); the signed registry documents carry it and clients refuse a mismatch. Defaults to the Granary repository name."
+        },
+        "revertWindowMinutes": {
+          "label": "Revert window (minutes)",
+          "description": "How long after publishing a release may still be reverted with mix hex.publish --revert; 0 allows reverting at any time. Administrators may always revert."
+        },
+        "verifyUpstreamSignatures": {
+          "label": "Verify upstream signatures",
+          "description": "Check the signature of every registry document a proxy member returns, with that proxy's public_key, before a group merges and re-signs it."
+        }
+      },
+      "pub": {
+        "advisories": {
+          "label": "Security advisories",
+          "description": "Pass the upstream's security advisories through to dart pub. When off, package listings omit advisoriesUpdated and clients never ask for advisories."
+        },
+        "maxArchiveSizeMb": {
+          "label": "Maximum archive size (MiB)",
+          "description": "Largest package archive dart pub publish may upload; pub.dev allows 100 MiB."
+        }
+      },
+      "pypi": {
+        "filesUrl": {
+          "label": "Files host",
+          "description": "Base URL of the host the upstream index links files from; a cached file under packages/… is fetched from <files host>/packages/… when it is first requested."
+        }
+      },
+      "raw": {
+        "contentDisposition": {
+          "label": "Content disposition",
+          "description": "'inline' lets browsers display files, 'attachment' makes them download with the file name."
+        },
+        "listingEnabled": {
+          "label": "Directory listings",
+          "description": "Answer paths ending with a slash with an index page (HTML, or JSON for Accept: application/json)."
+        },
+        "metadataPatterns": {
+          "label": "Metadata path patterns",
+          "description": "Comma-separated globs (* within a segment, ** across segments) of paths that are mutable index documents: re-validated upstream after the metadata max age instead of cached forever."
+        }
+      },
+      "rubygems": {
+        "maxGemSizeMb": {
+          "label": "Maximum gem size (MiB)",
+          "description": "Largest .gem file gem push may upload to this repository."
+        },
+        "signin": {
+          "label": "Allow gem signin",
+          "description": "Let gem signin exchange a username and password sent to this repository for a new API token."
+        }
+      },
+      "swift": {
+        "maxArchiveSizeMb": {
+          "label": "Maximum source archive size (MiB)",
+          "description": "Largest source archive swift package-registry publish may upload; empty means no limit."
+        },
+        "requireSignature": {
+          "label": "Require signed releases",
+          "description": "Refuse releases published without a source archive signature (swift package-registry publish --signing-identity or --private-key-path with --cert-chain-paths)."
+        }
+      },
+      "terraform": {
+        "providerProtocols": {
+          "label": "Provider protocol versions",
+          "description": "Comma-separated provider protocol versions announced for hosted providers, e.g. 5.0,6.0."
+        },
+        "rootRepository": {
+          "label": "Serve /.well-known/terraform.json",
+          "description": "Answer the server-wide service discovery document from this repository, so the Granary host name works in provider and module addresses. One repository per server, usually the group."
+        }
+      }
+    }
   }
 }

@@ -112,7 +112,7 @@ function replaceUser(updated: UserView): void {
 function validatePassword(): boolean {
   const found: Record<string, string> = {};
   if (form.password.length < MIN_PASSWORD) {
-    found.password = t('validation.minLength', { min: MIN_PASSWORD });
+    found.password = t('validation.minLength', { min: fmt.number(MIN_PASSWORD) });
   }
   localErrors.value = found;
   return !Object.keys(found).length;
@@ -132,7 +132,7 @@ async function submitDialog(): Promise<void> {
         found.username = t('validation.required');
       }
       if (form.password.length < MIN_PASSWORD) {
-        found.password = t('validation.minLength', { min: MIN_PASSWORD });
+        found.password = t('validation.minLength', { min: fmt.number(MIN_PASSWORD) });
       }
       localErrors.value = found;
       if (Object.keys(found).length) {
@@ -224,7 +224,7 @@ onMounted(load);
     <div v-else class="card">
       <EmptyState v-if="!users.length" :title="t('users.empty')" />
       <div v-else class="table-wrap">
-        <table class="table">
+        <table class="table table--stack">
           <thead>
             <tr>
               <th scope="col">{{ t('users.columns.username') }}</th>
@@ -243,8 +243,8 @@ onMounted(load);
                 <span v-if="user.username === auth.username" class="faint small"> ({{ t('users.you') }})</span>
                 <StatusBadge v-if="user.builtin" plain style="margin-inline-start: 0.4rem">{{ t('users.builtin') }}</StatusBadge>
               </td>
-              <td>{{ user.displayName || '—' }}</td>
-              <td><span class="ltr">{{ user.email || '—' }}</span></td>
+              <td :class="{ 'table__cell--stack-hidden': !user.displayName }"><bdi>{{ user.displayName || '—' }}</bdi></td>
+              <td :class="{ 'table__cell--stack-hidden': !user.email }"><span class="ltr">{{ user.email || '—' }}</span></td>
               <td>
                 <span class="cluster">
                   <StatusBadge v-for="role in user.roles" :key="role" plain variant="info">{{ role }}</StatusBadge>
@@ -254,13 +254,13 @@ onMounted(load);
               <td>
                 <StatusBadge :variant="user.enabled ? 'success' : 'danger'">{{ user.enabled ? t('common.enabled') : t('common.disabled') }}</StatusBadge>
               </td>
-              <td class="nowrap muted small">{{ fmt.date(user.createdAt) }}</td>
+              <td class="nowrap muted small" :data-label="t('users.columns.created')">{{ fmt.date(user.createdAt) }}</td>
               <td class="actions">
                 <span class="cluster">
-                  <button type="button" class="btn btn--ghost btn--icon btn--sm" :aria-label="t('common.edit')" :title="t('common.edit')" @click="openEdit(user)">
+                  <button type="button" class="btn btn--ghost btn--icon btn--sm" :aria-label="t('users.actions.editName', { name: user.username })" :title="t('common.edit')" @click="openEdit(user)">
                     <AppIcon name="edit" :size="15" />
                   </button>
-                  <button type="button" class="btn btn--ghost btn--icon btn--sm" :aria-label="t('users.setPassword')" :title="t('users.setPassword')" @click="openPassword(user)">
+                  <button type="button" class="btn btn--ghost btn--icon btn--sm" :aria-label="t('users.actions.setPasswordName', { name: user.username })" :title="t('users.setPassword')" @click="openPassword(user)">
                     <AppIcon name="key" :size="15" />
                   </button>
                   <button
@@ -272,7 +272,7 @@ onMounted(load);
                   >
                     {{ user.enabled ? t('users.actions.disable') : t('users.actions.enable') }}
                   </button>
-                  <button v-if="user.username !== auth.username && !user.builtin" type="button" class="btn btn--danger-ghost btn--icon btn--sm" :aria-label="t('common.delete')" :title="t('common.delete')" @click="pendingDelete = user">
+                  <button v-if="user.username !== auth.username && !user.builtin" type="button" class="btn btn--danger-ghost btn--icon btn--sm" :aria-label="t('users.actions.deleteName', { name: user.username })" :title="t('common.delete')" @click="pendingDelete = user">
                     <AppIcon name="trash" :size="15" />
                   </button>
                 </span>
@@ -293,7 +293,7 @@ onMounted(load);
               <input :id="id" v-model="form.username" class="input" type="text" autocomplete="off" autocapitalize="none" required maxlength="100" :aria-invalid="invalid" :aria-describedby="describedBy" />
             </template>
           </FormField>
-          <FormField v-if="dialog.kind === 'create'" id="user-password" :label="t('users.fields.password')" :hint="t('users.hints.password', { min: MIN_PASSWORD })" :error="fieldErrors.password" required>
+          <FormField v-if="dialog.kind === 'create'" id="user-password" :label="t('users.fields.password')" :hint="t('users.hints.password', { min: fmt.number(MIN_PASSWORD) })" :error="fieldErrors.password" required>
             <template #default="{ id, invalid, describedBy }">
               <input :id="id" v-model="form.password" class="input" type="password" autocomplete="new-password" required :minlength="MIN_PASSWORD" :aria-invalid="invalid" :aria-describedby="describedBy" />
             </template>
@@ -333,7 +333,7 @@ onMounted(load);
           />
         </template>
 
-        <FormField v-else-if="dialog?.kind === 'password'" id="user-new-password" :label="t('users.fields.password')" :hint="t('users.hints.password', { min: MIN_PASSWORD })" :error="fieldErrors.password" required>
+        <FormField v-else-if="dialog?.kind === 'password'" id="user-new-password" :label="t('users.fields.password')" :hint="t('users.hints.password', { min: fmt.number(MIN_PASSWORD) })" :error="fieldErrors.password" required>
           <template #default="{ id, invalid, describedBy }">
             <input :id="id" v-model="form.password" class="input" type="password" autocomplete="new-password" required :minlength="MIN_PASSWORD" :aria-invalid="invalid" :aria-describedby="describedBy" />
           </template>

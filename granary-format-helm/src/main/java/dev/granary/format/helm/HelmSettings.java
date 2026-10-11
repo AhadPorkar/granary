@@ -25,9 +25,9 @@ final class HelmSettings {
         return List.of(
                 SettingDescriptor.bool(RELATIVE_URLS, "Relative chart URLs", false,
                         "List chart downloads in index.yaml as charts/<file> relative to the repository URL instead of "
-                                + "absolute URLs, for servers reached under several host names"),
+                                + "absolute URLs, for servers reached under several host names."),
                 SettingDescriptor.integer(MAX_CHART_SIZE_MB, "Maximum chart size (MiB)", DEFAULT_MAX_CHART_SIZE_MB,
-                        "Largest chart archive or provenance file accepted by uploads; 0 disables the limit")
+                        "Largest chart archive or provenance file accepted by uploads; 0 disables the limit.")
                         .forTypes(RepositoryType.HOSTED));
     }
 

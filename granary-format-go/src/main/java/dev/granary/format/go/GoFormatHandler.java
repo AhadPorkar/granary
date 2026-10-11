@@ -83,11 +83,11 @@ public class GoFormatHandler implements FormatHandler {
         return List.of(
                 SettingDescriptor.string(GoModules.SUMDB_NAME, "Checksum database name", GoModules.DEFAULT_SUMDB_NAME,
                         "The database (the name in GOSUMDB) whose sumdb/<name>/… requests are passed through; "
-                                + "the go command contacts any other database directly")
+                                + "the go command contacts any other database directly.")
                         .forTypes(RepositoryType.PROXY),
                 SettingDescriptor.url(GoModules.SUMDB_URL, "Checksum database URL", GoModules.DEFAULT_SUMDB,
                         "Where those requests are forwarded to, e.g. a mirror such as https://sum.golang.google.cn; "
-                                + "by default https://<checksum database name>")
+                                + "by default https://<checksum database name>.")
                         .forTypes(RepositoryType.PROXY));
     }
 

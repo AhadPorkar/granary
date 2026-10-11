@@ -7,6 +7,7 @@ import type { FormatView, RepositoryView, StandardRepositoriesResult } from '@/a
 import { REPOSITORIES_MANAGE, useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { useApiError } from '@/composables/useApiError';
+import { useLocalizedFormats } from '@/composables/useLocalizedFormats';
 import { useFormatters } from '@/composables/useFormatters';
 import { filterRepositories, formatDisplayName, formatOptions, groupByFormat } from '@/utils/repositories';
 import AppIcon from '@/components/AppIcon.vue';
@@ -29,7 +30,9 @@ const fmt = useFormatters();
 const loading = ref(true);
 const error = ref<unknown>(null);
 const repositories = ref<RepositoryView[]>([]);
-const formats = ref<FormatView[]>([]);
+/** As the server sends them; `formats` has the display names in the UI language. */
+const rawFormats = ref<FormatView[]>([]);
+const formats = useLocalizedFormats(rawFormats);
 const busy = ref<string | null>(null);
 const pendingDelete = ref<RepositoryView | null>(null);
 const deleting = ref(false);
@@ -75,7 +78,7 @@ async function load(): Promise<void> {
   try {
     const [repos, fmts] = await Promise.all([api.repositories.list(), api.formats()]);
     repositories.value = repos;
-    formats.value = fmts;
+    rawFormats.value = fmts;
   } catch (e) {
     error.value = e;
   } finally {
@@ -135,7 +138,7 @@ async function createStandard(): Promise<void> {
     standardResult.value = result;
     toast.success(
       result.created.length
-        ? t('repositories.toasts.standardCreated', { count: result.created.length })
+        ? t('repositories.toasts.standardCreated', { count: fmt.number(result.created.length) })
         : t('repositories.toasts.standardNone'),
     );
     await load();
@@ -145,6 +148,9 @@ async function createStandard(): Promise<void> {
     creatingStandard.value = false;
   }
 }
+
+/** Name, type, online, upstream, size, actions. */
+const COLUMNS = 6;
 
 function typeVariant(type: RepositoryView['type']): 'info' | 'warning' | 'neutral' {
   return type === 'HOSTED' ? 'info' : type === 'PROXY' ? 'warning' : 'neutral';
@@ -231,24 +237,23 @@ onMounted(load);
         </EmptyState>
 
         <div v-else class="table-wrap">
-          <table class="table">
+          <!-- The format is the group heading (or the active filter), so it has no column of its own. -->
+          <table class="table table--stack">
             <thead>
               <tr>
                 <th scope="col">{{ t('repositories.columns.name') }}</th>
-                <th scope="col">{{ t('repositories.columns.format') }}</th>
                 <th scope="col">{{ t('repositories.columns.type') }}</th>
                 <th scope="col">{{ t('repositories.columns.online') }}</th>
                 <th scope="col">{{ t('repositories.columns.upstream') }}</th>
                 <th scope="col">{{ t('repositories.columns.size') }}</th>
-                <th scope="col">{{ t('repositories.columns.url') }}</th>
                 <th scope="col" class="actions"><span class="visually-hidden">{{ t('common.actions') }}</span></th>
               </tr>
             </thead>
             <tbody v-for="group in groups" :key="group.format" :data-format-group="group.format">
               <tr v-if="grouped" class="table__group">
-                <th scope="rowgroup" colspan="8" data-testid="format-heading">
+                <th scope="rowgroup" :colspan="COLUMNS" data-testid="format-heading">
                   <span class="cluster" style="gap: 0.5rem">
-                    <span>{{ group.displayName }}</span>
+                    <bdi>{{ group.displayName }}</bdi>
                     <span class="badge badge--plain" :aria-label="t('common.totalCount', { count: fmt.number(group.repositories.length) })">{{ fmt.number(group.repositories.length) }}</span>
                   </span>
                 </th>
@@ -256,14 +261,13 @@ onMounted(load);
               <tr v-for="repo in group.repositories" :key="repo.id" :data-repository="repo.name">
                 <td>
                   <RouterLink :to="{ name: 'repository', params: { name: repo.name } }"><strong>{{ repo.name }}</strong></RouterLink>
-                  <div v-if="repo.description" class="small muted truncate" style="max-width: 20rem">{{ repo.description }}</div>
+                  <div v-if="repo.description" class="small muted truncate repo-description text-auto" dir="auto" :title="repo.description">{{ repo.description }}</div>
                 </td>
-                <td>{{ group.displayName }}</td>
                 <td><StatusBadge :variant="typeVariant(repo.type)" plain>{{ t(`repositories.types.${repo.type}`) }}</StatusBadge></td>
                 <td>
                   <StatusBadge :variant="repo.online ? 'success' : 'danger'">{{ repo.online ? t('common.online') : t('common.offline') }}</StatusBadge>
                 </td>
-                <td>
+                <td :class="{ 'table__cell--stack-hidden': repo.type !== 'PROXY' }">
                   <template v-if="repo.type === 'PROXY'">
                     <StatusBadge v-if="repo.offlineMode" variant="warning">{{ t('repositories.upstream.offline') }}</StatusBadge>
                     <StatusBadge v-else-if="repo.upstream?.reachable !== false" variant="success">{{ t('repositories.upstream.reachable') }}</StatusBadge>
@@ -271,21 +275,16 @@ onMounted(load);
                   </template>
                   <span v-else class="faint">{{ t('repositories.upstream.notProxy') }}</span>
                 </td>
-                <td class="nowrap">
+                <td class="nowrap repo-size">
                   <div class="num">{{ fmt.bytes(repo.statistics?.bytes ?? 0) }}</div>
                   <div class="small muted">{{ t('repositories.stats', { components: fmt.number(repo.statistics?.components ?? 0), assets: fmt.number(repo.statistics?.assets ?? 0) }) }}</div>
-                </td>
-                <td>
-                  <span class="cluster" style="flex-wrap: nowrap">
-                    <code class="ltr truncate" style="max-width: 18rem" :title="repo.url">{{ repo.url }}</code>
-                    <CopyButton :text="repo.url" :label="t('repositories.actions.copyUrl')" />
-                  </span>
                 </td>
                 <td class="actions">
                   <span class="cluster">
                     <RouterLink class="btn btn--ghost btn--sm" :to="{ name: 'repository', params: { name: repo.name } }">{{ t('repositories.actions.browse') }}</RouterLink>
+                    <CopyButton :text="repo.url" :label="t('repositories.actions.copyUrlOf', { name: repo.name })" :tooltip="repo.url" />
                     <template v-if="canManage">
-                      <RouterLink class="btn btn--ghost btn--icon btn--sm" :to="{ name: 'repository-edit', params: { name: repo.name } }" :aria-label="t('repositories.actions.edit')" :title="t('repositories.actions.edit')">
+                      <RouterLink class="btn btn--ghost btn--icon btn--sm" :to="{ name: 'repository-edit', params: { name: repo.name } }" :aria-label="t('repositories.actions.editName', { name: repo.name })" :title="t('repositories.actions.edit')">
                         <AppIcon name="edit" :size="15" />
                       </RouterLink>
                       <template v-if="repo.type === 'PROXY'">
@@ -296,7 +295,7 @@ onMounted(load);
                           <AppIcon name="refresh" :size="15" />
                         </button>
                       </template>
-                      <button type="button" class="btn btn--danger-ghost btn--icon btn--sm" :aria-label="t('repositories.actions.delete')" :title="t('repositories.actions.delete')" @click="pendingDelete = repo">
+                      <button type="button" class="btn btn--danger-ghost btn--icon btn--sm" :aria-label="t('repositories.actions.deleteName', { name: repo.name })" :title="t('repositories.actions.delete')" @click="pendingDelete = repo">
                         <AppIcon name="trash" :size="15" />
                       </button>
                     </template>
@@ -344,6 +343,10 @@ onMounted(load);
   margin-inline-start: auto;
 }
 
+.repo-description {
+  max-width: 22rem;
+}
+
 .table__group th {
   background: var(--surface-2);
   font-size: 0.85rem;
@@ -354,5 +357,24 @@ onMounted(load);
   color: var(--text-muted);
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
+}
+
+@media (max-width: 40rem) {
+  .repo-description {
+    max-width: none;
+  }
+
+  /* one line under the badges: "12 kB · 4 components · 4 assets" */
+  .repo-size {
+    white-space: normal;
+  }
+
+  .repo-size > div {
+    display: inline;
+  }
+
+  .repo-size > div + div::before {
+    content: ' · ';
+  }
 }
 </style>

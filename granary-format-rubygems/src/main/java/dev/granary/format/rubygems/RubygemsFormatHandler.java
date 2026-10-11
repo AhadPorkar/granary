@@ -101,9 +101,9 @@ public class RubygemsFormatHandler implements FormatHandler {
     public List<SettingDescriptor> settings() {
         return List.of(
                 SettingDescriptor.bool(SIGNIN_SETTING, "Allow gem signin", true,
-                        "Let gem signin exchange a username and password sent to this repository for a new API token"),
-                SettingDescriptor.integer(MAX_GEM_SIZE_SETTING, "Largest gem (MiB)", DEFAULT_MAX_GEM_SIZE_MB,
-                                "The largest .gem file gem push may upload to this repository")
+                        "Let gem signin exchange a username and password sent to this repository for a new API token."),
+                SettingDescriptor.integer(MAX_GEM_SIZE_SETTING, "Maximum gem size (MiB)", DEFAULT_MAX_GEM_SIZE_MB,
+                                "Largest .gem file gem push may upload to this repository.")
                         .forTypes(RepositoryType.HOSTED));
     }
 

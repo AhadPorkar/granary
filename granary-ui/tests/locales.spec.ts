@@ -46,3 +46,23 @@ describe('locale files', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('Persian messages', () => {
+  const LRI = '⁦';
+  const PDI = '⁩';
+
+  it('isolate left-to-right paths, commands and quoted values so their punctuation stays in place', () => {
+    const offenders = Object.entries(flatten(messages.fa))
+      .map(([key, value]) => [key, value.replace(new RegExp(`${LRI}[^${PDI}]*${PDI}`, 'g'), '').replace(/\{[A-Za-z0-9_]+\}/g, '')] as const)
+      .filter(([, rest]) => /[؀-ۿ]/.test(rest))
+      .filter(([, rest]) => /[A-Za-z0-9][/:][A-Za-z<]|<[^<>\s]+>|"[A-Za-z][^"]*"|\{'\{'\}|(^|\s)[.-]{1,2}[A-Za-z]/.test(rest))
+      .map(([key]) => key);
+    expect(offenders).toEqual([]);
+  });
+
+  it('balances every isolate it opens', () => {
+    for (const [key, value] of Object.entries(flatten(messages.fa))) {
+      expect(value.split(LRI).length, key).toBe(value.split(PDI).length);
+    }
+  });
+});

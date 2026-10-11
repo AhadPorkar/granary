@@ -14,6 +14,17 @@ export function formatNumber(value: number | null | undefined, locale: string): 
   }
 }
 
+/**
+ * Base languages written right to left. Their short byte units are Latin ("kB"), and a Latin unit next to
+ * the locale's own digits forms a left-to-right run that the bidi algorithm reorders inside a sentence
+ * ("kB ۰۴ ۱۲ مؤلفه"), so these locales get the spelled-out unit ("۱۲ کیلوبایت").
+ */
+const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
+
+function spellsOutUnits(locale: string): boolean {
+  return RTL_LANGUAGES.has(locale.toLowerCase().split('-')[0]);
+}
+
 export function formatBytes(bytes: number | null | undefined, locale: string): string {
   if (bytes === null || bytes === undefined || Number.isNaN(bytes)) {
     return '';
@@ -29,7 +40,8 @@ export function formatBytes(bytes: number | null | undefined, locale: string): s
     return new Intl.NumberFormat(locale, {
       style: 'unit',
       unit: BYTE_UNITS[index],
-      unitDisplay: 'short',
+      // plain bytes are spelled out: the short form reads "0 byte" in English
+      unitDisplay: index === 0 || spellsOutUnits(locale) ? 'long' : 'short',
       maximumFractionDigits: digits,
     }).format(value);
   } catch {
@@ -159,4 +171,18 @@ export function fromDateTimeLocal(value: string): string | null {
   }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/** "Hosted and Proxy" / "Hosted, Proxy und Group": a list joined the way the locale joins lists. */
+export function formatList(items: readonly string[], locale: string): string {
+  try {
+    return new Intl.ListFormat(locale, { type: 'conjunction' }).format(items);
+  } catch {
+    return items.join(', ');
+  }
+}
+
+/** Splits a path after each "/" so a template can offer a line break there (paths have no spaces). */
+export function pathSegments(path: string): string[] {
+  return path.match(/[^/]*\/|[^/]+$/g) ?? [path];
 }

@@ -8,8 +8,10 @@ import { REPOSITORIES_MANAGE, useAuthStore } from '@/stores/auth';
 import { useSystemStore } from '@/stores/system';
 import { useToastStore } from '@/stores/toast';
 import { useApiError } from '@/composables/useApiError';
+import { useLocalizedFormats } from '@/composables/useLocalizedFormats';
 import { useFormatters } from '@/composables/useFormatters';
-import { formatDisplayName } from '@/utils/repositories';
+import { anyNamespace, formatDisplayName } from '@/utils/repositories';
+import { pathSegments } from '@/utils/format';
 import AppIcon from '@/components/AppIcon.vue';
 import AssetTable from '@/components/AssetTable.vue';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -36,7 +38,8 @@ const router = useRouter();
 const PAGE_SIZE = 25;
 
 const repository = ref<RepositoryView | null>(null);
-const formats = ref<FormatView[]>([]);
+const rawFormats = ref<FormatView[]>([]);
+const formats = useLocalizedFormats(rawFormats);
 const loading = ref(true);
 const error = ref<unknown>(null);
 const busy = ref(false);
@@ -69,11 +72,14 @@ const formatSettings = computed(() =>
     label: format.value?.settings.find((s) => s.key === key)?.label ?? null,
   })),
 );
+/** Formats without namespaces (raw, PyPI, Cargo, ...) would show a column of dashes. */
+const showNamespace = computed(() => anyNamespace(components.value));
+const columnCount = computed(() => 4 + (showNamespace.value ? 1 : 0) + (canManage.value ? 1 : 0));
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 async function loadFormats(): Promise<void> {
   try {
-    formats.value = await api.formats();
+    rawFormats.value = await api.formats();
   } catch {
     /* the id is shown instead of the display name */
   }
@@ -267,7 +273,8 @@ onMounted(() => {
     <ErrorAlert v-else-if="error" :error="error" />
 
     <template v-else-if="repository">
-      <PageHeader :title="repository.name" :subtitle="repository.description ?? undefined">
+      <PageHeader :title="repository.name">
+        <template v-if="repository.description" #subtitle><bdi>{{ repository.description }}</bdi></template>
         <template v-if="canManage">
           <button v-if="repository.type === 'PROXY'" type="button" class="btn" :disabled="busy" @click="toggleOffline">
             <AppIcon :name="repository.offlineMode ? 'cloud' : 'cloudOff'" :size="16" />
@@ -291,7 +298,7 @@ onMounted(() => {
       <div class="card" style="margin-bottom: 1.25rem">
         <div class="card__body">
           <div class="cluster" style="margin-bottom: 0.75rem">
-            <StatusBadge plain :title="repository.format" data-testid="format-name">{{ formatName }}</StatusBadge>
+            <StatusBadge plain :title="repository.format" data-testid="format-name"><bdi>{{ formatName }}</bdi></StatusBadge>
             <StatusBadge plain variant="info">{{ t(`repositories.types.${repository.type}`) }}</StatusBadge>
             <StatusBadge :variant="repository.online ? 'success' : 'danger'">{{ repository.online ? t('common.online') : t('common.offline') }}</StatusBadge>
             <template v-if="repository.type === 'PROXY'">
@@ -314,7 +321,7 @@ onMounted(() => {
             </template>
             <template v-if="repository.upstream && !repository.upstream.reachable && repository.upstream.lastError">
               <dt>{{ t('dashboard.lastError') }}</dt>
-              <dd style="color: var(--danger)">{{ repository.upstream.lastError }}</dd>
+              <dd style="color: var(--danger)"><bdi>{{ repository.upstream.lastError }}</bdi></dd>
             </template>
             <template v-if="repository.type === 'GROUP'">
               <dt>{{ t('repository.info.members') }}</dt>
@@ -325,7 +332,7 @@ onMounted(() => {
             <dt>{{ t('repository.info.size') }}</dt>
             <dd>{{ fmt.bytes(repository.statistics?.bytes ?? 0) }} · {{ t('repositories.stats', { components: fmt.number(repository.statistics?.components ?? 0), assets: fmt.number(repository.statistics?.assets ?? 0) }) }}</dd>
             <dt>{{ t('repository.info.format') }}</dt>
-            <dd>{{ formatName }} <code v-if="formatName !== repository.format" class="small muted ltr">{{ repository.format }}</code></dd>
+            <dd><bdi>{{ formatName }}</bdi> <code v-if="formatName !== repository.format" class="small muted ltr">{{ repository.format }}</code></dd>
             <template v-if="formatSettings.length">
               <dt>{{ t('repository.info.formatSettings') }}</dt>
               <dd>
@@ -334,7 +341,7 @@ onMounted(() => {
                     <code class="ltr" :title="setting.label ?? undefined">{{ setting.key }}</code>
                     <span aria-hidden="true">: </span>
                     <code class="ltr">{{ setting.value }}</code>
-                    <span v-if="setting.label" class="muted small"> ({{ setting.label }})</span>
+                    <span v-if="setting.label" class="muted small"> (<bdi>{{ setting.label }}</bdi>)</span>
                   </li>
                 </ul>
               </dd>
@@ -376,10 +383,10 @@ onMounted(() => {
             <thead>
               <tr>
                 <th scope="col" style="width: 2.5rem"><span class="visually-hidden">{{ t('common.details') }}</span></th>
-                <th scope="col">{{ t('repository.columns.namespace') }}</th>
+                <th v-if="showNamespace" scope="col" class="col-wide">{{ t('repository.columns.namespace') }}</th>
                 <th scope="col">{{ t('repository.columns.name') }}</th>
-                <th scope="col">{{ t('repository.columns.version') }}</th>
-                <th scope="col">{{ t('repository.columns.updated') }}</th>
+                <th scope="col" class="col-wide">{{ t('repository.columns.version') }}</th>
+                <th scope="col" class="col-wide">{{ t('repository.columns.updated') }}</th>
                 <th v-if="canManage" scope="col" class="actions"><span class="visually-hidden">{{ t('common.actions') }}</span></th>
               </tr>
             </thead>
@@ -391,10 +398,15 @@ onMounted(() => {
                       <AppIcon :name="expanded.has(component.id) ? 'chevronDown' : 'chevronRight'" :size="16" class="flip-rtl" />
                     </button>
                   </td>
-                  <td><code v-if="component.namespace" class="ltr">{{ component.namespace }}</code><span v-else class="faint">—</span></td>
-                  <td><strong class="ltr">{{ component.name }}</strong></td>
-                  <td><code class="ltr">{{ component.version }}</code></td>
-                  <td class="nowrap muted small">{{ fmt.dateTime(component.updatedAt) }}</td>
+                  <td v-if="showNamespace" class="component-cell col-wide"><code v-if="component.namespace" class="ltr">{{ component.namespace }}</code><span v-else class="faint">—</span></td>
+                  <td class="component-cell">
+                    <!-- on a phone the namespace and version columns are folded into this cell -->
+                    <div v-if="showNamespace && component.namespace" class="narrow-only small muted"><code class="ltr">{{ component.namespace }}</code></div>
+                    <strong class="ltr"><template v-for="(segment, i) in pathSegments(component.name)" :key="i"><wbr v-if="i" />{{ segment }}</template></strong>
+                    <div class="narrow-only small" data-testid="component-version-inline"><span class="visually-hidden">{{ t('repository.columns.version') }}: </span><code class="ltr">{{ component.version }}</code></div>
+                  </td>
+                  <td class="component-cell col-wide"><code class="ltr">{{ component.version }}</code></td>
+                  <td class="nowrap muted small col-wide">{{ fmt.dateTime(component.updatedAt) }}</td>
                   <td v-if="canManage" class="actions">
                     <button type="button" class="btn btn--danger-ghost btn--icon btn--sm" :aria-label="t('repository.deleteComponent')" :title="t('repository.deleteComponent')" @click="pendingDelete = { kind: 'component', component }">
                       <AppIcon name="trash" :size="15" />
@@ -402,7 +414,7 @@ onMounted(() => {
                   </td>
                 </tr>
                 <tr v-if="expanded.has(component.id)" class="table__sub">
-                  <td :colspan="canManage ? 6 : 5">
+                  <td :colspan="columnCount">
                     <AssetTable :assets="assetsByComponent.get(component.id) ?? []" :loading="assetsLoading.has(component.id)" :can-delete="canManage" @delete="(asset) => (pendingDelete = { kind: 'asset', asset, component })" />
                   </td>
                 </tr>
@@ -434,6 +446,31 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.component-cell {
+  min-width: 8rem;
+  overflow-wrap: break-word;
+}
+
+/* versions of raw-like formats are file names: long and without spaces */
+.component-cell code {
+  overflow-wrap: anywhere;
+}
+
+.narrow-only {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .col-wide {
+    display: none;
+  }
+
+  .narrow-only {
+    display: block;
+    margin-block: 0.15rem;
+  }
+}
+
 .setting-list {
   list-style: none;
   margin: 0;

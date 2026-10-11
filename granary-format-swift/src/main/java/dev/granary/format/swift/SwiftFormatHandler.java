@@ -117,8 +117,8 @@ public class SwiftFormatHandler implements FormatHandler {
                                 "Refuse releases published without a source archive signature (swift package-registry publish "
                                         + "--signing-identity or --private-key-path with --cert-chain-paths).")
                         .forTypes(RepositoryType.HOSTED),
-                SettingDescriptor.integer(SETTING_MAX_ARCHIVE_MB, "Largest source archive (MB)", null,
-                                "Refuse source archives larger than this many megabytes; empty means no limit.")
+                SettingDescriptor.integer(SETTING_MAX_ARCHIVE_MB, "Maximum source archive size (MiB)", null,
+                                "Largest source archive swift package-registry publish may upload; empty means no limit.")
                         .forTypes(RepositoryType.HOSTED));
     }
 

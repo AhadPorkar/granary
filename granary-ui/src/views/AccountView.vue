@@ -41,7 +41,7 @@ async function changePassword(): Promise<void> {
     found.currentPassword = t('validation.required');
   }
   if (password.next.length < MIN_PASSWORD) {
-    found.newPassword = t('validation.minLength', { min: MIN_PASSWORD });
+    found.newPassword = t('validation.minLength', { min: fmt.number(MIN_PASSWORD) });
   }
   if (password.next !== password.confirm) {
     found.confirmPassword = t('validation.passwordMismatch');
@@ -182,7 +182,7 @@ onMounted(loadTokens);
               <input :id="id" v-model="password.current" class="input" type="password" autocomplete="current-password" required :aria-invalid="invalid" :aria-describedby="describedBy" />
             </template>
           </FormField>
-          <FormField id="pw-new" :label="t('account.newPassword')" :hint="t('users.hints.password', { min: MIN_PASSWORD })" :error="passwordFields.newPassword ?? passwordFields.password" required>
+          <FormField id="pw-new" :label="t('account.newPassword')" :hint="t('users.hints.password', { min: fmt.number(MIN_PASSWORD) })" :error="passwordFields.newPassword ?? passwordFields.password" required>
             <template #default="{ id, invalid, describedBy }">
               <input :id="id" v-model="password.next" class="input" type="password" autocomplete="new-password" required :minlength="MIN_PASSWORD" :aria-invalid="invalid" :aria-describedby="describedBy" />
             </template>
@@ -217,7 +217,7 @@ onMounted(loadTokens);
       <LoadingIndicator v-if="tokensLoading" />
       <EmptyState v-else-if="!tokens.length" :title="t('account.tokens.empty')" />
       <div v-else class="table-wrap">
-        <table class="table">
+        <table class="table table--stack">
           <thead>
             <tr>
               <th scope="col">{{ t('account.tokens.name') }}</th>
@@ -232,15 +232,15 @@ onMounted(loadTokens);
             <tr v-for="token in tokens" :key="token.id">
               <td><strong>{{ token.name }}</strong></td>
               <td><code class="ltr">{{ token.prefix }}…</code></td>
-              <td class="nowrap muted small">{{ fmt.dateTime(token.createdAt) }}</td>
-              <td class="nowrap small">
+              <td class="nowrap muted small" :data-label="t('account.tokens.created')">{{ fmt.dateTime(token.createdAt) }}</td>
+              <td class="nowrap small" :data-label="t('account.tokens.expiresAt')">
                 <StatusBadge v-if="isExpired(token)" variant="danger">{{ t('account.tokens.expired') }}</StatusBadge>
                 <span v-else-if="token.expiresAt">{{ fmt.dateTime(token.expiresAt) }}</span>
                 <span v-else class="muted">{{ t('account.tokens.neverExpires') }}</span>
               </td>
-              <td class="nowrap muted small">{{ token.lastUsedAt ? fmt.relative(token.lastUsedAt) : t('common.never') }}</td>
+              <td class="nowrap muted small" :data-label="t('account.tokens.lastUsed')">{{ token.lastUsedAt ? fmt.relative(token.lastUsedAt) : t('common.never') }}</td>
               <td class="actions">
-                <button type="button" class="btn btn--danger-ghost btn--sm" @click="pendingRevoke = token">
+                <button type="button" class="btn btn--danger-ghost btn--sm" :aria-label="t('account.tokens.revokeName', { name: token.name })" @click="pendingRevoke = token">
                   <AppIcon name="trash" :size="15" />
                   {{ t('account.tokens.revoke') }}
                 </button>

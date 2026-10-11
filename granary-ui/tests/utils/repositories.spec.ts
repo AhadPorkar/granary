@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { FormatView, RepositoryView } from '@/api/types';
-import { countByFormat, filterRepositories, formatDisplayName, formatOptions, groupByFormat, matchesQuery } from '@/utils/repositories';
+import type { ComponentView, FormatView, RepositoryView } from '@/api/types';
+import { anyNamespace, countByFormat, filterRepositories, formatDisplayName, formatOptions, groupByFormat, matchesQuery } from '@/utils/repositories';
 
 function repo(name: string, format: string, description: string | null = null): RepositoryView {
   return {
@@ -121,5 +121,30 @@ describe('formatOptions', () => {
       { id: 'pypi', displayName: 'PyPI' },
     ]);
     expect(formatOptions([], [])).toEqual([]);
+  });
+});
+
+describe('anyNamespace', () => {
+  function component(name: string, namespace: string | null): ComponentView {
+    return {
+      id: name,
+      repositoryId: 'r',
+      repository: 'raw-hosted',
+      format: 'raw',
+      namespace: namespace as string,
+      name,
+      version: '1.0.0',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+  }
+
+  it('is false when no component has a namespace, so the column can be left out', () => {
+    expect(anyNamespace([])).toBe(false);
+    expect(anyNamespace([component('a', ''), component('b', '  '), component('c', null)])).toBe(false);
+  });
+
+  it('is true as soon as one component has one', () => {
+    expect(anyNamespace([component('a', ''), component('guava', 'com.google.guava')])).toBe(true);
   });
 });

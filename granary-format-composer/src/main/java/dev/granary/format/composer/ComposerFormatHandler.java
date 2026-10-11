@@ -106,7 +106,7 @@ public class ComposerFormatHandler implements FormatHandler {
     public List<SettingDescriptor> settings() {
         return List.of(SettingDescriptor.bool(ComposerProxy.DIST_REWRITE_SETTING, "Serve dist archives", true,
                         "Point every dist URL in the proxied metadata at this repository, so archives are downloaded "
-                                + "through Granary and cached; when off, clients download them from GitHub and others directly")
+                                + "through Granary and cached; when off, clients download them from GitHub and others directly.")
                 .forTypes(RepositoryType.PROXY));
     }
 

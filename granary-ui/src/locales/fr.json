@@ -129,7 +129,14 @@
     "memory": "Mémoire",
     "memoryDetail": "{used} sur {max}",
     "processors": "Processeurs",
-    "limited": "Vous voyez les dépôts que vous pouvez lire. Les administrateurs voient aussi l’état du système ici."
+    "limited": "Vous voyez les dépôts que vous pouvez lire. Les administrateurs voient aussi l’état du système ici.",
+    "upstreamCounts": {
+      "reachable": "{count} joignables",
+      "unreachable": "{count} injoignables",
+      "offline": "{count} hors ligne"
+    },
+    "upstreamsAll": "Afficher les {count}",
+    "upstreamsFewer": "Afficher moins"
   },
   "repositories": {
     "title": "Dépôts",
@@ -210,7 +217,8 @@
       "offlineMode": "Ne servir que le contenu en cache ; ne jamais contacter la source distante.",
       "members": "Liste ordonnée : le premier membre qui possède un artefact l’emporte.",
       "formatTemplates": "Dépôts standard de ce format : {names}",
-      "formatSettings": "Paramètres propres à {format}. Laissez un champ vide pour utiliser la valeur par défaut."
+      "formatSettings": "Paramètres propres à {format}. Laissez un champ vide pour utiliser la valeur par défaut.",
+      "typesRestricted": "{format} ne prend en charge que ces types de dépôt : {types}."
     },
     "sections": {
       "general": "Général",
@@ -237,7 +245,10 @@
       "invalidate": "Invalider le cache",
       "delete": "Supprimer",
       "edit": "Modifier",
-      "copyUrl": "Copier l’URL"
+      "copyUrl": "Copier l’URL",
+      "copyUrlOf": "Copier l’URL de {name}",
+      "editName": "Modifier {name}",
+      "deleteName": "Supprimer {name}"
     },
     "confirmDelete": "Supprimer le dépôt « {name} » ? Tous ses artefacts seront supprimés. Cette action est irréversible.",
     "toasts": {
@@ -278,6 +289,7 @@
       "path": "Chemin",
       "size": "Taille",
       "sha256": "SHA-256",
+      "copySha256": "Copier le SHA-256 de {path}",
       "downloads": "Téléchargements",
       "origin": "Origine",
       "contentType": "Type de contenu",
@@ -311,12 +323,13 @@
   },
   "connect": {
     "title": "Connecter vos outils",
-    "intro": "Utilisez les extraits ci-dessous pour diriger votre gestionnaire de paquets vers ce dépôt. Remplacez les espaces réservés par votre nom d’utilisateur et un jeton d’API créé depuis la page de votre compte.",
+    "intro": "Utilisez les extraits ci-dessous pour diriger votre gestionnaire de paquets vers ce dépôt. Votre nom d’utilisateur est déjà renseigné ; remplacez <api-token> par un jeton d’API de votre page de compte.",
     "tokenLink": "Créer un jeton d’API",
     "anonymousHint": "Les identifiants sont facultatifs pour télécharger tant que l’accès anonyme est activé ; ils sont toujours requis pour publier.",
     "empty": "Ce format ne propose pas encore d’extraits.",
     "emptyHint": "Utilisez l’URL du dépôt ci-dessus dans la configuration de votre client.",
-    "language": "Langage : {language}"
+    "language": "Langage : {language}",
+    "copySnippet": "Copier « {name} »"
   },
   "search": {
     "title": "Recherche",
@@ -365,7 +378,10 @@
     "you": "vous",
     "actions": {
       "enable": "Activer",
-      "disable": "Désactiver"
+      "disable": "Désactiver",
+      "editName": "Modifier {name}",
+      "setPasswordName": "Définir le mot de passe de {name}",
+      "deleteName": "Supprimer {name}"
     },
     "confirmDelete": "Supprimer l’utilisateur « {name} » ? Ses jetons d’API cesseront immédiatement de fonctionner.",
     "toasts": {
@@ -450,7 +466,7 @@
     "passwordChanged": "Votre mot de passe a été modifié.",
     "tokens": {
       "title": "Jetons d’API",
-      "intro": "Les jetons authentifient les gestionnaires de paquets et les tâches CI sans exposer votre mot de passe. Utilisez-en un comme mot de passe pour Maven et NuGet, ou comme _authToken pour npm.",
+      "intro": "Les jetons authentifient les gestionnaires de paquets et les tâches CI sans exposer votre mot de passe. Utilisez-en un partout où un client demande un mot de passe ou une clé d’API ; l’onglet « Connexion » de chaque dépôt indique où le placer.",
       "new": "Nouveau jeton",
       "create": "Créer le jeton",
       "name": "Nom",
@@ -468,7 +484,8 @@
       "expired": "Expiré",
       "secretTitle": "Votre nouveau jeton",
       "secretHint": "Copiez-le maintenant. Pour des raisons de sécurité, il n’est affiché qu’une seule fois et ne pourra pas être récupéré ensuite.",
-      "done": "J’ai copié le jeton"
+      "done": "J’ai copié le jeton",
+      "revokeName": "Révoquer le jeton {name}"
     }
   },
   "settings": {
@@ -617,5 +634,161 @@
   "forbidden": {
     "title": "Accès refusé",
     "text": "Vous n’avez pas les privilèges nécessaires pour afficher cette page."
+  },
+  "formatText": {
+    "formats": {
+      "cdn": "Ressources CDN pour navigateurs (cdnjs, jsDelivr, unpkg)",
+      "elm": "Paquets Elm",
+      "go": "Modules Go",
+      "helm": "Charts Helm",
+      "raw": "Raw (fichiers quelconques)",
+      "swift": "Registre de paquets Swift"
+    },
+    "settings": {
+      "cargo": {
+        "apiUrl": {
+          "label": "API web distante",
+          "description": "Racine de l’API web du registre distant, utilisée pour répondre à cargo search via ce proxy, ou « none » pour ne chercher que dans les crates en cache ; tant qu’elle est injoignable, la recherche porte sur les crates en cache."
+        },
+        "authRequired": {
+          "label": "Exiger un jeton pour les téléchargements",
+          "description": "Publie \"auth-required\": true dans config.json pour que cargo envoie son jeton avec chaque requête d’index et de téléchargement ; activez-le lorsque les téléchargements anonymes sont désactivés."
+        },
+        "downloadUrl": {
+          "label": "URL de téléchargement distante",
+          "description": "Emplacement des fichiers .crate chez la source distante, comme la valeur \"dl\" de son config.json (marqueurs {'{'}crate{'}'}, {'{'}version{'}'}, {'{'}prefix{'}'}, {'{'}lowerprefix{'}'} et {'{'}sha256-checksum{'}'} ; sans marqueur, /{'{'}crate{'}'}/{'{'}version{'}'}/download est ajouté)."
+        }
+      },
+      "cocoapods": {
+        "rewriteHttpSources": {
+          "label": "Mettre en cache les archives sources http",
+          "description": "Fait pointer source.http des podspecs relayés vers ce dépôt, afin que les sources zip et tar soient téléchargées par son intermédiaire et mises en cache ; les sources git ne sont jamais modifiées."
+        }
+      },
+      "composer": {
+        "distRewrite": {
+          "label": "Servir les archives dist",
+          "description": "Fait pointer chaque URL dist des métadonnées relayées vers ce dépôt, afin que les archives soient téléchargées via Granary et mises en cache ; désactivé, les clients les téléchargent directement depuis GitHub et ailleurs."
+        }
+      },
+      "conan": {
+        "tokenTtlHours": {
+          "label": "Durée de vie des jetons de connexion (heures)",
+          "description": "Durée de validité des jetons d’API émis par « conan remote login » ; 0 signifie qu’ils n’expirent jamais."
+        },
+        "upstreamAuth": {
+          "label": "Authentification distante",
+          "description": "Avec un nom d’utilisateur et un mot de passe distants : « token » les échange une fois contre un jeton Bearer sur v2/users/authenticate (conan_server, Artifactory), « basic » les envoie à chaque requête."
+        }
+      },
+      "docker": {
+        "challengeAnonymous": {
+          "label": "Défier les pings anonymes",
+          "description": "Répond aux GET /v2/ anonymes par 401 et un défi Basic. Docker n’envoie les identifiants de « docker login » qu’après un tel défi ; désactivez-le pour permettre aux clients non authentifiés de faire des pull lorsque la lecture anonyme est activée."
+        },
+        "libraryPrefix": {
+          "label": "Préfixe library de Docker Hub",
+          "description": "Demande en amont les noms à un seul segment comme « alpine » sous la forme « library/alpine ». Activé par défaut pour Docker Hub, désactivé pour les autres registres."
+        },
+        "rootRepository": {
+          "label": "Racine du registre",
+          "description": "Sert ce dépôt sous /v2/ du serveur pour que les images n’aient pas besoin de préfixe de dépôt (host:port/<image>). Si aucun dépôt n’est marqué, le premier groupe docker est la racine."
+        }
+      },
+      "go": {
+        "sumdbName": {
+          "label": "Nom de la base de sommes de contrôle",
+          "description": "La base (le nom dans GOSUMDB) dont les requêtes sumdb/<name>/… sont relayées ; la commande go contacte directement toute autre base."
+        },
+        "sumdbUrl": {
+          "label": "URL de la base de sommes de contrôle",
+          "description": "Destination de ces requêtes, par exemple un miroir comme https://sum.golang.google.cn ; par défaut https://<nom de la base>."
+        }
+      },
+      "helm": {
+        "maxChartSizeMb": {
+          "label": "Taille maximale d’un chart (Mio)",
+          "description": "Archive de chart ou fichier de provenance le plus volumineux accepté lors d’un téléversement ; 0 supprime la limite."
+        },
+        "relativeUrls": {
+          "label": "URL de charts relatives",
+          "description": "Liste les téléchargements de charts dans index.yaml sous la forme charts/<file> relative à l’URL du dépôt plutôt qu’en URL absolues, pour les serveurs joignables sous plusieurs noms d’hôte."
+        }
+      },
+      "hex": {
+        "repositoryName": {
+          "label": "Nom du dépôt Hex",
+          "description": "Le nom que les clients donnent à ce dépôt (mix hex.repo add NAME, repo: \"NAME\", nom de dépôt rebar3) ; les documents signés du registre le portent et les clients refusent toute différence. Par défaut, le nom du dépôt Granary."
+        },
+        "revertWindowMinutes": {
+          "label": "Délai d’annulation (minutes)",
+          "description": "Durée après la publication pendant laquelle une version peut encore être retirée avec mix hex.publish --revert ; 0 l’autorise à tout moment. Les administrateurs peuvent toujours la retirer."
+        },
+        "verifyUpstreamSignatures": {
+          "label": "Vérifier les signatures distantes",
+          "description": "Vérifie la signature de chaque document de registre renvoyé par un membre proxy, avec la public_key de ce proxy, avant que le groupe ne le fusionne et ne le signe à nouveau."
+        }
+      },
+      "pub": {
+        "advisories": {
+          "label": "Avis de sécurité",
+          "description": "Transmet à dart pub les avis de sécurité de la source distante. Désactivé, les listes de paquets omettent advisoriesUpdated et les clients ne demandent jamais d’avis."
+        },
+        "maxArchiveSizeMb": {
+          "label": "Taille maximale d’une archive (Mio)",
+          "description": "Archive de paquet la plus volumineuse que dart pub publish peut téléverser ; pub.dev autorise 100 Mio."
+        }
+      },
+      "pypi": {
+        "filesUrl": {
+          "label": "Hôte des fichiers",
+          "description": "URL de base de l’hôte vers lequel l’index distant renvoie pour les fichiers ; un fichier en cache sous packages/… est récupéré depuis <hôte des fichiers>/packages/… à sa première demande."
+        }
+      },
+      "raw": {
+        "contentDisposition": {
+          "label": "Content-Disposition",
+          "description": "« inline » permet aux navigateurs d’afficher les fichiers, « attachment » les fait télécharger avec leur nom."
+        },
+        "listingEnabled": {
+          "label": "Listes de répertoires",
+          "description": "Répond aux chemins terminés par une barre oblique par une page d’index (HTML, ou JSON pour Accept: application/json)."
+        },
+        "metadataPatterns": {
+          "label": "Motifs de chemins de métadonnées",
+          "description": "Globs séparés par des virgules (* dans un segment, ** à travers les segments) des chemins qui sont des documents d’index modifiables : revérifiés en amont après l’âge maximal des métadonnées au lieu d’être mis en cache pour toujours."
+        }
+      },
+      "rubygems": {
+        "maxGemSizeMb": {
+          "label": "Taille maximale d’un gem (Mio)",
+          "description": "Fichier .gem le plus volumineux que gem push peut téléverser dans ce dépôt."
+        },
+        "signin": {
+          "label": "Autoriser gem signin",
+          "description": "Permet à gem signin d’échanger un nom d’utilisateur et un mot de passe envoyés à ce dépôt contre un nouveau jeton d’API."
+        }
+      },
+      "swift": {
+        "maxArchiveSizeMb": {
+          "label": "Taille maximale de l’archive source (Mio)",
+          "description": "Archive source la plus volumineuse que swift package-registry publish peut téléverser ; vide signifie aucune limite."
+        },
+        "requireSignature": {
+          "label": "Exiger des versions signées",
+          "description": "Refuse les versions publiées sans signature de l’archive source (swift package-registry publish --signing-identity ou --private-key-path avec --cert-chain-paths)."
+        }
+      },
+      "terraform": {
+        "providerProtocols": {
+          "label": "Versions du protocole des providers",
+          "description": "Versions du protocole des providers, séparées par des virgules, annoncées pour les providers hébergés, par exemple 5.0,6.0."
+        },
+        "rootRepository": {
+          "label": "Servir /.well-known/terraform.json",
+          "description": "Répond au document de découverte de services du serveur depuis ce dépôt, afin que le nom d’hôte de Granary fonctionne dans les adresses de providers et de modules. Un seul dépôt par serveur, en général le groupe."
+        }
+      }
+    }
   }
 }

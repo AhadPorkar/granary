@@ -76,11 +76,13 @@
             </configuration>
           </execution>
           <execution>
+            <!-- before process-resources, which copies dist/ into the jar: a later phase would package
+                 an empty or stale dist/ on the first build of a clean checkout -->
             <id>npm-build</id>
             <goals>
               <goal>npm</goal>
             </goals>
-            <phase>prepare-package</phase>
+            <phase>generate-resources</phase>
             <configuration>
               <arguments>run build</arguments>
             </configuration>

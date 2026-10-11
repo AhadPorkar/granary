@@ -86,7 +86,7 @@ public class CocoaPodsFormatHandler implements FormatHandler {
     public List<SettingDescriptor> settings() {
         return List.of(SettingDescriptor.bool(CocoaPodsProxy.REWRITE_SETTING, "Cache http source archives", true,
                         "Point source.http of proxied podspecs at this repository, so zip and tar sources are downloaded "
-                                + "through it and cached; git sources are never changed")
+                                + "through it and cached; git sources are never changed.")
                 .forTypes(RepositoryType.PROXY, RepositoryType.GROUP));
     }
 

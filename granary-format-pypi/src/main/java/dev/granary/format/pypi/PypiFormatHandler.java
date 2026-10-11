@@ -89,7 +89,7 @@ public class PypiFormatHandler implements FormatHandler {
         return List.of(
                 SettingDescriptor.url(PypiProxy.FILES_URL_SETTING, "Files host", PypiProxy.DEFAULT_FILES_URL,
                         "Base URL of the host the upstream index links files from; a cached file under packages/… is "
-                                + "fetched from <files host>/packages/… when it is first requested")
+                                + "fetched from <files host>/packages/… when it is first requested.")
                         .forTypes(RepositoryType.PROXY));
     }
 

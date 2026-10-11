@@ -45,7 +45,7 @@ jobs:
 
       - name: Publish test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports
           path: |
@@ -55,7 +55,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Keep the packaged server
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: granary-jar
           path: granary-server/target/granary.jar
@@ -80,7 +80,7 @@ jobs:
 
       - name: Publish test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-postgres
           path: |

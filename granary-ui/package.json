@@ -16,19 +16,19 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "pinia": "^3.0.4",
+    "pinia": "^4.0.3",
     "vue": "^3.5.43",
-    "vue-i18n": "^11.4.13",
-    "vue-router": "^4.6.4"
+    "vue-i18n": "^11.4.14",
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
-    "@vitejs/plugin-vue": "^6.0.9",
-    "@vue/test-utils": "~2.4.6",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "~2.5.1",
     "jsdom": "^26.1.0",
     "typescript": "~5.9.3",
-    "vite": "^7.3.7",
-    "vitest": "^3.2.7",
-    "vue-tsc": "^3.3.12"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
+    "vue-tsc": "^3.3.13"
   }
 }
